@@ -16,3 +16,11 @@ python src/main.py --cert_pem_path ~/WebRoot/AtomGraph/LinkedDataHub/ssl/owner/c
 ```
 
 You should see Turtle output of the root document of LinkedDataHub - that is the result of a `GET(https://localhost:4443/)` operation call which is used as an example.
+
+## Testing
+
+Testing is done using `pytest`. To run tests, simply do
+
+    $ pytest
+
+in project root.
