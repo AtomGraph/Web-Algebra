@@ -1,1 +1,2 @@
 rdflib==7.0.0
+openai

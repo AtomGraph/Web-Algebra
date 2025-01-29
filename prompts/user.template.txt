@@ -1,0 +1,5 @@
+Translate the following instruction into a JSON-formatted structure of operation calls, following the predefined format and execution rules.
+
+Instruction: {instruction}
+
+Return only the JSON output, with operations represented as JSON objects using `operation` and `args`. Operations may be nested inside arguments, and execution should follow an inside-out approach. Do not include explanations or additional text—only return the JSON result.
