@@ -4,7 +4,7 @@
 
 * GPT [system prompt](prompts/system.md)
   * operation definitions
-  * JSON format specification ((output sample)[output.json])
+  * JSON format specification ([output sample](output.json))
 * [`Operation` interface](src/operation.py)
   * JSON intepreter
 * [Operation implementations](src/operations)
