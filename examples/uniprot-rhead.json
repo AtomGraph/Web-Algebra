@@ -1,0 +1,85 @@
+{
+    "ForEach": {
+        "table": {
+            "SELECT": {
+                "endpoint": "https://sparql.uniprot.org/sparql",
+                "query": "PREFIX up: <http://purl.uniprot.org/core/> PREFIX rhea: <http://rdf.rhea-db.org/> SELECT DISTINCT ?protein ?reaction WHERE { ?protein a up:Protein . ?protein up:annotation/up:catalyticActivity/up:catalyzedReaction ?reaction . FILTER (STRSTARTS(STR(?reaction), \"http://rdf.rhea-db.org/\")) } LIMIT 10"
+            }
+        },
+        "operation": [
+            {
+                "PUT": {
+                    "url": {
+                        "ResolveURI": {
+                            "base": "https://localhost:4443/proteins/",
+                            "relative": {
+                                "EncodeForURI": {
+                                    "input": {
+                                        "ValueOf": {
+                                            "var": "protein"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "data": {
+                        "FormatString": {
+                            "input": {
+                                "FormatString": {
+                                    "input": "<${protein}> <http://purl.uniprot.org/core/catalyzedReaction> <${reaction}> .",
+                                    "placeholder": "reaction",
+                                    "replacement": {
+                                        "ValueOf": {
+                                            "var": "reaction"
+                                        }
+                                    }
+                                }
+                            },
+                            "placeholder": "protein",
+                            "replacement": {
+                                "ValueOf": {
+                                    "var": "protein"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "POST": {
+                    "url": {
+                        "ResolveURI": {
+                            "base": "https://localhost:4443/reactions/",
+                            "relative": {
+                                "EncodeForURI": {
+                                    "input": {
+                                        "ValueOf": {
+                                            "var": "reaction"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "data": {
+                        "SELECT": {
+                            "endpoint": "https://sparql.rhea-db.org/sparql",
+                            "query": {
+                                "FormatString": {
+                                    "input": "PREFIX rhea: <http://rdf.rhea-db.org/> PREFIX rh: <http://rdf.rhea-db.org/> SELECT DISTINCT ?reaction ?compound WHERE { <${reaction}> rhea:side/rh:contains ?compound . } LIMIT 10",
+                                    "placeholder": "reaction",
+                                    "replacement": {
+                                        "ValueOf": {
+                                            "var": "reaction"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+    }
+}
