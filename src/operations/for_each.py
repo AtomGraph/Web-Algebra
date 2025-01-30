@@ -1,13 +1,18 @@
+from typing import Any
 import logging
 from operation import Operation
 
 class ForEach(Operation):
-    def __init__(self, context: dict = None, table: dict = None, operation: dict = None):
+    """
+    Executes an operation (or a sequence of operations) for each row in a table.
+    """
+
+    def __init__(self, context: dict = None, table: dict = None, operation: Any = None):
         """
         Initialize ForEach with execution context.
         :param context: The current execution context.
         :param table: The JSON operation that produces a table (not resolved yet).
-        :param operation: The JSON operation to apply to each row.
+        :param operation: A single operation or a list of operations to apply to each row.
         """
         super().__init__(context)
 
@@ -16,20 +21,17 @@ class ForEach(Operation):
         if operation is None:
             raise ValueError("ForEach operation requires 'operation' to be set.")
         
-        self.table = table  # ✅ Store JSON representation, do NOT resolve yet
-        self.operation = operation  # ✅ Store JSON representation, do NOT resolve yet
+        self.table = table
+        self.operation = operation
 
-
-    def execute(self):
+    def execute(self)-> list:
         """
-        Executes the operation for each row in the resolved table.
-
-        :return: A list of results from applying the operation to each row.
-        :raises ValueError: If the resolved table is not a list of dictionaries.
+        Executes the operation(s) for each row in the resolved table.
+        :return: A list of results, where each item corresponds to the result(s) for a row.
         """
         logging.info(f"Resolving ForEach 'table': {self.table}")
 
-        # ✅ Resolve `table` dynamically using
+        # ✅ Resolve `table` dynamically
         resolved_table = self.resolve_arg(self.table)
 
         logging.info(f"ForEach resolved table: {resolved_table} (Type: {type(resolved_table)})")
@@ -44,10 +46,12 @@ class ForEach(Operation):
 
             logging.info(f"Processing row {index + 1}/{len(resolved_table)}: {row}")
 
-            # ✅ Resolve `operation` for each row dynamically
-            result = self.execute_json(self.operation, row)
-            logging.info(f"Row {index + 1} result: {result}")
-            results.append(result)
+            if isinstance(self.operation, list):
+                row_results = [self.execute_json(op, row) for op in self.operation]
+            else:
+                row_results = self.execute_json(self.operation, row)
+
+            results.append(row_results)
 
         logging.info("ForEach execution completed.")
         return results

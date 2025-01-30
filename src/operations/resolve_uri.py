@@ -24,7 +24,7 @@ class ResolveURI(Operation):
         self.base = base
         self.relative = relative  # ✅ May be a string or a nested operation
 
-    def execute(self) -> Any:
+    def execute(self) -> str:
         """
         Resolves a relative URI against a base URI.
         :return: The resolved absolute URI as a string.

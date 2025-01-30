@@ -9,9 +9,11 @@ from operations.resolve_uri import ResolveURI
 from operations.sparql_string import SPARQLString
 from operations.get import GET
 from operations.put import PUT
+from operations.post import POST
 from operations.for_each import ForEach
 from operations.value_of import ValueOf
 from operations.select import SELECT
+from operations.construct import CONSTRUCT
 from operations.encode_for_uri import EncodeForURI
 from operations.format_string import FormatString
 
@@ -24,7 +26,13 @@ logging.basicConfig(
 
 def main():
     # Parse script arguments
-    parser = argparse.ArgumentParser(description="Run the AI-powered orchestrator.")
+    parser = argparse.ArgumentParser(description="Run the AI-powered DSL interpreter.")
+    parser.add_argument(
+        "--from-json",
+        type=str,
+        required=False,
+        help="JSON input file to execute",
+    )
     parser.add_argument(
         "--cert_pem_path",
         type=str,
@@ -51,44 +59,56 @@ def main():
     GET.cert_password = args.cert_password
     PUT.cert_pem_path = args.cert_pem_path
     PUT.cert_password = args.cert_password
+    POST.cert_pem_path = args.cert_pem_path
+    POST.cert_password = args.cert_password
 
-    Operation.register(ResolveURI)
-    Operation.register(SPARQLString)
-    Operation.register(SELECT)
-    Operation.register(GET)
-    Operation.register(PUT)
     Operation.register(ForEach)
     Operation.register(ValueOf)
     Operation.register(EncodeForURI)
     Operation.register(FormatString)
+    Operation.register(ResolveURI)
+    Operation.register(SPARQLString)
+    Operation.register(SELECT)
+    Operation.register(CONSTRUCT)
+    Operation.register(GET)
+    Operation.register(PUT)
+    Operation.register(POST)
 
-    # Load prompts
-    with open("prompts/system.md") as system_prompt_file, open("prompts/user.template.txt") as user_prompt_template_file:
-        system_prompt = system_prompt_file.read()
-        messages = [ {"role": "system", "content": system_prompt} ]
+    if args.from_json:
+        # Load JSON input from file
+        with open(args.from_json) as json_file:
+            json_input = json.load(json_file)
 
-        user_prompt_template = user_prompt_template_file.read()
+        # Execute the JSON input
+        print(Operation.execute_json(json_input))
+    else:
+        # Load prompts
+        with open("prompts/system.md") as system_prompt_file, open("prompts/user.template.txt") as user_prompt_template_file:
+            system_prompt = system_prompt_file.read()
+            messages = [ {"role": "system", "content": system_prompt} ]
 
-        while True:
-            instruction = input("Instruction: ")
+            user_prompt_template = user_prompt_template_file.read()
 
-            user_prompt = user_prompt_template.format(instruction=instruction)
-            messages.append(
-                {"role": "user", "content": user_prompt},
-            )
+            while True:
+                instruction = input("Instruction: ")
 
-            chat_completion = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                response_format={ "type": "json_object" }
-            )
+                user_prompt = user_prompt_template.format(instruction=instruction)
+                messages.append(
+                    {"role": "user", "content": user_prompt},
+                )
 
-            reply_json = json.loads(chat_completion.choices[0].message.content)
-            assert isinstance(reply_json, dict)
-            logging.info("Generated response: %s", reply_json)
+                chat_completion = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    response_format={ "type": "json_object" }
+                )
 
-            # Execute the generated operation
-            print(Operation.execute_json(reply_json))
+                reply_json = json.loads(chat_completion.choices[0].message.content)
+                assert isinstance(reply_json, dict)
+                logging.info("Generated response: %s", reply_json)
+
+                # Execute the generated operation
+                print(Operation.execute_json(reply_json))
 
 
 if __name__ == "__main__":

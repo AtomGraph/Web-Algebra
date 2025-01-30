@@ -19,7 +19,7 @@ class ValueOf(Operation):
         
         self.var = var
 
-    def execute(self) -> Any:
+    def execute(self) -> str:
         """
         Retrieves a value from the execution context.
         :return: The value corresponding to the key.

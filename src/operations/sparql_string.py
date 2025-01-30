@@ -37,7 +37,7 @@ class SPARQLString(Operation):
 
         logging.info("SPARQLString operation initialized.")
 
-    def execute(self) -> Any:
+    def execute(self) -> str:
         """
         Generates a SPARQL query string from a natural language question.
         :return: A valid SPARQL query string.

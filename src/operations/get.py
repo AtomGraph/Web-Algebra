@@ -39,7 +39,7 @@ class GET(Operation):
 
         logging.info("GET operation initialized.")
 
-    def execute(self):
+    def execute(self) -> str:
         """
         Fetch RDF data from the specified URL and return it as a Turtle string.
         :return: A string containing RDF data serialized in Turtle format.

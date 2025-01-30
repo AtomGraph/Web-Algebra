@@ -25,7 +25,7 @@ class SELECT(Operation):
         self.endpoint = endpoint
         self.query = query  # ✅ Could be a raw string or a nested operation
 
-    def execute(self) -> Any:
+    def execute(self) -> list:
         """
         Executes a SPARQL SELECT query and returns results as a list of dictionaries.
         :return: A list of dictionaries representing SPARQL results.
