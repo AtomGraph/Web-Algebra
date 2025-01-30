@@ -3,7 +3,7 @@
         "table": {
             "SELECT": {
                 "endpoint": "https://dbpedia.org/sparql",
-                "query": "SELECT DISTINCT ?city ?cityName ?population ?wikidataCity WHERE { ?city <http://dbpedia.org/ontology/country> <http://dbpedia.org/resource/Denmark> . ?city rdfs:label ?cityName . ?city <http://dbpedia.org/ontology/populationTotal> ?population . ?city <http://www.w3.org/2002/07/owl#sameAs> ?wikidataCity . FILTER (lang(?cityName) = \"en\") FILTER (strstarts(str(?wikidataCity), \"http://www.wikidata.org/entity/\")) FILTER (?population > 200000) }"
+                "query": "SELECT DISTINCT ?city ?cityName ?population ?wikidataCity WHERE { ?city a <http://dbpedia.org/ontology/City> . ?city <http://dbpedia.org/ontology/country> <http://dbpedia.org/resource/Denmark> . ?city rdfs:label ?cityName . ?city <http://dbpedia.org/ontology/populationTotal> ?population . ?city <http://www.w3.org/2002/07/owl#sameAs> ?wikidataCity . FILTER (lang(?cityName) = \"en\") FILTER (strstarts(str(?wikidataCity), \"http://www.wikidata.org/entity/\")) FILTER (?population > 200000) }"
             }
         },
         "operation": [

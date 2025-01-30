@@ -9,6 +9,7 @@ The output you must produce is a **JSON-formatted structure** of operation calls
 - **Operations must be represented as JSON objects**. Each operation corresponds to a function call with a specific signature.
 - **Operations may be nested inside arguments** to indicate dependencies.
 - **A result can be used directly as an argument in another operation** instead of requiring explicit intermediate variables.
+- **ForEach supports executing multiple operations sequentially** when provided with a list of operations. Each operation in the list is executed for every row in the table before moving to the next row.
 
 ## Example JSON Output
 
@@ -61,8 +62,6 @@ would produce this JSON output:
 ]
 ```
 
----
-
 # Rules
 
 1. **Return only JSON**  
@@ -76,17 +75,23 @@ would produce this JSON output:
    - **ForEach sets the context**—inner operations automatically use the current row.  
 
 4. **Use `ForEach` when processing multiple results**  
-   - The `table` argument must reference a `SELECT` or similar operation returning a table multiple rows (`table: List[Dict[str, Any]]`).  
+   - The `table` argument must reference a `SELECT` or similar operation returning multiple rows (`table: List[Dict[str, Any]]`).  
    - The `operation` argument applies to each row dynamically.  
+   - **If `operation` is a list, the operations execute sequentially for each row** before moving to the next row.  
 
-5. **Use `ResolveURI` when constructing URLs dynamically**  
+5. **Operations return either a single object or a list**  
+   - Most operations return a **single result** (e.g., `ResolveURI`, `GET`, `PUT`).  
+   - **ForEach returns a list**—one result per row processed.  
+   - When executing multiple operations inside **ForEach**, their results are collected into a list.  
+
+6. **Use `ResolveURI` when constructing URLs dynamically**  
    - Always embed it inside the relevant argument where needed.  
 
-6. **No assumptions about the number of results**  
+7. **No assumptions about the number of results**  
    - Queries must handle **unknown result sizes dynamically**.  
 
-7. **Make sure to use variable names consistently**
-   - If you generated a query with a `?cityName` variable, then make sure to use the same variable in `{ "ValueOf": { "var": "cityName" } }` if you need to retrieve its value.
+8. **Make sure to use variable names consistently**  
+   - If you generated a query with a `?cityName` variable, then make sure to use the same variable in `{ "ValueOf": { "var": "cityName" } }` if you need to retrieve its value.  
 
 # Operations
 
@@ -332,9 +337,18 @@ Result:
 "Copenhagen"
 ```
 
-## ForEach(table: List[Dict[str, Any]], operation: Callable)
+## ForEach(table: List[Dict[str, Any]], operation: Union[Callable, List[Callable]])
 
-Executes an operation for each row in a table.
+Executes one or more operations for each row in a table.
+
+- If a **single operation** is provided, it is applied to each row.  
+- If a **list of operations** is provided, they are executed sequentially for each row.
+
+---
+
+## **Example: Single Operation**
+
+This example performs an HTTP **GET** request for each city in the table.
 
 ### Example JSON
 
@@ -358,10 +372,58 @@ Executes an operation for each row in a table.
 }
 ```
 
-Executed Sub-operation Calls:
+### Executed Sub-operation Calls
 ```
 GET("http://dbpedia.org/resource/Copenhagen")
 GET("http://dbpedia.org/resource/Aarhus")
+```
+
+---
+
+## Example: Multiple Operations
+
+This example performs both a **GET** request and a **POST** request for each city in the table.
+
+### Example JSON
+
+```json
+{
+  "ForEach": {
+    "table": [
+      { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" } },
+      { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Aarhus" } }
+    ],
+    "operation": [
+      {
+        "GET": {
+          "url": {
+            "ValueOf": {
+              "var": "city"
+            }
+          }
+        }
+      },
+      {
+        "POST": {
+          "url": "https://example.com/store",
+          "data": {
+            "ValueOf": {
+              "var": "city"
+            }
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+### Executed Sub-operation Calls
+```
+GET("http://dbpedia.org/resource/Copenhagen")
+POST("https://example.com/store", "http://dbpedia.org/resource/Copenhagen")
+GET("http://dbpedia.org/resource/Aarhus")
+POST("https://example.com/store", "http://dbpedia.org/resource/Aarhus")
 ```
 
 ## FormatString(input: str, placeholder: str, replacement: str) -> str

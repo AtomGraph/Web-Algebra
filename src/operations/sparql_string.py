@@ -29,8 +29,8 @@ class SPARQLString(Operation):
 
         if question is None:
             raise ValueError("SPARQLString operation requires 'question' to be set.")
-        if endpoint is None:
-            raise ValueError("SPARQLString operation requires 'endpoint' to be set.")
+        #if endpoint is None:
+        #    raise ValueError("SPARQLString operation requires 'endpoint' to be set.")
         
         self.question = question  # ✅ Might be a string or another operation
         self.endpoint = endpoint
