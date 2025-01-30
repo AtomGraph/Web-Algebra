@@ -34,8 +34,8 @@ class EncodeForURI(Operation):
         if not isinstance(resolved_input, str):
             raise ValueError(f"EncodeForURI operation requires 'input' to be a string, found: {resolved_input}")
 
-        # ✅ Perform URL encoding
-        encoded_value = quote(resolved_input)
+        # ✅ Encode using XPath encode-for-uri() behavior (encode slashes, colons, etc.)
+        encoded_value = quote(resolved_input, safe="")  # 🔥 No safe characters
 
         logging.info(f"Encoded URI: {encoded_value}")
         return encoded_value

@@ -455,7 +455,8 @@ Result:
 
 ## EncodeForURI(input: str) -> str
 
-This function URL-encodes a string to make it safe for use in URIs, following the behavior of SPARQL's `ENCODE_FOR_URI`. It replaces spaces and special characters with their respective percent-encoded representations.  
+This function URL-encodes a string to make it safe for use in URIs, following the behavior of SPARQL's `ENCODE_FOR_URI()`.  
+It replaces **spaces, slashes (`/`), colons (`:`), and special characters** with their respective **percent-encoded representations**.
 
 ### Example JSON
 

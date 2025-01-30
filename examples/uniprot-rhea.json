@@ -13,10 +13,16 @@
                         "ResolveURI": {
                             "base": "https://localhost:4443/proteins/",
                             "relative": {
-                                "EncodeForURI": {
-                                    "input": {
-                                        "ValueOf": {
-                                            "var": "protein"
+                                "FormatString": {
+                                    "input": "${encodedProtein}/",
+                                    "placeholder": "encodedProtein",
+                                    "replacement": {
+                                        "EncodeForURI": {
+                                            "input": {
+                                                "ValueOf": {
+                                                    "var": "protein"
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -52,10 +58,16 @@
                         "ResolveURI": {
                             "base": "https://localhost:4443/reactions/",
                             "relative": {
-                                "EncodeForURI": {
-                                    "input": {
-                                        "ValueOf": {
-                                            "var": "reaction"
+                                "FormatString": {
+                                    "input": "${encodedReaction}/",
+                                    "placeholder": "encodedReaction",
+                                    "replacement": {
+                                        "EncodeForURI": {
+                                            "input": {
+                                                "ValueOf": {
+                                                    "var": "reaction"
+                                                }
+                                            }
                                         }
                                     }
                                 }
