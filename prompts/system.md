@@ -346,7 +346,7 @@ Executes one or more operations for each row in a table.
 
 ---
 
-## **Example: Single Operation**
+## Example: Single Operation**
 
 This example performs an HTTP **GET** request for each city in the table.
 
@@ -426,23 +426,23 @@ GET("http://dbpedia.org/resource/Aarhus")
 POST("https://example.com/store", "http://dbpedia.org/resource/Aarhus")
 ```
 
-## FormatString(input: str, placeholder: str, replacement: str) -> str
+## Replace(input: str, pattern: str, replacement: str) -> str
 
-This function formats the string by replacing occurences of the specified placeholder with the specified replacement value, and returns the formatted string.
+This function replaces occurrences of a pattern in a string with a specified replacement value. The function follows the behavior of SPARQL’s `REPLACE()`.
 
 ### Example JSON
 
 ```json
 {
-    "FormatString": {
+    "Replace": {
         "input": {
-            "FormatString": {
+            "Replace": {
                 "input": "<${this}> schema:name \"${name}\" .",
-                "placeholder": "this",
+                "pattern": "\\$\\{this\\}",
                 "replacement": "http://dbpedia.org/resource/Copenhagen"
             }
         },
-        "placeholder": "name",
+        "pattern": "\\$\\{name\\}",
         "replacement": "Copenhagen"
     }
 }

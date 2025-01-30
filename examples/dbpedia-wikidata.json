@@ -13,9 +13,9 @@
                         "ResolveURI": {
                             "base": "https://localhost:4443/cities/",
                             "relative": {
-                                "FormatString": {
+                                "Replace": {
                                     "input": "${encodedName}/",
-                                    "placeholder": "encodedName",
+                                    "pattern": "\\$\\{encodedName\\}",
                                     "replacement": {
                                         "EncodeForURI": {
                                             "input": {
@@ -30,11 +30,11 @@
                         }
                     },
                     "data": {
-                        "FormatString": {
+                        "Replace": {
                             "input": {
-                                "FormatString": {
+                                "Replace": {
                                     "input": "<${city}> <http://dbpedia.org/ontology/populationTotal> \"${population}\"^^<http://www.w3.org/2001/XMLSchema#integer> .",
-                                    "placeholder": "city",
+                                    "pattern": "\\$\\{city\\}",
                                     "replacement": {
                                         "ValueOf": {
                                             "var": "city"
@@ -42,7 +42,7 @@
                                     }
                                 }
                             },
-                            "placeholder": "population",
+                            "pattern": "\\$\\{population\\}",
                             "replacement": {
                                 "ValueOf": {
                                     "var": "population"
@@ -58,9 +58,9 @@
                         "ResolveURI": {
                             "base": "https://localhost:4443/cities/",
                             "relative": {
-                                "FormatString": {
+                                "Replace": {
                                     "input": "${encodedName}/",
-                                    "placeholder": "encodedName",
+                                    "pattern": "\\$\\{encodedName\\}",
                                     "replacement": {
                                         "EncodeForURI": {
                                             "input": {
@@ -78,9 +78,9 @@
                         "CONSTRUCT": {
                             "endpoint": "https://query.wikidata.org/sparql",
                             "query": {
-                                "FormatString": {
+                                "Replace": {
                                     "input": "PREFIX wdt: <http://www.wikidata.org/prop/direct/> PREFIX wd: <http://www.wikidata.org/entity/> CONSTRUCT { <${wikidataCity}> wdt:P1082 ?population } WHERE { <${wikidataCity}> wdt:P1082 ?population }",
-                                    "placeholder": "wikidataCity",
+                                    "pattern": "\\$\\{wikidataCity\\}",
                                     "replacement": {
                                         "ValueOf": {
                                             "var": "wikidataCity"

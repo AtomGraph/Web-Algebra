@@ -15,7 +15,7 @@ from operations.value_of import ValueOf
 from operations.select import SELECT
 from operations.construct import CONSTRUCT
 from operations.encode_for_uri import EncodeForURI
-from operations.format_string import FormatString
+from operations.replace import Replace
 
 # Configure logging to show INFO level and above
 logging.basicConfig(
@@ -65,7 +65,7 @@ def main():
     Operation.register(ForEach)
     Operation.register(ValueOf)
     Operation.register(EncodeForURI)
-    Operation.register(FormatString)
+    Operation.register(Replace)
     Operation.register(ResolveURI)
     Operation.register(SPARQLString)
     Operation.register(SELECT)

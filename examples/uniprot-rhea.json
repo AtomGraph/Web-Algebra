@@ -13,9 +13,9 @@
                         "ResolveURI": {
                             "base": "https://localhost:4443/proteins/",
                             "relative": {
-                                "FormatString": {
+                                "Replace": {
                                     "input": "${encodedProtein}/",
-                                    "placeholder": "encodedProtein",
+                                    "pattern": "\\$\\{encodedProtein\\}",
                                     "replacement": {
                                         "EncodeForURI": {
                                             "input": {
@@ -30,11 +30,11 @@
                         }
                     },
                     "data": {
-                        "FormatString": {
+                        "Replace": {
                             "input": {
-                                "FormatString": {
+                                "Replace": {
                                     "input": "<${protein}> <http://purl.uniprot.org/core/catalyzedReaction> <${reaction}> .",
-                                    "placeholder": "reaction",
+                                    "pattern": "\\$\\{reaction\\}",
                                     "replacement": {
                                         "ValueOf": {
                                             "var": "reaction"
@@ -42,7 +42,7 @@
                                     }
                                 }
                             },
-                            "placeholder": "protein",
+                            "pattern": "\\$\\{protein\\}",
                             "replacement": {
                                 "ValueOf": {
                                     "var": "protein"
@@ -58,9 +58,9 @@
                         "ResolveURI": {
                             "base": "https://localhost:4443/reactions/",
                             "relative": {
-                                "FormatString": {
+                                "Replace": {
                                     "input": "${encodedReaction}/",
-                                    "placeholder": "encodedReaction",
+                                    "pattern": "\\$\\{encodedReaction\\}",
                                     "replacement": {
                                         "EncodeForURI": {
                                             "input": {
@@ -78,9 +78,9 @@
                         "SELECT": {
                             "endpoint": "https://sparql.rhea-db.org/sparql",
                             "query": {
-                                "FormatString": {
+                                "Replace": {
                                     "input": "PREFIX rhea: <http://rdf.rhea-db.org/> PREFIX rh: <http://rdf.rhea-db.org/> SELECT DISTINCT ?reaction ?compound WHERE { <${reaction}> rhea:side/rh:contains ?compound . } LIMIT 10",
-                                    "placeholder": "reaction",
+                                    "pattern": "\\$\\{reaction\\}",
                                     "replacement": {
                                         "ValueOf": {
                                             "var": "reaction"
