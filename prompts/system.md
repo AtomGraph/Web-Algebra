@@ -86,7 +86,7 @@ would produce this JSON output:
    - Queries must handle **unknown result sizes dynamically**.  
 
 7. **Make sure to use variable names consistently**
-   - If you generated a query with a `?cityName` variable, then make sure to use the same variable in `{ "ValueOf": { "var": "cityName" } }` if you need to retrieve it value.
+   - If you generated a query with a `?cityName` variable, then make sure to use the same variable in `{ "ValueOf": { "var": "cityName" } }` if you need to retrieve its value.
 
 # Operations
 
