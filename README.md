@@ -2,9 +2,12 @@
 
 # Architecture
 
-* [Operation registry](src/registry.py)
+* GPT [system prompt](prompts/system.md)
+  * operation definitions
+  * JSON format specification ((output sample)[output.json])
 * [`Operation` interface](src/operation.py)
-* Sample operation implementations ([`GET`](src/operations/get.py) and [`ResolveURI`](src/operations/resolve_uri.py) for now)
+  * JSON intepreter
+* [Operation implementations](src/operations)
 
 ChatGPT thread: https://chatgpt.com/c/679abd11-cc00-8009-8039-cecc0dd526e7
 
@@ -16,5 +19,4 @@ ChatGPT thread: https://chatgpt.com/c/679abd11-cc00-8009-8039-cecc0dd526e7
 ```bash
 python src/main.py --cert_pem_path ~/WebRoot/AtomGraph/LinkedDataHub/ssl/owner/cert.pem --cert_password ******
 ```
-
-You should see Turtle output of the root document of LinkedDataHub - that is the result of a `GET(https://localhost:4443/)` operation call which is used as an example.
+3. Enter instruction (see [examples](examples.md))
