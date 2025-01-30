@@ -75,7 +75,7 @@ class LinkedDataClient:
         :return: The HTTPResponse object.
         """
         # Serialize the RDF data to N-Triples
-        data = data.serialize(format="nt")
+        data = graph.serialize(format="nt")
         headers = {
             "Content-Type": "application/n-triples",
             "Accept": "application/n-triples"

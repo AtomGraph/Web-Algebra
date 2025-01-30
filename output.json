@@ -1,0 +1,42 @@
+{
+    "ForEach": {
+        "table": {
+            "SELECT": {
+                "endpoint": "https://dbpedia.org/sparql",
+                "query": {
+                    "SPARQLString": {
+                        "question": "10 biggest cities in Denmark",
+                        "endpoint": "https://dbpedia.org/sparql"
+                    }
+                }
+            }
+        },
+        "operation": {
+            "PUT": {
+                "url": {
+                    "ResolveURI": {
+                        "base": "http://localhost/denmark/",
+                        "relative": {
+                            "EncodeForURI": {
+                                "input": {
+                                    "ValueOf": {
+                                        "key": "cityName"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "data": {
+                    "GET": {
+                        "url": {
+                            "ValueOf": {
+                                "key": "city"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -40,7 +40,7 @@ would produce this JSON output:
               "base": "http://localhost/denmark/",
               "relative": {
                 "ValueOf": {
-                  "key": "cityName"
+                  "var": "cityName"
                 }
               }
             }
@@ -49,7 +49,7 @@ would produce this JSON output:
             "GET": {
               "url": {
                 "ValueOf": {
-                  "key": "city"
+                  "var": "city"
                 }
               }
             }
@@ -84,6 +84,9 @@ would produce this JSON output:
 
 6. **No assumptions about the number of results**  
    - Queries must handle **unknown result sizes dynamically**.  
+
+7. **Make sure to use variable names consistently**
+   - If you generated a query with a `?cityName` variable, then make sure to use the same variable in `{ "ValueOf": { "var": "cityName" } }` if you need to retrieve it value.
 
 # Operations
 
@@ -191,7 +194,7 @@ Result:
 
 ## SELECT(endpoint: URL, query: Select) -> List[Dict[str, Any]]
 
-This function queries the provided SPARQL endpoint using the provided Select query string. It returns a tabular SPARQL result as a list of dictionaries in JSON form, where every dictionary represents a table row. The dictionary keys correspond to variables projected by the query. Key values are also dictionaries, with "type" field indicating the type of the value ("uri", "bnode", or "literal") and "value" providing the actual value. In case of language-tagged literals there is also an "xml:lang" key indicating the language code, and in case of typed literals there is a "datatype" key indicating the datatype URI.
+This function queries the provided SPARQL endpoint using the provided Select query string. It returns a tabular SPARQL result as a list of dictionaries in JSON form, where every dictionary represents a table row. The dictionary keys correspond to variables projected by the query. Key values are also dictionaries, with `type` field indicating the type of the value (`uri`, `bnode`, or `literal`) and `value` providing the actual value. In case of language-tagged literals there is also an `xml:lang` key indicating the language code, and in case of typed literals there is a "datatype" key indicating the datatype URI.
 
 ### Example JSON
 
@@ -302,9 +305,9 @@ Result:
 ]
 ```
 
-## ValueOf(row: Dict[str, Any], key: str) -> Any
+## ValueOf(row: Dict[str, Any], var: str) -> Any
 
-Retrieves a value from the current context row (structured as a dictionary) for the given key.
+Retrieves a value from the current context row (structured as a dictionary) for the given variable name as the key.
 
 ### Example JSON
 
@@ -319,14 +322,14 @@ Current context row:
 ```json
 {
     "ValueOf": {
-        "key": "city"
+        "var": "cityName"
     }
 }
 ```
 
 Result:
 ```json
-"http://dbpedia.org/resource/Copenhagen"
+"Copenhagen"
 ```
 
 ## ForEach(table: List[Dict[str, Any]], operation: Callable)
@@ -346,7 +349,7 @@ Executes an operation for each row in a table.
       "GET": {
         "url": {
           "ValueOf": {
-            "key": "city"
+            "var": "city"
           }
         }
       }

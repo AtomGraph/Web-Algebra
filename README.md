@@ -6,6 +6,8 @@
 * [`Operation` interface](src/operation.py)
 * Sample operation implementations ([`GET`](src/operations/get.py) and [`ResolveURI`](src/operations/resolve_uri.py) for now)
 
+ChatGPT thread: https://chatgpt.com/c/679abd11-cc00-8009-8039-cecc0dd526e7
+
 ## Usage
 
 1. Run LinkedDataHub (ideally v5 from the `develop` branch)
