@@ -1,6 +1,6 @@
 # Cities in Denmark
 
-Take "Select 10 biggest cities in Denmark as well as their names (?city ?cityName) from [DBpedia](https://dbpedia.org/sparql)" as the question and query their titles and descriptions using SPARQL. For each of them, create a document with a unique URL relative to"https://localhost:4443/denmark/ and write the respective city metadata into them.
+Take "Select 10 biggest cities in Denmark as well as their names (?city ?cityName)" as the question and query their titles and descriptions using SPARQL on the from [DBpedia's endpoint](https://dbpedia.org/sparql). For each of the cities, create a document with a unique URL relative to https://localhost:4443/denmark/ and write the respective city metadata into them. Make sure the new document URLs are formatted with a trailing slash (`https://localhost:4443/denmark/${cityName}/`).
 
 # Complex Natural Language Queries for Knowledge Graph Processing  
 
