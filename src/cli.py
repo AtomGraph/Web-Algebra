@@ -7,13 +7,7 @@ if os.getenv("OPENAI_API_KEY"):
     api_key = os.getenv("OPENAI_API_KEY")
     logging.info("Loaded API key from environment variable")
 else:
-    try:
-        with open('../api-key.txt') as apiKeyFile:
-            api_key = apiKeyFile.read().rstrip()
-            logging.info("Loaded API key from file")
-    except Exception as e:
-        logging.error("Failed to load API key: %s", e)
-        raise
+    logging.error("You must set environment variable OPENAI_API_KEY")
 
 client = OpenAI(api_key=api_key)
 model = "gpt-4o-mini"
