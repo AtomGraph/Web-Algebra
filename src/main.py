@@ -24,7 +24,7 @@ logging.basicConfig(
 
 def main():
     # Parse script arguments
-    parser = argparse.ArgumentParser(description="Operation Registry Setup")
+    parser = argparse.ArgumentParser(description="Run the AI-powered orchestrator.")
     parser.add_argument(
         "--cert_pem_path",
         type=str,
