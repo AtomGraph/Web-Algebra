@@ -1,4 +1,5 @@
 from typing import Any
+from urllib.parse import quote
 import logging
 from rdflib import Graph
 from client import LinkedDataClient
@@ -15,7 +16,7 @@ class PUT(Operation):
     cert_pem_path: str
     cert_password: str
 
-    def __init__(self,  context: dict = None, url: str = None, data: str = None):
+    def __init__(self,  context: dict = None, url = None, data: str = None):
         """
         Initialize the PUT operation.
         :param url: The JSON operation dict or direct URL string.
@@ -53,7 +54,7 @@ class PUT(Operation):
         logging.info(f"Executing PUT operation with raw URL: {self.url} and data: {self.data}")
 
         # ✅ Resolve `url` dynamically
-        resolved_url = self.resolve_arg(self.url)
+        resolved_url = quote(self.resolve_arg(self.url), safe="/:")
         # ✅ Resolve `data` dynamically
         resolved_data = self.resolve_arg(self.data)
         logging.info(f"Resolved URL: {resolved_url}")

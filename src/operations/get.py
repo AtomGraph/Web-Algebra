@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import quote
 from operation import Operation
 from client import LinkedDataClient
 
@@ -13,7 +14,7 @@ class GET(Operation):
     cert_pem_path: str
     cert_password: str
 
-    def __init__(self, context: dict = None, url: str = None):
+    def __init__(self, context: dict = None, url = None):
         """
         Initialize the GET operation.
         :param context: Execution context.
@@ -47,7 +48,7 @@ class GET(Operation):
         logging.info(f"Executing GET operation with raw URL: {self.url}")
 
         # ✅ Resolve `url` dynamically
-        resolved_url = self.resolve_arg(self.url)
+        resolved_url = quote(self.resolve_arg(self.url), safe="/:")
         logging.info(f"Resolved URL: {resolved_url}")
 
         # ✅ Fetch RDF graph from the resolved URL
