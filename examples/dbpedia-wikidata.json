@@ -1,97 +1,113 @@
 {
     "ForEach": {
-        "table": {
-            "SELECT": {
-                "endpoint": "https://dbpedia.org/sparql",
-                "query": "SELECT DISTINCT ?city ?cityName ?population ?wikidataCity WHERE { ?city a <http://dbpedia.org/ontology/City> . ?city <http://dbpedia.org/ontology/country> <http://dbpedia.org/resource/Denmark> . ?city rdfs:label ?cityName . ?city <http://dbpedia.org/ontology/populationTotal> ?population . ?city <http://www.w3.org/2002/07/owl#sameAs> ?wikidataCity . FILTER (lang(?cityName) = \"en\") FILTER (strstarts(str(?wikidataCity), \"http://www.wikidata.org/entity/\")) FILTER (?population > 200000) }"
-            }
-        },
-        "operation": [
-            {
-                "PUT": {
-                    "url": {
-                        "ResolveURI": {
-                            "base": "https://localhost:4443/cities/",
-                            "relative": {
-                                "Replace": {
-                                    "input": "${encodedName}/",
-                                    "pattern": "\\$\\{encodedName\\}",
-                                    "replacement": {
-                                        "EncodeForURI": {
-                                            "input": {
-                                                "ValueOf": {
-                                                    "var": "cityName"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+      "table": {
+        "SELECT": {
+          "endpoint": "https://dbpedia.org/sparql",
+          "query": "SELECT DISTINCT ?city ?cityName ?population ?wikidataCity WHERE { ?city a <http://dbpedia.org/ontology/City> . ?city <http://dbpedia.org/ontology/country> <http://dbpedia.org/resource/Denmark> . ?city rdfs:label ?cityName . ?city <http://dbpedia.org/ontology/populationTotal> ?population . ?city <http://www.w3.org/2002/07/owl#sameAs> ?wikidataCity . FILTER (lang(?cityName) = \"en\") FILTER (strstarts(str(?wikidataCity), \"http://www.wikidata.org/entity/\")) FILTER (?population > 200000) }"
+        }
+      },
+      "operation": [
+        {
+          "PUT": {
+            "url": {
+              "ResolveURI": {
+                "base": "https://localhost:4443/cities/",
+                "relative": {
+                  "Replace": {
+                    "input": "${encodedName}/",
+                    "pattern": "\\$\\{encodedName\\}",
+                    "replacement": {
+                      "EncodeForURI": {
+                        "input": {
+                          "ValueOf": {
+                            "var": "cityName"
+                          }
                         }
-                    },
-                    "data": {
-                        "Replace": {
-                            "input": {
-                                "Replace": {
-                                    "input": "<${city}> <http://dbpedia.org/ontology/populationTotal> \"${population}\"^^<http://www.w3.org/2001/XMLSchema#integer> .",
-                                    "pattern": "\\$\\{city\\}",
-                                    "replacement": {
-                                        "ValueOf": {
-                                            "var": "city"
-                                        }
-                                    }
-                                }
-                            },
-                            "pattern": "\\$\\{population\\}",
-                            "replacement": {
-                                "ValueOf": {
-                                    "var": "population"
-                                }
-                            }
-                        }
+                      }
                     }
+                  }
                 }
+              }
             },
-            {
-                "POST": {
-                    "url": {
-                        "ResolveURI": {
-                            "base": "https://localhost:4443/cities/",
-                            "relative": {
-                                "Replace": {
-                                    "input": "${encodedName}/",
-                                    "pattern": "\\$\\{encodedName\\}",
-                                    "replacement": {
-                                        "EncodeForURI": {
-                                            "input": {
-                                                "ValueOf": {
-                                                    "var": "cityName"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+            "data": {
+              "CONSTRUCT": {
+                "endpoint": "https://dbpedia.org/sparql",
+                "query": {
+                  "Substitute": {
+                    "query": {
+                      "Substitute": {
+                        "query": "CONSTRUCT WHERE { ?city <http://dbpedia.org/ontology/populationTotal> ?population . }",
+                        "var": "city",
+                        "binding": {
+                          "ValueOf": {
+                            "var": "city"
+                          }
                         }
+                      }
                     },
-                    "data": {
-                        "CONSTRUCT": {
-                            "endpoint": "https://query.wikidata.org/sparql",
-                            "query": {
-                                "Replace": {
-                                    "input": "PREFIX wdt: <http://www.wikidata.org/prop/direct/> PREFIX wd: <http://www.wikidata.org/entity/> CONSTRUCT { <${wikidataCity}> wdt:P1082 ?population } WHERE { <${wikidataCity}> wdt:P1082 ?population }",
-                                    "pattern": "\\$\\{wikidataCity\\}",
-                                    "replacement": {
-                                        "ValueOf": {
-                                            "var": "wikidataCity"
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    "var": "population",
+                    "binding": {
+                      "ValueOf": {
+                        "var": "population"
+                      }
                     }
+                  }
                 }
+              }
             }
-        ]
+          }
+        },
+        {
+          "POST": {
+            "url": {
+              "ResolveURI": {
+                "base": "https://localhost:4443/cities/",
+                "relative": {
+                  "Replace": {
+                    "input": "${encodedName}/",
+                    "pattern": "\\$\\{encodedName\\}",
+                    "replacement": {
+                      "EncodeForURI": {
+                        "input": {
+                          "ValueOf": {
+                            "var": "cityName"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "data": {
+              "CONSTRUCT": {
+                "endpoint": "https://query.wikidata.org/sparql",
+                "query": {
+                  "Substitute": {
+                    "query": {
+                      "Substitute": {
+                        "query": "CONSTRUCT WHERE { ?wikidataCity <http://www.wikidata.org/prop/direct/P1082> ?population . }",
+                        "var": "wikidataCity",
+                        "binding": {
+                          "ValueOf": {
+                            "var": "wikidataCity"
+                          }
+                        }
+                      }
+                    },
+                    "var": "population",
+                    "binding": {
+                      "ValueOf": {
+                        "var": "population"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     }
-}
+  }
+  

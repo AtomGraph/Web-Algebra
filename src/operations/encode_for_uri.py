@@ -31,6 +31,13 @@ class EncodeForURI(Operation):
         # ✅ Resolve `input` dynamically
         resolved_input = self.resolve_arg(self.input)
 
+        # ✅ Extract the value if it's in RDF-style dict format
+        if isinstance(resolved_input, dict):
+            if "value" not in resolved_input:
+                raise ValueError(f"EncodeForURI expected a 'value' key, found: {resolved_input}")
+            resolved_input = resolved_input["value"]  # Extract the string
+
+        # ✅ Ensure we now have a string
         if not isinstance(resolved_input, str):
             raise ValueError(f"EncodeForURI operation requires 'input' to be a string, found: {resolved_input}")
 

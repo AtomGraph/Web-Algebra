@@ -16,6 +16,7 @@ from operations.select import SELECT
 from operations.construct import CONSTRUCT
 from operations.encode_for_uri import EncodeForURI
 from operations.replace import Replace
+from operations.substitute import Substitute
 
 # Configure logging to show INFO level and above
 logging.basicConfig(
@@ -62,6 +63,7 @@ def main():
     POST.cert_pem_path = args.cert_pem_path
     POST.cert_password = args.cert_password
 
+    Operation.register(Substitute)
     Operation.register(ForEach)
     Operation.register(ValueOf)
     Operation.register(EncodeForURI)

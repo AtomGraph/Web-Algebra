@@ -29,4 +29,4 @@ class ValueOf(Operation):
         if self.var not in self.context:
             raise ValueError(f"Key '{self.var}' not found in context.")
 
-        return self.context[self.var]["value"] # because SPARQL results binding is a dict: {'type': 'literal', 'xml:lang': 'en', 'value': 'Whatever'}
+        return self.context[self.var] # because SPARQL results binding is a dict: {'type': 'literal', 'xml:lang': 'en', 'value': 'Whatever'}
