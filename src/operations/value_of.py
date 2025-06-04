@@ -6,18 +6,7 @@ class ValueOf(Operation):
     Retrieves a value from the execution context based on a given variable (key).
     """
 
-    def __init__(self, context: dict = None, var: str = None):
-        """
-        Initialize ValueOf with execution context.
-        :param context: The execution context.
-        :param var: The key whose value should be retrieved.
-        """
-        super().__init__(context)
-
-        if var is None:
-            raise ValueError("ValueOf operation requires 'key' to be set.")
-        
-        self.var = var
+    var: str  # The key whose value should be retrieved from the context
 
     def execute(self) -> str:
         """

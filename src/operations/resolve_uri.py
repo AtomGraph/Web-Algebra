@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Dict
 from urllib.parse import urljoin
 from operation import Operation
 
@@ -7,23 +7,15 @@ class ResolveURI(Operation):
     Resolves a relative URI against a base URI.
     """
 
-    def __init__(self, context: dict = None, base: str = None, relative: dict = None):
-        """
-        Initialize ResolveURI with execution context.
-        :param context: The execution context.
-        :param base: The base URL.
-        :param relative: The JSON operation dict representing the relative part (e.g., ValueOf).
-        """
-        super().__init__(context)
+    base: str  # The base URL against which the relative URI is resolved
+    relative: Dict  # The relative URI, which can be a string or a nested operation producing the URI
 
-        if base is None:
-            raise ValueError("ResolveURI operation requires 'base' to be set.")
-        if relative is None:
-            raise ValueError("ResolveURI operation requires 'relative' to be set.")
-                             
-        self.base = base
-        self.relative = relative  # ✅ May be a string or a nested operation
-
+    @property
+    def description(self) -> str:
+        return """
+        Creates a new URI relative to the base URL. The relative URI **must** be pre-encoded.
+        """
+    
     def execute(self) -> str:
         """
         Resolves a relative URI against a base URI.

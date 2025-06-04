@@ -414,7 +414,7 @@ Executes one or more operations for each row in a table.
 
 ---
 
-## Example: Single Operation**
+## Example: Single Operation
 
 This example performs an HTTP **GET** request for each city in the table.
 

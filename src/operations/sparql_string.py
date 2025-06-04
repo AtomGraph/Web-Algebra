@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Any
+from typing import ClassVar
 from openai import OpenAI
 from operation import Operation
 
@@ -10,32 +10,9 @@ class SPARQLString(Operation):
     """
 
     model: str = "gpt-4o-mini"
-    api_key = os.getenv("OPENAI_API_KEY")
-
-    def __init__(self, context: dict = None, question: dict = None, endpoint: str = None):
-        """
-        Initialize SPARQLString with execution context.
-        :param context: The execution context.
-        :param question: The natural language question to convert to SPARQL (may be a string or a nested operation).
-        :param endpoint: The SPARQL endpoint (optional).
-        :param model: The OpenAI model to use (default: "gpt-4o-mini").
-        """
-        super().__init__(context)
-
-        if not self.api_key:
-            raise ValueError("SPARQLString operation requires the 'OPENAI_API_KEY' environment variable to be set.")
-
-        self.client = OpenAI(api_key=self.api_key)
-
-        if question is None:
-            raise ValueError("SPARQLString operation requires 'question' to be set.")
-        #if endpoint is None:
-        #    raise ValueError("SPARQLString operation requires 'endpoint' to be set.")
-        
-        self.question = question  # ✅ Might be a string or another operation
-        self.endpoint = endpoint
-
-        logging.info("SPARQLString operation initialized.")
+    api_key: str = os.getenv("OPENAI_API_KEY")
+    question: str  # Can be a direct string or a nested operation producing the question
+    endpoint: str  # The SPARQL endpoint
 
     def execute(self) -> str:
         """

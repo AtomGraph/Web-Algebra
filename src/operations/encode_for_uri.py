@@ -7,19 +7,7 @@ class EncodeForURI(Operation):
     """
     URL-encodes a string to make it safe for use in URIs, following SPARQL's `ENCODE_FOR_URI` behavior.
     """
-
-    def __init__(self, context: dict = None, input: Any = None):
-        """
-        Initialize EncodeForURI with execution context.
-        :param context: The execution context.
-        :param input: The string to be encoded, or a nested operation producing the input string.
-        """
-        super().__init__(context)
-
-        if input is None:
-            raise ValueError("EncodeForURI operation requires 'input' to be set.")
-        
-        self.input = input  # ✅ Might be a direct string or another operation
+    input: Any  # This can be a direct string or another operation producing the input string
         
     def execute(self) -> str:
         """

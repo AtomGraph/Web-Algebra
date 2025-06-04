@@ -1,5 +1,8 @@
 from typing import Any
 import logging
+from mcp.server.fastmcp.server import Context
+from mcp.server.session import ServerSessionT
+from mcp.shared.context import LifespanContextT
 from operation import Operation
 
 class ForEach(Operation):
@@ -7,34 +10,37 @@ class ForEach(Operation):
     Executes an operation (or a sequence of operations) for each row in a table.
     """
 
-    def __init__(self, context: dict = None, table: dict = None, operation: Any = None):
-        """
-        Initialize ForEach with execution context.
-        :param context: The current execution context.
-        :param table: The JSON operation that produces a table (not resolved yet).
-        :param operation: A single operation or a list of operations to apply to each row.
-        """
-        super().__init__(context)
+    #table: dict  # The JSON operation that produces a table (not resolved yet)
+    #operation: Any  # A single operation or a list of operations to apply to each row
 
-        if table is None:
-            raise ValueError("ForEach operation requires 'table' to be set.")
-        if operation is None:
-            raise ValueError("ForEach operation requires 'operation' to be set.")
-        
-        self.table = table
-        self.operation = operation
+    @property
+    def inputSchema(self):
+        """
+        Returns the JSON schema of the operation's input arguments.
+        """
+        return {
+                    "type": "object",
+                    "properties": {
+                        "table": {"type": "string", "description": "SELECT SQL query to execute"},
+                    },
+                    "required": ["table", "operation"],
+                }
 
-    def execute(self)-> list:
+
+    def execute(
+        self,
+        arguments: dict[str, Any]
+    ) -> Any:
         """
         Executes the operation(s) for each row in the resolved table.
         :return: A list of results, where each item corresponds to the result(s) for a row.
         """
-        logging.info(f"Resolving ForEach 'table': {self.table}")
+        logging.info("Resolving ForEach 'table': %s", arguments["table"])
 
         # ✅ Resolve `table` dynamically
-        resolved_table = self.resolve_arg(self.table)
+        resolved_table = self.resolve_arg(arguments["table"])
 
-        logging.info(f"ForEach resolved table: {resolved_table} (Type: {type(resolved_table)})")
+        logging.info(f"ForEach resolved table: {resolved_table} (Type: %s)", type(resolved_table))
 
         if not isinstance(resolved_table, list):
             raise ValueError("ForEach 'table' must be a list of dictionaries.")

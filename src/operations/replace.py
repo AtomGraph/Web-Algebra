@@ -9,27 +9,9 @@ class Replace(Operation):
     Aligns with SPARQL's REPLACE() function.
     """
 
-    def __init__(self, context: dict = None, input: Any = None, pattern: Any = None, replacement: Any = None):
-        """
-        Initialize Replace with execution context.
-        :param input: The input string (or a nested operation producing it).
-        :param pattern: The pattern to be replaced (or a nested operation producing it).
-        :param replacement: The replacement value (or a nested operation producing it).
-        :param context: The execution context.
-        """
-        super().__init__(context)
-
-        # ✅ Validate presence of required arguments **before** setting them
-        if input is None:
-            raise ValueError("Replace operation requires an 'input' string.")
-        if pattern is None:
-            raise ValueError("Replace operation requires a 'pattern' string.")
-        if replacement is None:
-            raise ValueError("Replace operation requires a 'replacement' value.")
-
-        self.input = input
-        self.pattern = pattern
-        self.replacement = replacement
+    input: Any  # The input string (or a nested operation producing it)
+    pattern: Any  # The pattern to be replaced (or a nested operation producing it)
+    replacement: Any  # The replacement value (or a nested operation producing it)
 
     def execute(self) -> str:
         """

@@ -1,11 +1,15 @@
+from typing import Optional, Union
+from io import BytesIO
 import ssl
 import urllib.request
-from rdflib import Graph
 from http.client import HTTPResponse
+from rdflib import Graph
+from rdflib.query import Result
+from rdflib.plugins.sparql.parser import parseQuery
 
 
 class LinkedDataClient:
-    def __init__(self, cert_pem_path: str, cert_password: str, verify_ssl: bool = True):
+    def __init__(self, cert_pem_path: Optional[str] = None, cert_password: Optional[str] = None, verify_ssl: bool = True):
         """
         Initializes the LinkedDataClient with SSL configuration.
 
@@ -13,10 +17,10 @@ class LinkedDataClient:
         :param cert_password: Password for the encrypted private key in the .pem file.
         :param verify_ssl: Whether to verify the server's SSL certificate. Default is True.
         """
-        self.ssl_context = ssl.create_default_context()
-
-        # Load client certificate
-        self.ssl_context.load_cert_chain(certfile=cert_pem_path, password=cert_password)
+        if cert_pem_path and cert_password:
+            self.ssl_context = ssl.create_default_context()
+            # Load client certificate
+            self.ssl_context.load_cert_chain(certfile=cert_pem_path, password=cert_password)
 
         # Configure SSL verification
         if not verify_ssl:
@@ -94,3 +98,64 @@ class LinkedDataClient:
         request = urllib.request.Request(url, method="DELETE")
 
         return self.opener.open(request)
+
+class SPARQLClient:
+    def __init__(
+        self,
+        cert_pem_path: Optional[str] = None,
+        cert_password: Optional[str] = None,
+        verify_ssl: bool = True
+    ):
+        """
+        Initializes the SPARQLClient with optional SSL certificate.
+
+        :param cert_pem_path: Path to .pem file containing cert+key
+        :param cert_password: Password for the PEM file
+        :param verify_ssl: Whether to verify server SSL certificate
+        """
+        self.ssl_context = ssl.create_default_context()
+
+        if cert_pem_path:
+            self.ssl_context.load_cert_chain(certfile=cert_pem_path, password=cert_password)
+
+        if not verify_ssl:
+            self.ssl_context.check_hostname = False
+            self.ssl_context.verify_mode = ssl.CERT_NONE
+
+        self.opener = urllib.request.build_opener(
+            urllib.request.HTTPSHandler(context=self.ssl_context)
+        )
+
+    def query(self, endpoint_url: str, query_string: str) -> Union[Graph, Result]:
+        """
+        Executes a SPARQL query. Returns Graph for CONSTRUCT/DESCRIBE, Result for SELECT/ASK.
+
+        :param endpoint_url: The SPARQL endpoint URL
+        :param query_string: SPARQL query string
+        :return: rdflib.Graph or rdflib.query.Result
+        """
+        parsed = parseQuery(query_string)
+        query_type = parsed[1].name  # e.g., 'SelectQuery', 'ConstructQuery'
+
+        if query_type in {"SelectQuery", "AskQuery"}:
+            accept = "application/sparql-results+json"
+        elif query_type in {"ConstructQuery", "DescribeQuery"}:
+            accept = "application/n-triples"
+        else:
+            raise ValueError(f"Unsupported query type: {query_type}")
+
+        # Encode URL parameters
+        params = urllib.parse.urlencode({"query": query_string})
+        url = f"{endpoint_url}?{params}"
+        headers = {"Accept": accept}
+
+        request = urllib.request.Request(url, headers=headers)
+        response = self.opener.open(request)
+        data = response.read()
+
+        if accept == "application/n-triples":
+            g = Graph()
+            g.parse(data=data.decode("utf-8"), format="nt")
+            return g
+        else:
+            return Result.parse(source=BytesIO(data), format="json")

@@ -1,0 +1,9 @@
+{
+        "Substitute": {
+        "query": "CONSTRUCT WHERE { ?city <http://dbpedia.org/ontology/populationTotal> ?population . BIND(<smth> as ?city) }",
+        "var": "city",
+        "binding": {
+            "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen"
+          }
+        }
+    }

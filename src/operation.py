@@ -1,24 +1,42 @@
 from abc import ABC, abstractmethod
 import logging
-from typing import Type, Dict, Optional, Any
+from typing import Type, Dict, Optional, Any, List, ClassVar
+from mcp import Tool
+from pydantic_settings import BaseSettings
 
-class Operation(ABC):
+class Operation(ABC, Tool):
     """
     Abstract base class for all operations. Ensures all operations implement the execute method
     and provides metadata for introspection.
     """
 
-    _registry: Dict[str, Type["Operation"]] = {}
-
-    def __init__(self, context: dict):
-        """
-        Initialize the operation.
-        :param context: Execution context.
-        """
-        self.context = context or {}
+    registry: ClassVar[Dict[str, Type["Operation"]]] = {}
+    settings: BaseSettings
     
+    @property
+    def name(self) -> str:
+        """
+        The name of the operation, used for introspection and registration.
+        :return: The class name of the operation.
+        """
+        return self.__class__.__name__
+    
+    @property
     @abstractmethod
-    def execute(self) -> Any:
+    def description(self):
+        """Subclasses must implement this property."""
+        pass
+
+    @property
+    @abstractmethod
+    def inputSchema(self):
+        """
+        Returns the JSON schema of the operation's input arguments.
+        """
+    pass
+
+    @abstractmethod
+    def execute(self, arguments: dict[str, Any]) -> Any:
         """
         Execute the operation. Subclasses must implement this method.
         :return: The result of the operation execution.
@@ -36,10 +54,18 @@ class Operation(ABC):
 
         # ✅ Use the class name as the registry key
         operation_name = operation_cls.__name__
-        cls._registry[operation_name] = operation_cls
+        cls.registry[operation_name] = operation_cls
 
         logging.info(f"Registered operation: {operation_name}")
 
+    @classmethod
+    def list_operations(self) -> List["Operation"]:
+        """
+        Returns a list of all registered operations.
+        :return: A list of Operation subclasses.
+        """
+        return list(self.registry.values())
+    
     @classmethod
     def get(cls, name: str) -> Optional[Type["Operation"]]:
         """
@@ -47,21 +73,19 @@ class Operation(ABC):
         :param name: The name of the operation.
         :return: The Operation subclass or None if not found.
         """
-        return cls._registry.get(name)
+        return cls.registry.get(name)
 
     @classmethod
-    def from_json(cls, json_data: dict, context: dict = None) -> "Operation":
+    def execute_json(cls, settings: BaseSettings, json_data: dict) -> Any:
         """
-        Instantiates an Operation subclass from JSON.
-
-        :param json_data: A dictionary representing the operation JSON.
-        :param context: Execution context.
-        :return: An Operation instance.
+        Resolves and executes an operation from JSON.
+        :param operation_json: A dictionary representing the operation JSON.
+        :return: The result of the operation execution.
         """
         logging.info(f"Processing JSON operation: {json_data}")
 
-        if not isinstance(json_data, dict) or len(json_data) != 1:
-            raise ValueError("Invalid operation format. Expected a single key dictionary.")
+        if not isinstance(json_data, dict): # or len(json_data) != 1
+            raise ValueError("Invalid operation format. Expected a dictionary") # Expected a single key dictionary.
 
         op_name, op_args = next(iter(json_data.items()))
 
@@ -73,26 +97,38 @@ class Operation(ABC):
         if not operation_cls:
             raise ValueError(f"Unknown operation: {op_name}")
 
-        # Instantiate the operation with the execution context
-        return operation_cls(context, **op_args)
+        operation = operation_cls(settings=settings)
+        logging.info("'%s' operation initialized.", op_name)
+        
+        # Resolve each argument in op_args
+        resolved_args = {k: operation.resolve_arg(v) for k, v in op_args.items()}
 
-    @classmethod
-    def execute_json(cls, operation_json: dict, context: dict = None) -> Any:
-        """
-        Resolves and executes an operation from JSON.
-        :param operation_json: A dictionary representing the operation JSON.
-        :param context: Execution context.
-        :return: The result of the operation execution.
-        """
-        operation_instance = cls.from_json(operation_json, context or {})
-        return operation_instance.execute()
+        # execute the operation with resolved arguments
+        return operation.execute(resolved_args)
 
     def resolve_arg(self, arg: Any) -> Any:
         """
-        Resolves an argument that could either be a raw value or a nested operation.
-        If it's a nested operation (dict), it is executed first.
+        Resolves an argument that could be:
+        - A raw JSON-LD blob → returned as-is
+        - An RDF term (dict with "type") → returned as-is
+        - A function call (dict with an operation name) → executed and returned
 
         :param arg: The argument to resolve.
         :return: The resolved value.
         """
-        return self.execute_json(arg, self.context) if isinstance(arg, dict) else arg
+
+        # ✅ If arg is a dictionary, check if it's an RDF term or a function call
+        if isinstance(arg, dict):
+            if "@context" in arg:
+                # ✅ Treat as inline JSON-LD blob, return as-is
+                return arg
+            
+            if "type" in arg and "value" in arg:
+                # ✅ Recognized as an RDF term → return as-is
+                return arg
+
+            # ✅ Otherwise, assume it's a function call and execute it
+            return self.execute_json(self.settings, arg)
+
+        # ✅ If arg is a raw value (string, number, etc.), return as-is
+        return arg
