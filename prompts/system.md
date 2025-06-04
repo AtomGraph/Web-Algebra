@@ -123,7 +123,7 @@ Creates a new URI relative to the base URL. The relative URI **must** be pre-enc
 
 ## GET(url: URL) → Graph
 
-Loads RDF data from the specified URL and returns the graph result as JSON-LD.
+Fetch RDF data from a given URL and return it as a Python dict of JSON-LD.
 
 #### Example JSON
 ```json

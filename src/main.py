@@ -12,10 +12,6 @@ from openai import OpenAI
 from pydantic_settings import BaseSettings
 from operation import Operation
 import operations
-from operations.get import GET
-from operations.put import PUT
-from operations.post import POST
-# from operations.delete import DELETE
 
 # Configure logging to show INFO level and above
 logging.basicConfig(
@@ -27,6 +23,9 @@ logging.basicConfig(
 class LinkedDataHubSettings(BaseSettings):
     cert_pem_path: str
     cert_password: str
+    openai_client: Optional[OpenAI] = None
+    openai_model: str = "gpt-4o-mini"
+
 
 def list_operation_subclasses(
     pkg: ModuleType,

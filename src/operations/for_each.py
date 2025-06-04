@@ -1,8 +1,5 @@
 from typing import Any
 import logging
-from mcp.server.fastmcp.server import Context
-from mcp.server.session import ServerSessionT
-from mcp.shared.context import LifespanContextT
 from operation import Operation
 
 class ForEach(Operation):
@@ -10,9 +7,10 @@ class ForEach(Operation):
     Executes an operation (or a sequence of operations) for each row in a table.
     """
 
-    #table: dict  # The JSON operation that produces a table (not resolved yet)
-    #operation: Any  # A single operation or a list of operations to apply to each row
-
+    @property
+    def description(self) -> str:
+        return "Executes an operation for each row in a table. The operation can be a single operation or a list of operations. Each row is processed independently, and the results are collected in a list."
+    
     @property
     def inputSchema(self):
         """
@@ -33,29 +31,29 @@ class ForEach(Operation):
     ) -> Any:
         """
         Executes the operation(s) for each row in the resolved table.
+        :param arguments: A dictionary containing:
+            - `table`: A list of dictionaries representing the table rows.
+            - `operation`: The operation(s) to execute for each row. This can be a single operation or a list of operations.
         :return: A list of results, where each item corresponds to the result(s) for a row.
         """
-        logging.info("Resolving ForEach 'table': %s", arguments["table"])
+        table: list = arguments["table"]
+        operation: Operation = arguments["operation"]
+        logging.info("ForEach table: {%s} (Type: %s)", table, type(table))
 
-        # ✅ Resolve `table` dynamically
-        resolved_table = self.resolve_arg(arguments["table"])
-
-        logging.info(f"ForEach resolved table: {resolved_table} (Type: %s)", type(resolved_table))
-
-        if not isinstance(resolved_table, list):
+        if not isinstance(table, list):
             raise ValueError("ForEach 'table' must be a list of dictionaries.")
 
         results = []
-        for index, row in enumerate(resolved_table):
+        for index, row in enumerate(table):
             if not isinstance(row, dict):
                 raise ValueError("Each row in ForEach 'table' must be a dictionary.")
 
-            logging.info(f"Processing row {index + 1}/{len(resolved_table)}: {row}")
+            logging.info(f"Processing row {index + 1}/{len(table)}: {row}")
 
-            if isinstance(self.operation, list):
-                row_results = [self.execute_json(op, row) for op in self.operation]
+            if isinstance(operation, list):
+                row_results = [self.execute_json(op, row) for op in operation]
             else:
-                row_results = self.execute_json(self.operation, row)
+                row_results = self.execute_json(operation, row)
 
             results.append(row_results)
 

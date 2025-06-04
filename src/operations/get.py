@@ -1,7 +1,7 @@
 import json
 import logging
 from rdflib import Graph
-from typing import Union, Any, ClassVar
+from typing import Any
 from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
@@ -12,10 +12,9 @@ from client import LinkedDataClient
 
 class GET(Operation):
     """
-    Fetch RDF data from a given URL and return it as a Python dict of JSON-LD.
+    Fetch RDF data from a given URL and return it as a Python dict with the JSON-LD response.
     """
 
-    #client: LinkedDataClient = Field(init=False)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def model_post_init(self, __context: Any) -> None:
@@ -25,16 +24,22 @@ class GET(Operation):
             verify_ssl=False  # Optionally disable SSL verification
         )
 
+    @property
+    def description(self) -> str:
+        return "Fetch RDF data from a given URL and return it as a Python dict with the JSON-LD response."
+    
     def execute(self, arguments: dict[str, Any]) -> dict:
         """
         Fetch RDF data from the specified URL and return a Python dict representing JSON-LD.
+        :param arguments: A dictionary containing:
+            - `url`: The URL to fetch RDF data from.
         :return: A Python dict of JSON-LD data from the resolved URL.
         """
-        url = arguments["url"]
-        logging.info(f"Executing GET operation with URL: %s", url)
+        url: str = arguments["url"]
+        logging.info("Executing GET operation with URL: %s", url)
 
         graph: Graph = self.client.get(url)  # Let exceptions propagate
-        logging.info(f"Successfully fetched RDF data from {url}.")
+        logging.info("Successfully fetched RDF data from %s.", url)
 
         jsonld_str = graph.serialize(format="json-ld")
         jsonld_data = json.loads(jsonld_str)

@@ -4,12 +4,13 @@ from typing import Any
 from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
+from mcp import types
 from operation import Operation
 from client import SPARQLClient
 
 class CONSTRUCT(Operation):
     """
-    Executes a SPARQL CONSTRUCT query against a specified endpoint and returns a Python dict of JSON-LD.
+    Executes a SPARQL CONSTRUCT query against a specified endpoint and returns a Python dict with the JSON-LD response.
     """
 
     def model_post_init(self, __context: Any) -> None:
@@ -19,13 +20,18 @@ class CONSTRUCT(Operation):
             verify_ssl=False  # Optionally disable SSL verification
         )
 
+    @property
+    def description(self) -> str:
+        return "Executes a SPARQL CONSTRUCT query against a specified endpoint and returns the RDF data as a Python dict of JSON-LD."
+    
     def execute(self, arguments: dict[str, Any]) -> dict:
         """
-        Executes a SPARQL CONSTRUCT query and returns the RDF data as a Python dict of JSON-LD.
-        :return: A Python dict containing the JSON-LD representation of the constructed RDF graph.
-        """
-        endpoint = arguments.get("endpoint")
-        query = arguments["query"]
+        :arguments: A dictionary containing:
+            - `endpoint`: The SPARQL endpoint URL to query.
+            - `query`: The SPARQL CONSTRUCT query string to execute.
+        :return: A Python dict representing the JSON-LD response from the SPARQL CONSTRUCT query."""
+        endpoint: str = arguments.get("endpoint")
+        query: str = arguments["query"]
 
         if not isinstance(query, str):
             raise ValueError("CONSTRUCT operation expects 'query' to be a string.")

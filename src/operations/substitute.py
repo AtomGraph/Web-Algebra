@@ -19,6 +19,10 @@ class Substitute(Operation):
     """
 
     @property
+    def description(self) -> str:
+        return "Replaces variable placeholders in a SPARQL query with actual values from a given set of bindings. This operation allows for dynamic query construction by substituting variables with specific values, enabling flexible SPARQL query execution."
+    
+    @property
     def inputSchema(self):
         """
         Returns the JSON schema of the operation's input arguments.

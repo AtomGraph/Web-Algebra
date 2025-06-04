@@ -20,23 +20,27 @@ class SELECT(Operation):
             verify_ssl=False  # Optionally disable SSL verification
         )
 
+    @property
+    def description(self) -> str:
+        return "Executes a SPARQL SELECT query against a specified endpoint and returns results as a list of dictionaries."
+
     def execute(self, arguments: dict[str, Any]) -> list:
         """
         Executes a SPARQL SELECT query and returns results as a list of dictionaries.
+        :param arguments: A dictionary containing:
+            - `endpoint`: The SPARQL endpoint URL to query.
+            - `query`: The SPARQL SELECT query string to execute.
         :return: A list of dictionaries representing SPARQL results.
         """
-        endpoint = arguments["endpoint"]
-        query = arguments["query"]
+        endpoint: str = arguments["endpoint"]
+        query: str = arguments["query"]
         
-        # ✅ Resolve `query` dynamically
-        logging.info(f"Executing SPARQL SELECT on %s with query:\n%s", endpoint, query)
+        logging.info("Executing SPARQL SELECT on %s with query:\n%s", endpoint, query)
 
-        # ✅ Perform the SPARQL query
         results = self.client.query(endpoint, query)
         bindings = results.bindings
-        print("BINDINGS:", bindings)
         
-        logging.info(f"SPARQL SELECT query returned {len(bindings)} bindings.")
+        logging.info("SPARQL SELECT query returned %s bindings.", len(bindings))
         return bindings
 
     async def run(

@@ -9,32 +9,27 @@ class Replace(Operation):
     Aligns with SPARQL's REPLACE() function.
     """
 
-    input: Any  # The input string (or a nested operation producing it)
-    pattern: Any  # The pattern to be replaced (or a nested operation producing it)
-    replacement: Any  # The replacement value (or a nested operation producing it)
+    @property
+    def description(self) -> str:
+        return "Replaces occurrences of a specified pattern in an input string with a given replacement. This operation aligns with SPARQL's REPLACE() function, allowing for flexible string manipulation using regular expressions."
 
-    def execute(self) -> str:
+    def execute(self, arguments: dict[str, Any]) -> str:
         """
         Performs string replacement using a regular expression.
         :return: The formatted string.
         """
-        logging.info(f"Resolving Replace arguments: input={self.input}, pattern={self.pattern}, replacement={self.replacement}")
+        input: Any = arguments["input"]  # The input string to process
+        pattern: Any = arguments["pattern"] # The pattern to be replaced (or a nested operation producing it)
+        replacement: Any = arguments["replacement"] # The replacement value (or a nested operation producing it)
 
-        # ✅ Resolve arguments dynamically if they are nested operations
-        resolved_input = self.resolve_arg(self.input)
-        resolved_pattern = self.resolve_arg(self.pattern)
-        resolved_replacement = self.resolve_arg(self.replacement)
+        logging.info("Resolving Replace arguments: input=%s, pattern=%s, replacement=%s", input, pattern, replacement)
 
-        # ✅ Ensure resolved values are strings
-        if not isinstance(resolved_input, str):
+        if not isinstance(input, str):
             raise ValueError("Replace 'input' must resolve to a string.")
-        if not isinstance(resolved_pattern, str):
+        if not isinstance(pattern, str):
             raise ValueError("Replace 'pattern' must resolve to a string.")
-
-        logging.info(f"Replacing '{resolved_pattern}' with '{resolved_replacement}' in '{resolved_input}'")
         
-        # ✅ Perform replacement using regex
-        formatted_string = re.sub(resolved_pattern, str(resolved_replacement), resolved_input)
+        formatted_string = re.sub(pattern, str(replacement), input)
 
-        logging.info(f"Formatted result: {formatted_string}")
+        logging.info("Formatted result: %s", formatted_string) 
         return formatted_string

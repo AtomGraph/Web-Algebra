@@ -29,18 +29,17 @@ class PUT(Operation):
         url: str = arguments["url"]
         data: dict  = arguments["data"]
         
-        logging.info(f"Executing PUT operation with URL: %s and data: %s", url, data)
+        logging.info("Executing PUT operation with URL: %s and data: %s", url, data)
 
         json_str = json.dumps(data)
 
-        # ✅ Ensure `resolved_data` is parsed as an RDF Graph
         logging.info("Parsing data as JSON-LD...")
         graph = Graph()
         graph.parse(data=json_str, format="json-ld")  # ✅ Convert string into RDF Graph
 
         # ✅ Send PUT request with parsed RDF Graph
         response = self.client.put(url, graph)  # ✅ Send RDF Graph
-        logging.info(f"PUT operation status: {response.status}")
+        logging.info("PUT operation status: %s", response.status)
 
         return response.status < 299
 
