@@ -3,19 +3,15 @@ import logging
 import os
 import sys
 import json
+from types import ModuleType
+from typing import List, Type, Optional
+import pkgutil
+import importlib
+import inspect
 from openai import OpenAI
+from pydantic_settings import BaseSettings
 from operation import Operation
-from operations.resolve_uri import ResolveURI
-from operations.sparql_string import SPARQLString
-from operations.get import GET
-from operations.put import PUT
-from operations.post import POST
-from operations.for_each import ForEach
-from operations.value_of import ValueOf
-from operations.select import SELECT
-from operations.construct import CONSTRUCT
-from operations.encode_for_uri import EncodeForURI
-from operations.replace import Replace
+import operations
 
 # Configure logging to show INFO level and above
 logging.basicConfig(
@@ -24,64 +20,57 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]  # ✅ Ensure output goes to console
 )
 
-def main():
-    # Parse script arguments
-    parser = argparse.ArgumentParser(description="Run the AI-powered DSL interpreter.")
-    parser.add_argument(
-        "--from-json",
-        type=str,
-        required=False,
-        help="JSON input file to execute",
-    )
-    parser.add_argument(
-        "--cert_pem_path",
-        type=str,
-        required=True,
-        help="Path to the client certificate PEM file",
-    )
-    parser.add_argument(
-        "--cert_password",
-        type=str,
-        required=True,
-        help="Password for the client certificate",
-    )
-    args = parser.parse_args()
+class LinkedDataHubSettings(BaseSettings):
+    cert_pem_path: str
+    cert_password: str
+    openai_client: Optional[OpenAI] = None
+    openai_model: str = "gpt-4o-mini"
 
-    # Load API key
-    api_key = os.getenv("OPENAI_API_KEY")
-    if api_key is None:
-        sys.exit("Error: Environment variable OPENAI_API_KEY is not set.")
 
-    client = OpenAI(api_key=api_key)
-    model = "gpt-4o-mini"
+def list_operation_subclasses(
+    pkg: ModuleType,
+    base_class: Type[Operation]
+) -> List[Type[Operation]]:
+    subclasses = []
 
-    GET.cert_pem_path = args.cert_pem_path
-    GET.cert_password = args.cert_password
-    PUT.cert_pem_path = args.cert_pem_path
-    PUT.cert_password = args.cert_password
-    POST.cert_pem_path = args.cert_pem_path
-    POST.cert_password = args.cert_password
+    for loader, module_name, is_pkg in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."):
+        module = importlib.import_module(module_name)
 
-    Operation.register(ForEach)
-    Operation.register(ValueOf)
-    Operation.register(EncodeForURI)
-    Operation.register(Replace)
-    Operation.register(ResolveURI)
-    Operation.register(SPARQLString)
-    Operation.register(SELECT)
-    Operation.register(CONSTRUCT)
-    Operation.register(GET)
-    Operation.register(PUT)
-    Operation.register(POST)
+        for name, obj in inspect.getmembers(module, inspect.isclass):
+            # Filter: class defined in the module AND is a subclass of Operation (but not Operation itself)
+            if (
+                obj.__module__ == module.__name__ and
+                issubclass(obj, base_class) and
+                obj is not base_class
+            ):
+                subclasses.append(obj)
 
-    if args.from_json:
+    return subclasses
+
+def register(classes: List[Type[Operation]]):
+    for cls in classes:
+        Operation.register(cls)
+
+def main(settings: BaseSettings, json_data: Optional[str]):
+    register(list_operation_subclasses(operations, Operation))
+
+    if json_data:
+        logging.info("Executing from JSON input %s", json_data)
         # Load JSON input from file
-        with open(args.from_json) as json_file:
+        with open(json_data) as json_file:
             json_input = json.load(json_file)
 
         # Execute the JSON input
-        print(Operation.execute_json(json_input))
+        print(Operation.execute_json(settings, json_input))
     else:
+        # Load API key
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key is None:
+            sys.exit("Error: Environment variable OPENAI_API_KEY is not set.")
+
+        client = OpenAI(api_key=api_key)
+        model = "gpt-4o-mini"
+
         # Load prompts
         with open("prompts/system.md") as system_prompt_file, open("prompts/user.template.txt") as user_prompt_template_file:
             system_prompt = system_prompt_file.read()
@@ -108,8 +97,32 @@ def main():
                 logging.info("Generated response: %s", reply_json)
 
                 # Execute the generated operation
-                print(Operation.execute_json(reply_json))
+                print(Operation.execute_json(settings, reply_json))
 
 
 if __name__ == "__main__":
-    main()
+    # Parse script arguments
+    parser = argparse.ArgumentParser(description="Run the AI-powered DSL interpreter.")
+    parser.add_argument(
+        "--from-json",
+        type=str,
+        help="JSON input file to execute",
+    )
+    parser.add_argument(
+        "--cert_pem_path",
+        type=str,
+        help="Path to the client certificate PEM file",
+    )
+    parser.add_argument(
+        "--cert_password",
+        type=str,
+        help="Password for the client certificate",
+    )
+    args = parser.parse_args()
+
+    if args.cert_pem_path and args.cert_password:
+        settings = LinkedDataHubSettings(cert_pem_path = args.cert_pem_path, cert_password = args.cert_password)
+    else:
+        settings = BaseSettings()
+    
+    main(settings, args.from_json)

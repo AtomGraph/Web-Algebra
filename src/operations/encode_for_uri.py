@@ -8,34 +8,28 @@ class EncodeForURI(Operation):
     URL-encodes a string to make it safe for use in URIs, following SPARQL's `ENCODE_FOR_URI` behavior.
     """
 
-    def __init__(self, context: dict = None, input: Any = None):
-        """
-        Initialize EncodeForURI with execution context.
-        :param context: The execution context.
-        :param input: The string to be encoded, or a nested operation producing the input string.
-        """
-        super().__init__(context)
+    @property
+    def description(self) -> str:
+        return "Encodes a string to be URI-safe, following SPARQL's `ENCODE_FOR_URI` behavior. It encodes characters that are not allowed in URIs, such as spaces, slashes, and colons."
+    
+    def execute(self, arguments: dict[str, Any]) -> str:
+        """        Executes the EncodeForURI operation.
+        :param arguments: A dictionary containing the input string to encode.
+        :return: A string with the encoded URI string."""
+        input: Any = Operation.execute_json(self.settings, arguments["input"], self.context)
+        logging.info("Resolving input for EncodeForURI: %s", input)
 
-        if input is None:
-            raise ValueError("EncodeForURI operation requires 'input' to be set.")
-        
-        self.input = input  # ✅ Might be a direct string or another operation
-        
-    def execute(self) -> str:
-        """
-        Encodes a string to be URI-safe.
-        :return: The encoded string.
-        """
-        logging.info(f"Resolving input for EncodeForURI: {self.input}")
+        if isinstance(input, dict):
+            if "value" not in input:
+                raise ValueError(f"EncodeForURI expected a 'value' key, found: {input}")
+            input = input["value"]  # Extract the string
 
-        # ✅ Resolve `input` dynamically
-        resolved_input = self.resolve_arg(self.input)
-
-        if not isinstance(resolved_input, str):
-            raise ValueError(f"EncodeForURI operation requires 'input' to be a string, found: {resolved_input}")
+        # ✅ Ensure we now have a string
+        if not isinstance(input, str):
+            raise ValueError(f"EncodeForURI operation requires 'input' to be a string, found: {input}")
 
         # ✅ Encode using XPath encode-for-uri() behavior (encode slashes, colons, etc.)
-        encoded_value = quote(resolved_input, safe="")  # 🔥 No safe characters
+        encoded_value = quote(input, safe="")  # 🔥 No safe characters
 
-        logging.info(f"Encoded URI: {encoded_value}")
+        logging.info("Encoded URI: %s", encoded_value)
         return encoded_value

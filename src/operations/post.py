@@ -1,4 +1,5 @@
 from typing import Any
+import json
 import logging
 from rdflib import Graph
 from client import LinkedDataClient
@@ -7,65 +8,34 @@ from operation import Operation
 class POST(Operation):
     """
     Appends RDF data to a specified URL using the HTTP POST method.
-
-    :attr cert_pem_path: Path to the client certificate PEM file.
-    :attr cert_password: Password for the client certificate.
     """
 
-    cert_pem_path: str
-    cert_password: str
-
-    def __init__(self, context: dict = None, url: str = None, data: str = None):
-        """
-        Initialize the POST operation.
-        :param url: The JSON operation dict or direct URL string.
-        :param data: The JSON operation dict or direct RDF Turtle string.
-        :param context: The execution context.
-        """
-        super().__init__(context)
-
-        if url is None:
-            raise ValueError("POST operation requires 'url' to be set.")
-        if data is None:
-            raise ValueError("POST operation requires 'data' to be set.")
-
-        self.url = url  # ✅ Might be a direct URL or a nested operation
-        self.data = data  # ✅ Might be a Turtle string or a nested operation
-
-        # ✅ Ensure that credentials are set
-        if not hasattr(self, "cert_pem_path") or not hasattr(self, "cert_password"):
-            raise ValueError("POST operation requires 'cert_pem_path' and 'cert_password' to be set.")
-
-        # ✅ Initialize the LinkedDataClient
+    def model_post_init(self, __context: Any) -> None:
         self.client = LinkedDataClient(
-            cert_pem_path=self.cert_pem_path,
-            cert_password=self.cert_password,
+            cert_pem_path=getattr(self.settings, 'cert_pem_path', None),
+            cert_password=getattr(self.settings, 'cert_password', None),
             verify_ssl=False  # Optionally disable SSL verification
         )
 
-        logging.info("POST operation initialized.")
-
-    def execute(self) -> bool:
+    def execute(self, arguments: dict[str, Any]) -> bool:
         """
         Appends RDF data to the specified URL using the HTTP POST method.
+        :param arguments: A dictionary containing:
+            - `url`: The URL to send the RDF data to.
+            - `data`: The RDF data to append, as a Python dict.
         :return: True if successful, otherwise raises an error.
         """
-        logging.info(f"Executing POST operation with raw URL: {self.url} and data: {self.data}")
+        url: str = Operation.execute_json(self.settings, arguments["url"], self.context)
+        data: dict = Operation.execute_json(self.settings, arguments["data"], self.context)
+        logging.info(f"Executing PUT operation with URL: %s and data: %s", url, data)
 
-        # ✅ Resolve `url` dynamically
-        resolved_url = self.resolve_arg(self.url)
-        # ✅ Resolve `data` dynamically
-        resolved_data = self.resolve_arg(self.data)
-        logging.info(f"Resolved URL: {resolved_url}")
+        json_str = json.dumps(data)
 
-        # ✅ Ensure `resolved_data` is parsed as an RDF Graph
-        logging.info("Parsing resolved RDF data as Turtle...")
+        logging.info("Parsing data as JSON-LD...")
         graph = Graph()
-        graph.parse(data=resolved_data, format="turtle")  # ✅ Convert string into RDF Graph
+        graph.parse(data=json_str, format="json-ld")  # ✅ Convert string into RDF Graph
 
-        # ✅ Send POST request with parsed RDF Graph
-        logging.info(f"Sending POST request to {resolved_url} with RDF data...")
-        response = self.client.post(resolved_url, graph)  # ✅ Send RDF Graph
-        logging.info(f"POST operation successful: {response}")
+        response = self.client.post(url, graph)  # ✅ Send RDF Graph
+        logging.info("POST operation status: %s", response.status)
 
-        return True  # ✅ Explicitly return True if successful
+        return response.status < 299

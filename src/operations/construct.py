@@ -1,55 +1,47 @@
-from typing import Any
+import json
 import logging
-import requests
-from rdflib import Graph
+from typing import Any
+from mcp.server.fastmcp.server import Context
+from mcp.server.session import ServerSessionT
+from mcp.shared.context import LifespanContextT
+from mcp import types
 from operation import Operation
+from client import SPARQLClient
 
 class CONSTRUCT(Operation):
     """
-    Executes a SPARQL CONSTRUCT query against a specified endpoint and returns the result as a Turtle-formatted string.
+    Executes a SPARQL CONSTRUCT query against a specified endpoint and returns a Python dict with the JSON-LD response.
     """
 
-    def __init__(self, context: dict = None, endpoint: str = None, query: dict = None):
+    def model_post_init(self, __context: Any) -> None:
+        self.client = SPARQLClient(
+            cert_pem_path=getattr(self.settings, 'cert_pem_path', None),
+            cert_password=getattr(self.settings, 'cert_password', None),
+            verify_ssl=False  # Optionally disable SSL verification
+        )
+
+    @property
+    def description(self) -> str:
+        return "Executes a SPARQL CONSTRUCT query against a specified endpoint and returns the RDF data as a Python dict of JSON-LD."
+    
+    def execute(self, arguments: dict[str, Any]) -> dict:
         """
-        Initialize the CONSTRUCT operation.
-        :param context: Execution context.
-        :param endpoint: The SPARQL endpoint to query.
-        :param query: The SPARQL CONSTRUCT query (may be a string or a nested operation).
-        """
-        super().__init__(context)
+        :arguments: A dictionary containing:
+            - `endpoint`: The SPARQL endpoint URL to query.
+            - `query`: The SPARQL CONSTRUCT query string to execute.
+        :return: A Python dict representing the JSON-LD response from the SPARQL CONSTRUCT query."""
+        endpoint: str = Operation.execute_json(self.settings, arguments["endpoint"], self.context)
+        query: str = Operation.execute_json(self.settings, arguments["query"], self.context)
 
-        if endpoint is None:
-            raise ValueError("CONSTRUCT operation requires 'endpoint' to be set.")
-        if query is None:
-            raise ValueError("CONSTRUCT operation requires 'query' to be set.")
+        if not isinstance(query, str):
+            raise ValueError("CONSTRUCT operation expects 'query' to be a string.")
 
-        self.endpoint = endpoint
-        self.query = query  # ✅ Could be a raw string or a nested operation
+        logging.info(f"Executing SPARQL CONSTRUCT on %s with query:\n%s", endpoint, query)
+        return self.client.query(endpoint, query)
 
-    def execute(self) -> str:
-        """
-        Executes a SPARQL CONSTRUCT query and returns the RDF data as a Turtle string.
-        :return: A string containing the RDF data in Turtle format.
-        """
-        logging.info(f"Resolving SPARQL CONSTRUCT query for endpoint: {self.endpoint}")
-
-        # ✅ Resolve `query` dynamically
-        resolved_query = self.resolve_arg(self.query)
-        logging.info(f"Executing SPARQL CONSTRUCT on {self.endpoint} with query:\n{resolved_query}")
-
-        # ✅ Perform the SPARQL query
-        headers = {"Accept": "application/n-triples"}  # Request N-Triples response
-        params = {"query": resolved_query}
-
-        response = requests.get(self.endpoint, headers=headers, params=params, timeout=10)
-        response.raise_for_status()  # ✅ Let exceptions propagate naturally
-
-        # ✅ Load response into an RDFLib Graph
-        graph = Graph()
-        graph.parse(data=response.text, format="nt")  # Load N-Triples into the graph
-
-        # ✅ Serialize graph to Turtle string
-        turtle_data = graph.serialize(format="turtle")
-        logging.info(f"SPARQL CONSTRUCT query returned {len(graph)} triples.")
-
-        return turtle_data  # ✅ Return Turtle string instead of Graph
+    async def run(
+        self,
+        arguments: dict[str, Any],
+        context: Context[ServerSessionT, LifespanContextT] | None = None,
+    ) -> Any:
+        return [types.TextContent(type="text", text=str(self.process(arguments)))]

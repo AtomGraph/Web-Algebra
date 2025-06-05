@@ -7,28 +7,26 @@ class ResolveURI(Operation):
     Resolves a relative URI against a base URI.
     """
 
-    def __init__(self, context: dict = None, base: str = None, relative: dict = None):
+    @property
+    def description(self) -> str:
+        return """
+        Creates a new URI relative to the base URL. The relative URI **must** be pre-encoded.
         """
-        Initialize ResolveURI with execution context.
-        :param context: The execution context.
-        :param base: The base URL.
-        :param relative: The JSON operation dict representing the relative part (e.g., ValueOf).
-        """
-        super().__init__(context)
-
-        if base is None:
-            raise ValueError("ResolveURI operation requires 'base' to be set.")
-        if relative is None:
-            raise ValueError("ResolveURI operation requires 'relative' to be set.")
-                             
-        self.base = base
-        self.relative = relative  # ✅ May be a string or a nested operation
-
-    def execute(self) -> str:
+    
+    def execute(self, arguments: dict[str, Any]) -> str:
         """
         Resolves a relative URI against a base URI.
+        :param arguments: A dictionary containing:
+            - `base`: The base URI to resolve against.
+            - `relative`: The relative URI to resolve.
         :return: The resolved absolute URI as a string.
         """
-        # ✅ Resolve `relative` dynamically
-        relative_value = self.resolve_arg(self.relative)
-        return str(urljoin(self.base, relative_value))
+        base: str = Operation.execute_json(self.settings, arguments["base"], self.context)
+        value: str = Operation.execute_json(self.settings, arguments["relative"], self.context)
+
+        if not isinstance(base, str):
+            raise ValueError("Replace 'base' must resolve to a string.")
+        if not isinstance(value, str):
+            raise ValueError("Replace 'value' must resolve to a string.")
+
+        return str(urljoin(self.base, value))
