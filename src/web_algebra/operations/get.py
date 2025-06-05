@@ -6,9 +6,9 @@ from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
 from mcp import types
-from pydantic import Field, ConfigDict
-from operation import Operation
-from client import LinkedDataClient
+from pydantic import ConfigDict
+from web_algebra.operation import Operation
+from web_algebra.client import LinkedDataClient
 
 class GET(Operation):
     """
@@ -28,6 +28,19 @@ class GET(Operation):
     def description(self) -> str:
         return "Fetch RDF data from a given URL and return it as a Python dict with the JSON-LD response."
     
+    @property
+    def inputSchema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The URL to fetch RDF data from. This should be a valid URL pointing to RDF content."
+                }
+            },
+            "required": ["url"]
+        }
+    
     def execute(self, arguments: dict[str, Any]) -> dict:
         """
         Fetch RDF data from the specified URL and return a Python dict representing JSON-LD.
@@ -35,15 +48,7 @@ class GET(Operation):
             - `url`: The URL to fetch RDF data from.
         :return: A Python dict of JSON-LD data from the resolved URL.
         """
-        url: str | dict[str, str] = Operation.execute_json(self.settings, arguments["url"], self.context)
-
-        # support RDF-term dicts such as {"type": "uri", "value": "http://example.com/resource"}
-        if isinstance(url, dict):
-            if url.get("type") == "uri":
-                # If the URL is a dict with type "uri", extract the actual URL
-                logging.info("Extracting URL from dict with type 'uri'.")
-                url = url.get("value", None)
-
+        url: str = Operation.execute_json(self.settings, arguments["url"], self.context)
         logging.info("Executing GET operation with URL: %s", url)
 
         graph: Graph = self.client.get(url)  # Let exceptions propagate
@@ -58,5 +63,21 @@ class GET(Operation):
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
-    ) -> Any:
-        return [types.TextContent(type="text", text=str(self.process(arguments)))]
+    ) -> list[types.TextContent]:
+        json_ld_data = self.execute(arguments)
+
+        if not isinstance(json_ld_data, dict):
+            raise ValueError("Expected a JSON-LD dict from execute()")
+
+        json_str = json.dumps(json_ld_data)
+
+        graph = Graph()
+        try:
+            graph.parse(data=json_str, format="json-ld")
+        except Exception as e:
+            logging.error("Failed to parse JSON-LD data: %s", e)
+            raise
+
+        turtle_str = graph.serialize(format="turtle")
+
+        return [types.TextContent(type="text", text=turtle_str)]

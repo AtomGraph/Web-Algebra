@@ -1,6 +1,11 @@
 from typing import Any
 import logging
-from operation import Operation
+from mcp.server.fastmcp.server import Context
+from mcp.server.session import ServerSessionT
+from mcp.shared.context import LifespanContextT
+from mcp import types
+
+from web_algebra.operation import Operation
 
 class ForEach(Operation):
     """
@@ -19,7 +24,21 @@ class ForEach(Operation):
         return {
                     "type": "object",
                     "properties": {
-                        "table": {"type": "string", "description": "SELECT query to execute"},
+                        "table": {
+                            "type": "object",
+                            "description": "A table represented as a list of dictionaries, where each dictionary is a row with key-value pairs."
+                        },
+                        "operation": {
+                            "oneOf": [
+                                {"type": "string", "description": "Single operation to execute for each row"},
+                                {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                    "description": "List of operations to execute for each row"
+                                }
+                            ],
+                            "description": "Operation(s) to execute for each row in the table"
+                        }
                     },
                     "required": ["table", "operation"],
                 }
@@ -40,9 +59,20 @@ class ForEach(Operation):
         bindings = table["results"]["bindings"]
         op = arguments["operation"]  # raw!
 
+        logging.info("Executing ForEach operation on %d rows with operation: %s", len(bindings), op)
+
         results = []
         for row in bindings:
+            logging.info("Processing row: %s", row)
             result = Operation.execute_json(self.settings, op, context=row)
             results.append(result)
 
         return results
+
+    async def run(
+        self,
+        arguments: dict[str, Any],
+        context: Context[ServerSessionT, LifespanContextT] | None = None,
+    ) -> Any:
+        results = self.execute(arguments)
+        return [types.TextContent(type="text", text=str(result)) for result in results]

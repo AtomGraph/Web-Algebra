@@ -41,7 +41,7 @@ class Operation(ABC, Tool):
         logging.info(f"Registered operation: {operation_cls.__name__}")
 
     @classmethod
-    def list_operations(cls) -> List["Operation"]:
+    def list_operations(cls) -> List[Type["Operation"]]:
         return list(cls.registry.values())
 
     @classmethod

@@ -10,8 +10,8 @@ import importlib
 import inspect
 from openai import OpenAI
 from pydantic_settings import BaseSettings
-from operation import Operation
-import operations
+from web_algebra.operation import Operation
+import web_algebra.operations
 
 # Configure logging to show INFO level and above
 logging.basicConfig(
@@ -52,7 +52,7 @@ def register(classes: List[Type[Operation]]):
         Operation.register(cls)
 
 def main(settings: BaseSettings, json_data: Optional[str]):
-    register(list_operation_subclasses(operations, Operation))
+    register(list_operation_subclasses(web_algebra.operations, Operation))
 
     if json_data:
         logging.info("Executing from JSON input %s", json_data)

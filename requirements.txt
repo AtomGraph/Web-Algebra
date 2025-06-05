@@ -1,4 +1,0 @@
-rdflib==7.0.0
-openai
-mcp[cli]==1.9.1
-pydantic-settings

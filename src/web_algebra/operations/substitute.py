@@ -8,7 +8,7 @@ from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
 import re
-from operation import Operation
+from web_algebra.operation import Operation
 
 class Substitute(Operation):
     """
@@ -45,6 +45,14 @@ class Substitute(Operation):
         }
     
     def execute(self, arguments: dict[str, Any]) -> str:
+        """
+        Performs variable substitution in a SPARQL query.
+        :param arguments: A dictionary containing:
+            - `query`: The SPARQL query string with variable placeholders.
+            - `var`: The variable to substitute in the query (e.g., "?x").
+            - `binding`: A dictionary containing the value to substitute for the variable, with keys:
+        :return: The SPARQL query with the variable substituted with the provided value.
+        """
         query: str = Operation.execute_json(self.settings, arguments["query"], self.context)
         var: str = Operation.execute_json(self.settings, arguments["var"], self.context)
         binding: dict = Operation.execute_json(self.settings, arguments["binding"], self.context)
@@ -68,7 +76,7 @@ class Substitute(Operation):
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> Any:
-        return [types.TextContent(type="text", text=str(self.process(arguments)))]
+        return [types.TextContent(type="text", text=self.execute(arguments))]
 
 from rdflib import URIRef, Literal, BNode
 from rdflib.plugins.sparql import prepareQuery

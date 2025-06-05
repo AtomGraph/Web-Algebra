@@ -1,7 +1,11 @@
 import logging
 from urllib.parse import quote
 from typing import Any
-from operation import Operation
+from mcp.server.fastmcp.server import Context
+from mcp.server.session import ServerSessionT
+from mcp.shared.context import LifespanContextT
+from mcp import types
+from web_algebra.operation import Operation
 
 class EncodeForURI(Operation):
     """
@@ -12,9 +16,23 @@ class EncodeForURI(Operation):
     def description(self) -> str:
         return "Encodes a string to be URI-safe, following SPARQL's `ENCODE_FOR_URI` behavior. It encodes characters that are not allowed in URIs, such as spaces, slashes, and colons."
     
+    @property
+    def inputSchema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "string",
+                    "description": "The string to encode for use in a URI."
+                }
+            },
+            "required": ["input"]
+        }
+    
     def execute(self, arguments: dict[str, Any]) -> str:
         """        Executes the EncodeForURI operation.
         :param arguments: A dictionary containing the input string to encode.
+            - `input`: The string to encode for use in a URI. This can be a nested operation producing a string.
         :return: A string with the encoded URI string."""
         input: Any = Operation.execute_json(self.settings, arguments["input"], self.context)
         logging.info("Resolving input for EncodeForURI: %s", input)
@@ -33,3 +51,10 @@ class EncodeForURI(Operation):
 
         logging.info("Encoded URI: %s", encoded_value)
         return encoded_value
+
+    async def run(
+        self,
+        arguments: dict[str, Any],
+        context: Context[ServerSessionT, LifespanContextT] | None = None,
+    ) -> Any:
+        return [types.TextContent(type="text", text=self.execute(arguments))]

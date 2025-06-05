@@ -1,5 +1,9 @@
 from typing import Any
-from operation import Operation
+from mcp.server.fastmcp.server import Context
+from mcp.server.session import ServerSessionT
+from mcp.shared.context import LifespanContextT
+from mcp import types
+from web_algebra.operation import Operation
 
 class Str(Operation):
     """
@@ -46,3 +50,10 @@ class Str(Operation):
         
         # Placeholder for actual string processing logic
         return input
+    
+    async def run(
+        self,
+        arguments: dict[str, Any],
+        context: Context[ServerSessionT, LifespanContextT] | None = None,
+    ) -> Any:
+        return [types.TextContent(type="text", text=self.execute(arguments))]

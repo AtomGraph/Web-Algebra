@@ -1,12 +1,11 @@
-import json
 import logging
 from typing import Any
 from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
 from mcp import types
-from operation import Operation
-from client import SPARQLClient
+from web_algebra.operation import Operation
+from web_algebra.client import SPARQLClient
 
 class CONSTRUCT(Operation):
     """
@@ -24,6 +23,23 @@ class CONSTRUCT(Operation):
     def description(self) -> str:
         return "Executes a SPARQL CONSTRUCT query against a specified endpoint and returns the RDF data as a Python dict of JSON-LD."
     
+    @property
+    def inputSchema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "endpoint": {
+                    "type": "string",
+                    "description": "The SPARQL endpoint URL to query."
+                },
+                "query": {
+                    "type": "string",
+                    "description": "The SPARQL CONSTRUCT query string to execute."
+                }
+            },
+            "required": ["endpoint", "query"]
+        }
+   
     def execute(self, arguments: dict[str, Any]) -> dict:
         """
         :arguments: A dictionary containing:
@@ -44,4 +60,4 @@ class CONSTRUCT(Operation):
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> Any:
-        return [types.TextContent(type="text", text=str(self.process(arguments)))]
+        return [types.TextContent(type="text", text=str(self.execute(arguments)))]
