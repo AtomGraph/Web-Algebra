@@ -19,7 +19,7 @@ class ForEach(Operation):
         return {
                     "type": "object",
                     "properties": {
-                        "table": {"type": "string", "description": "SELECT SQL query to execute"},
+                        "table": {"type": "string", "description": "SELECT query to execute"},
                     },
                     "required": ["table", "operation"],
                 }
@@ -28,7 +28,7 @@ class ForEach(Operation):
     def execute(
         self,
         arguments: dict[str, Any]
-    ) -> Any:
+    ) -> list:
         """
         Executes the operation(s) for each row in the resolved table.
         :param arguments: A dictionary containing:
@@ -36,26 +36,13 @@ class ForEach(Operation):
             - `operation`: The operation(s) to execute for each row. This can be a single operation or a list of operations.
         :return: A list of results, where each item corresponds to the result(s) for a row.
         """
-        table: list = arguments["table"]
-        operation: Operation = arguments["operation"]
-        logging.info("ForEach table: {%s} (Type: %s)", table, type(table))
-
-        if not isinstance(table, list):
-            raise ValueError("ForEach 'table' must be a list of dictionaries.")
+        table = Operation.execute_json(self.settings, arguments["table"], self.context)
+        bindings = table["results"]["bindings"]
+        op = arguments["operation"]  # raw!
 
         results = []
-        for index, row in enumerate(table):
-            if not isinstance(row, dict):
-                raise ValueError("Each row in ForEach 'table' must be a dictionary.")
+        for row in bindings:
+            result = Operation.execute_json(self.settings, op, context=row)
+            results.append(result)
 
-            logging.info(f"Processing row {index + 1}/{len(table)}: {row}")
-
-            if isinstance(operation, list):
-                row_results = [self.execute_json(op, row) for op in operation]
-            else:
-                row_results = self.execute_json(operation, row)
-
-            results.append(row_results)
-
-        logging.info("ForEach execution completed.")
         return results

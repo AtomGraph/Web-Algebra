@@ -27,7 +27,7 @@ class SPARQLString(Operation):
             - `question`: The natural language question to convert into a SPARQL query.
         :return: A valid SPARQL query string.
         """
-        question: str = arguments["question"]
+        question: str = Operation.execute_json(self.settings, arguments["question"], self.context)
         logging.info(f"Resolving question: %s", question)
 
         # ✅ Call OpenAI API with JSON mode to generate a structured SPARQL query

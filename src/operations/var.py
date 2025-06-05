@@ -1,7 +1,8 @@
 from typing import Any
+import logging
 from operation import Operation
 
-class ValueOf(Operation):
+class Var(Operation):
     """
     Retrieves a value from the execution context based on a given variable (key).
     """
@@ -18,7 +19,9 @@ class ValueOf(Operation):
         :return: The value corresponding to the key.
         :raises ValueError: If the key is not found.
         """
-        var: str = arguments["var"] # The key to look up in the context
+        var: str = arguments["name"] # The key to look up in the context
+
+        logging.info("Resolving Var variable: %s", var)
 
         if var not in self.context:
             raise ValueError("Key '%s' not found in context.", var)

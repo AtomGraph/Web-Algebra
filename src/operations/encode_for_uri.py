@@ -6,7 +6,8 @@ from operation import Operation
 class EncodeForURI(Operation):
     """
     URL-encodes a string to make it safe for use in URIs, following SPARQL's `ENCODE_FOR_URI` behavior.
-    """    
+    """
+
     @property
     def description(self) -> str:
         return "Encodes a string to be URI-safe, following SPARQL's `ENCODE_FOR_URI` behavior. It encodes characters that are not allowed in URIs, such as spaces, slashes, and colons."
@@ -15,7 +16,7 @@ class EncodeForURI(Operation):
         """        Executes the EncodeForURI operation.
         :param arguments: A dictionary containing the input string to encode.
         :return: A string with the encoded URI string."""
-        input: Any = arguments("input")
+        input: Any = Operation.execute_json(self.settings, arguments["input"], self.context)
         logging.info("Resolving input for EncodeForURI: %s", input)
 
         if isinstance(input, dict):

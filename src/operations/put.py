@@ -26,10 +26,10 @@ class PUT(Operation):
         Sends RDF data to the specified URL using the HTTP PUT method.
         :return: True if successful, otherwise raises an error.
         """
-        url: str = arguments["url"]
-        data: dict  = arguments["data"]
+        url = Operation.execute_json(self.settings, arguments["url"], self.context)
+        data = Operation.execute_json(self.settings, arguments["data"], self.context)
         
-        logging.info("Executing PUT operation with URL: %s and data: %s", url, data)
+        logging.info("Executing PUT operation with URL: %s", url)
 
         json_str = json.dumps(data)
 

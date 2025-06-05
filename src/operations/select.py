@@ -32,16 +32,14 @@ class SELECT(Operation):
             - `query`: The SPARQL SELECT query string to execute.
         :return: A list of dictionaries representing SPARQL results.
         """
-        endpoint: str = arguments["endpoint"]
-        query: str = arguments["query"]
+        endpoint: str = Operation.execute_json(self.settings, arguments["endpoint"], self.context)
+        query: str = Operation.execute_json(self.settings, arguments["query"], self.context)
         
         logging.info("Executing SPARQL SELECT on %s with query:\n%s", endpoint, query)
 
         results = self.client.query(endpoint, query)
-        bindings = results.bindings
-        
-        logging.info("SPARQL SELECT query returned %s bindings.", len(bindings))
-        return bindings
+        logging.info("SPARQL SELECT query returned %s bindings.", len(results["results"]["bindings"]))
+        return results
 
     async def run(
         self,

@@ -45,9 +45,9 @@ class Substitute(Operation):
         }
     
     def execute(self, arguments: dict[str, Any]) -> str:
-        query: str = arguments["query"]
-        var: str = arguments["var"]
-        binding: dict = arguments["binding"]
+        query: str = Operation.execute_json(self.settings, arguments["query"], self.context)
+        var: str = Operation.execute_json(self.settings, arguments["var"], self.context)
+        binding: dict = Operation.execute_json(self.settings, arguments["binding"], self.context)
 
         if not isinstance(binding, dict):
             raise ValueError(f"Substitute operation requires 'binding' to be a dictionary, found: {binding}")

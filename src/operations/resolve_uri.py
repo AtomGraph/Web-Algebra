@@ -21,8 +21,8 @@ class ResolveURI(Operation):
             - `relative`: The relative URI to resolve.
         :return: The resolved absolute URI as a string.
         """
-        base: str = arguments["base"]
-        value: str = arguments["relative"]
+        base: str = Operation.execute_json(self.settings, arguments["base"], self.context)
+        value: str = Operation.execute_json(self.settings, arguments["relative"], self.context)
 
         if not isinstance(base, str):
             raise ValueError("Replace 'base' must resolve to a string.")

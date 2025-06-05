@@ -1,0 +1,104 @@
+[
+    {
+        "@op": "ForEach",
+        "args": {
+            "table": {
+                "@op": "SELECT",
+                "args": {
+                    "endpoint": "https://dbpedia.org/sparql",
+                    "query": "PREFIX dbo: <http://dbpedia.org/ontology/>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?city ?cityName WHERE {\n  ?city a dbo:City ;\n        dbo:country <http://dbpedia.org/resource/Denmark> ;\n        dbo:populationTotal ?pop ;\n        rdfs:label ?cityName .\n  FILTER(lang(?cityName) = 'en')\n} ORDER BY RAND() LIMIT 2"
+                }
+            },
+            "operation": {
+                "@op": "PUT",
+                "args": {
+                    "url": {
+                        "@op": "Replace",
+                        "args": {
+                            "input": "https://localhost:4443/denmark/${cityName}/",
+                            "pattern": "\\$\\{cityName\\}",
+                            "replacement": {
+                                "@op": "EncodeForURI",
+                                "args": {
+                                    "input": {
+                                        "@op": "Str",
+                                        "args": {
+                                            "input": {
+                                                "@op": "Var",
+                                                "args": {
+                                                    "name": "cityName"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "data": {
+                        "@op": "Merge",
+                        "args": {
+                            "graphs": [
+                                {
+                                    "@op": "GET",
+                                    "args": {
+                                        "url": {
+                                            "@op": "Str",
+                                            "args": {
+                                                "input": {
+                                                    "@op": "Var",
+                                                    "args": {
+                                                        "name": "city"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "@context": {
+                                        "schema": "https://schema.org/"
+                                    },
+                                    "@id": {
+                                        "@op": "Replace",
+                                        "args": {
+                                            "input": "https://localhost:4443/denmark/${cityName}/",
+                                            "pattern": "\\$\\{cityName\\}",
+                                            "replacement": {
+                                                "@op": "EncodeForURI",
+                                                "args": {
+                                                    "input": {
+                                                        "@op": "Str",
+                                                        "args": {
+                                                            "input": {
+                                                                "@op": "Var",
+                                                                "args": {
+                                                                    "name": "cityName"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "schema:name": {
+                                        "@op": "Str",
+                                        "args": {
+                                            "input": {
+                                                "@op": "Var",
+                                                "args": {
+                                                    "name": "cityName"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+]

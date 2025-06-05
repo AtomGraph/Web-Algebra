@@ -18,9 +18,9 @@ class Replace(Operation):
         Performs string replacement using a regular expression.
         :return: The formatted string.
         """
-        input: Any = arguments["input"]  # The input string to process
-        pattern: Any = arguments["pattern"] # The pattern to be replaced (or a nested operation producing it)
-        replacement: Any = arguments["replacement"] # The replacement value (or a nested operation producing it)
+        input: str = Operation.execute_json(self.settings, arguments["input"], self.context)  # The input string to process
+        pattern: str = Operation.execute_json(self.settings, arguments["pattern"], self.context) # The pattern to be replaced (or a nested operation producing it)
+        replacement: str = Operation.execute_json(self.settings, arguments["replacement"], self.context) # The replacement value (or a nested operation producing it)
 
         logging.info("Resolving Replace arguments: input=%s, pattern=%s, replacement=%s", input, pattern, replacement)
 

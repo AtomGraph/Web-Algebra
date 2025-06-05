@@ -22,38 +22,36 @@ For example, this natural language instruction:
 would produce this JSON output:
 
 ```json
-[
-  {
-    "ForEach": {
-      "table": {
-        "SELECT": {
-          "endpoint": "https://dbpedia.org/sparql",
-          "query": {
-            "SPARQLString": {
-              "question": "10 biggest cities in Denmark",
-              "endpoint": "https://dbpedia.org/sparql"
-            }
+{
+  "ForEach": {
+    "table": {
+      "SELECT": {
+        "endpoint": "https://dbpedia.org/sparql",
+        "query": {
+          "SPARQLString": {
+            "question": "10 biggest cities in Denmark",
+            "endpoint": "https://dbpedia.org/sparql"
           }
         }
-      },
-      "operation": {
-        "PUT": {
-          "url": {
-            "ResolveURI": {
-              "base": "http://localhost/denmark/",
-              "relative": {
-                "ValueOf": {
-                  "var": "cityName"
-                }
+      }
+    },
+    "operation": {
+      "PUT": {
+        "url": {
+          "ResolveURI": {
+            "base": "http://localhost/denmark/",
+            "relative": {
+              "ValueOf": {
+                "var": "cityName"
               }
             }
-          },
-          "data": {
-            "GET": {
-              "url": {
-                "ValueOf": {
-                  "var": "city"
-                }
+          }
+        },
+        "data": {
+          "GET": {
+            "url": {
+              "ValueOf": {
+                "var": "city"
               }
             }
           }
@@ -61,7 +59,7 @@ would produce this JSON output:
       }
     }
   }
-]
+}
 ```
 
 # Rules
@@ -93,7 +91,7 @@ would produce this JSON output:
    - Queries must handle **unknown result sizes dynamically**.
 
 8. **Make sure to use variable names consistently**  
-   - If you generated a query with a `?cityName` variable, then make sure to use the same variable in `{ "ValueOf": { "var": "cityName" } }` if you need to retrieve its value.
+   - If you generated a query with a `?cityName` variable, then make sure to use the same variable in `{ "Var": { "name": "cityName" } }` if you need to retrieve its value.
 
 9. **Where RDF data is expected or returned**  
    - **Use an internal `rdflib.Graph`.**  
@@ -110,7 +108,8 @@ Creates a new URI relative to the base URL. The relative URI **must** be pre-enc
 #### Example JSON
 ```json
 {
-  "ResolveURI": {
+  "@op": "ResolveURI",
+  "args": {
     "base": "http://dbpedia.org/page/Copenhagen",
     "relative": "custom-slug/"
   }
@@ -128,7 +127,8 @@ Fetch RDF data from a given URL and return it as a Python dict of JSON-LD.
 #### Example JSON
 ```json
 {
-  "GET": {
+  "@op": "GET",
+  "args": {
     "url": "http://dbpedia.org/resource/Copenhagen"
   }
 }
@@ -155,7 +155,8 @@ Appends RDF data to a document at the specified URL, using **JSON-LD** to repres
 #### Example JSON
 ```json
 {
-  "POST": {
+  "@op": "POST",
+  "args": {
     "url": "http://dbpedia.org/resource/Copenhagen",
     "data": {
       "@context": {
@@ -182,7 +183,8 @@ Creates or replaces a document with RDF content, represented as JSON-LD.
 #### Example JSON
 ```json
 {
-  "PUT": {
+  "@op": "PUT",
+  "args": {
     "url": "http://dbpedia.org/page/Copenhagen",
     "data": {
       "@context": {
@@ -190,13 +192,8 @@ Creates or replaces a document with RDF content, represented as JSON-LD.
         "dbr": "http://dbpedia.org/resource/"
       },
       "@id": "http://dbpedia.org/page/Copenhagen",
-      "@type": [
-        "foaf:Document"
-      ],
-      "foaf:primaryTopic": "dbr:Copenhagen",
-      "dbr:Copenhagen": {
-        "schema:name": "København"
-      }
+      "@type": ["foaf:Document"],
+      "foaf:primaryTopic": "dbr:Copenhagen"
     }
   }
 }
@@ -219,10 +216,11 @@ Do not return `SELECT *` or `DESCRIBE *`. The query must explicitly list all var
 
 ```json
 {
-    "SPARQLString": {
-        "question": "Provide the description of the City of Copenhagen",
-        "endpoint": "https://dbpedia.org/sparql"
-    }
+  "@op": "SPARQLString",
+  "args": {
+    "question": "Provide the description of the City of Copenhagen",
+    "endpoint": "https://dbpedia.org/sparql"
+  }
 }
 ```
 
@@ -241,10 +239,11 @@ In case of language-tagged literals there is also an `xml:lang` key indicating t
 
 ```json
 {
-    "SELECT": {
-        "endpoint": "https://dbpedia.org/sparql",
-        "query": "SELECT ?city ?cityName WHERE { ?city <http://schema.org/name> ?cityName }"
-    }
+  "@op": "SELECT",
+  "args": {
+    "endpoint": "https://dbpedia.org/sparql",
+    "query": "SELECT ?city ?cityName WHERE { ?city <http://schema.org/name> ?cityName }"
+  }
 }
 ```
 
@@ -271,10 +270,11 @@ This function queries the provided SPARQL endpoint using the provided `DESCRIBE`
 
 ```json
 {
-    "DESCRIBE": {
-        "endpoint": "https://dbpedia.org/sparql",
-        "query": "DESCRIBE <http://dbpedia.org/resource/Copenhagen>"
-    }
+  "@op": "DESCRIBE",
+  "args": {
+    "endpoint": "https://dbpedia.org/sparql",
+    "query": "DESCRIBE <http://dbpedia.org/resource/Copenhagen>"
+  }
 }
 ```
 
@@ -299,10 +299,11 @@ This function queries the provided SPARQL endpoint using the provided `CONSTRUCT
 
 ```json
 {
-    "CONSTRUCT": {
-        "endpoint": "https://dbpedia.org/sparql",
-        "query": "PREFIX dbo: <http://dbpedia.org/ontology/> CONSTRUCT { <http://dbpedia.org/resource/Copenhagen> ?p ?o } WHERE { <http://dbpedia.org/resource/Copenhagen> ?p ?o }"
-    }
+  "@op": "CONSTRUCT",
+  "args": {
+    "endpoint": "https://dbpedia.org/sparql",
+    "query": "PREFIX dbo: <http://dbpedia.org/ontology/> CONSTRUCT { <http://dbpedia.org/resource/Copenhagen> ?p ?o } WHERE { <http://dbpedia.org/resource/Copenhagen> ?p ?o }"
+  }
 }
 ```
 
@@ -333,26 +334,27 @@ This function merges two RDF graphs (represented as JSON-LD) into one, returning
 
 ```json
 {
-    "Merge": {
-        "first": {
-            "@context": {
-                "dbr": "http://dbpedia.org/resource/",
-                "schema": "http://schema.org/"
-            },
-            "@id": "dbr:Copenhagen",
-            "@type": "schema:City",
-            "schema:name": "City of Copenhagen"
-        },
-        "second": {
-            "@context": {
-                "dbr": "http://dbpedia.org/resource/",
-                "schema": "http://schema.org/"
-            },
-            "@id": "dbr:Vilnius",
-            "@type": "schema:City",
-            "schema:name": "Vilnius"
-        }
+  "@op": "Merge",
+  "args": {
+    "first": {
+      "@context": {
+        "dbr": "http://dbpedia.org/resource/",
+        "schema": "http://schema.org/"
+      },
+      "@id": "dbr:Copenhagen",
+      "@type": "schema:City",
+      "schema:name": "City of Copenhagen"
+    },
+    "second": {
+      "@context": {
+        "dbr": "http://dbpedia.org/resource/",
+        "schema": "http://schema.org/"
+      },
+      "@id": "dbr:Vilnius",
+      "@type": "schema:City",
+      "schema:name": "Vilnius"
     }
+  }
 }
 ```
 
@@ -378,7 +380,7 @@ Result (truncated)
 }
 ```
 
-## ValueOf(row: Dict[str, Any], var: str) -> Any
+## Var(row: Dict[str, Any], name: str) -> Dict
 
 Retrieves a value from the current context row (structured as a dictionary) for the given variable name as the key.
 
@@ -394,9 +396,35 @@ Current context row:
 
 ```json
 {
-    "ValueOf": {
-        "var": "cityName"
+  "@op": "Var",
+  "args": {
+    "name": "cityName"
+  }
+}
+```
+
+Result:
+```json
+ { "type": "literal", "value": "Copenhagen", "xml:lang": "en" }
+```
+
+## Str(row: Dict[str, Any], input: str) -> str
+
+Retrieves the string value of an RDF term dict.
+
+### Example JSON
+
+```json
+{
+  "@op": "Str",
+  "args": {
+    "input": {
+      "@op": "Var",
+      "args": {
+        "name": "cityName"
+      }
     }
+  }
 }
 ```
 
@@ -422,16 +450,24 @@ This example performs an HTTP **GET** request for each city in the table.
 
 ```json
 {
-  "ForEach": {
+  "@op": "ForEach",
+  "args": {
     "table": [
       { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" } },
       { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Aarhus" } }
     ],
     "operation": {
-      "GET": {
+      "@op": "GET",
+      "args": {
         "url": {
-          "ValueOf": {
-            "var": "city"
+          "@op": "Str",
+          "args": {
+            "input": {
+              "@op": "Var",
+              "args": {
+                "name": "city"
+              }
+            }
           }
         }
       }
@@ -456,27 +492,37 @@ This example performs both a **GET** request and a **POST** request for each cit
 
 ```json
 {
-  "ForEach": {
+  "@op": "ForEach",
+  "args": {
     "table": [
       { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" } },
       { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Aarhus" } }
     ],
     "operation": [
       {
-        "GET": {
+        "@op": "GET",
+        "args": {
           "url": {
-            "ValueOf": {
-              "var": "city"
+            "@op": "Str",
+            "args": {
+              "input": {
+                "@op": "Var",
+                "args": {
+                  "name": "city"
+                }
+              }
             }
           }
         }
       },
       {
-        "POST": {
+        "@op": "POST",
+        "args": {
           "url": "https://example.com/store",
           "data": {
-            "ValueOf": {
-              "var": "city"
+            "@op": "Var",
+            "args": {
+              "name": "city"
             }
           }
         }
@@ -502,17 +548,12 @@ This function replaces occurrences of a pattern in a string with a specified rep
 
 ```json
 {
-    "Replace": {
-        "input": {
-            "Replace": {
-                "input": "<${this}> schema:name \"${name}\" .",
-                "pattern": "\\$\\{this\\}",
-                "replacement": "http://dbpedia.org/resource/Copenhagen"
-            }
-        },
-        "pattern": "\\$\\{name\\}",
-        "replacement": "Copenhagen"
-    }
+  "@op": "Replace",
+  "args": {
+    "input": "Welcome to ${cityName}",
+    "pattern": "\\$\\{cityName\\}",
+    "replacement": "Copenhagen"
+  }
 }
 ```
 
@@ -530,9 +571,10 @@ It replaces **spaces, slashes (`/`), colons (`:`), and special characters** with
 
 ```json
 {
-    "EncodeForURI": {
-        "input": "Malmö Municipality"
-    }
+  "@op": "EncodeForURI",
+  "args": {
+    "input": "Malmö Municipality"
+  }
 }
 ```
 
@@ -550,7 +592,8 @@ Each invocation of `STRUUID()` produces a **new unique identifier**.
 ### **Example JSON**
 ```json
 {
-    "STRUUID": {}
+  "@op": "STRUUID",
+  "args": {}
 }
 ```
 
@@ -581,7 +624,7 @@ Operation:
         "query": "PREFIX dbo: <http://dbpedia.org/ontology/> CONSTRUCT WHERE { ?city dbo:populationTotal ?population }",
         "var": "city",
         "binding": {
-            "ValueOf": { "var": "city" }
+            "Var": { "name": "city" }
         }
     }
 }

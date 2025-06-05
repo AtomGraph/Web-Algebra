@@ -25,8 +25,8 @@ class POST(Operation):
             - `data`: The RDF data to append, as a Python dict.
         :return: True if successful, otherwise raises an error.
         """
-        url: str = arguments["url"]
-        data: dict = arguments["data"]
+        url: str = Operation.execute_json(self.settings, arguments["url"], self.context)
+        data: dict = Operation.execute_json(self.settings, arguments["data"], self.context)
         logging.info(f"Executing PUT operation with URL: %s and data: %s", url, data)
 
         json_str = json.dumps(data)

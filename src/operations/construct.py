@@ -30,25 +30,14 @@ class CONSTRUCT(Operation):
             - `endpoint`: The SPARQL endpoint URL to query.
             - `query`: The SPARQL CONSTRUCT query string to execute.
         :return: A Python dict representing the JSON-LD response from the SPARQL CONSTRUCT query."""
-        endpoint: str = arguments.get("endpoint")
-        query: str = arguments["query"]
+        endpoint: str = Operation.execute_json(self.settings, arguments["endpoint"], self.context)
+        query: str = Operation.execute_json(self.settings, arguments["query"], self.context)
 
         if not isinstance(query, str):
             raise ValueError("CONSTRUCT operation expects 'query' to be a string.")
 
         logging.info(f"Executing SPARQL CONSTRUCT on %s with query:\n%s", endpoint, query)
-
-        # Perform the SPARQL query
-        graph = self.client.query(endpoint, query)
-
-        logging.info(f"SPARQL CONSTRUCT query returned {len(graph)} triples.")
-
-        # Serialize the graph as JSON-LD dict
-        jsonld_str = graph.serialize(format="json-ld")
-        jsonld_data = json.loads(jsonld_str)
-
-        logging.info("Returning the constructed graph as a JSON-LD dict.")
-        return jsonld_data
+        return self.client.query(endpoint, query)
 
     async def run(
         self,

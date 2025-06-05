@@ -1,6 +1,7 @@
 from typing import Optional, Union
 from io import BytesIO
 import ssl
+import json
 import urllib.request
 from http.client import HTTPResponse
 from rdflib import Graph
@@ -126,7 +127,7 @@ class SPARQLClient:
             urllib.request.HTTPSHandler(context=self.ssl_context)
         )
 
-    def query(self, endpoint_url: str, query_string: str) -> Union[Graph, Result]:
+    def query(self, endpoint_url: str, query_string: str) -> dict:
         """
         Executes a SPARQL query. Returns Graph for CONSTRUCT/DESCRIBE, Result for SELECT/ASK.
 
@@ -155,7 +156,11 @@ class SPARQLClient:
 
         if accept == "application/n-triples":
             g = Graph()
+            # convert N-Triples to JSON-LD
             g.parse(data=data.decode("utf-8"), format="nt")
-            return g
+            jsonld_str = g.serialize(format="json-ld")
+            jsonld_data = json.loads(jsonld_str)
+            return jsonld_data
         else:
-            return Result.parse(source=BytesIO(data), format="json")
+            # return SPARQL JSON results as a dict
+            return json.loads(data.decode('utf-8'))
