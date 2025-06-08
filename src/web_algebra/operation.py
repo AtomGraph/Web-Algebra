@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 import logging
 from typing import Type, Dict, Optional, Any, List, ClassVar
-from mcp import Tool
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
 
-class Operation(ABC, Tool):
+class Operation(ABC, BaseModel):
     """
     Abstract base class for all operations. Ensures all operations implement the execute method
     and provides metadata for introspection and registration.
@@ -13,20 +13,20 @@ class Operation(ABC, Tool):
 
     registry: ClassVar[Dict[str, Type["Operation"]]] = {}
     settings: BaseSettings
-    context: dict
+    context: dict = {}
   
-    @property
-    def name(self) -> str:
-        return self.__class__.__name__
+    @classmethod
+    def name(cls) -> str:
+        return cls.__name__
 
-    @property
+    @classmethod
     @abstractmethod
-    def description(self):
+    def description(cls) -> str:
         pass
 
-    @property
-    @abstractmethod
-    def inputSchema(self):
+    @classmethod
+    @abstractmethod 
+    def inputSchema(cls) -> str:
         pass
 
     @abstractmethod

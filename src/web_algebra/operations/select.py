@@ -19,12 +19,12 @@ class SELECT(Operation):
             verify_ssl=False  # Optionally disable SSL verification
         )
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Executes a SPARQL SELECT query against a specified endpoint and returns results as a list of dictionaries."
 
-    @property
-    def inputSchema(self) -> dict:        return {
+    @classmethod
+    def inputSchema(cls) -> dict:        return {
             "type": "object",
             "properties": {
                 "endpoint": {

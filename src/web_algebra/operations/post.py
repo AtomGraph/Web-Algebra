@@ -21,12 +21,12 @@ class POST(Operation):
             verify_ssl=False  # Optionally disable SSL verification
         )
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Appends RDF data to a specified URL using the HTTP POST method."
     
-    @property
-    def inputSchema(self) -> dict:
+    @classmethod
+    def inputSchema(cls) -> dict:
         return {
             "type": "object",
             "properties": {

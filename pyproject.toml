@@ -1,3 +1,16 @@
+[project]
+name = "WebAlgebra"
+version = "0.1.0"
+description = "Composable RDF operations in JSON"
+
+authors = [
+  { name = "Martynas Jusevicius", email = "martynas@atomgraph.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "rdflib>=7.0.0",
+]
+
 [tool.poetry]
 name = "WebAlgebra"
 version = "0.1.0"

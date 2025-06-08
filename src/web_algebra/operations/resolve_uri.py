@@ -11,14 +11,14 @@ class ResolveURI(Operation):
     Resolves a relative URI against a base URI.
     """
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return """
         Creates a new URI relative to the base URL. The relative URI **must** be pre-encoded.
         """
     
-    @property
-    def inputSchema(self) -> dict:
+    @classmethod
+    def inputSchema(cls) -> dict:
         return {
             "type": "object",
             "properties": {

@@ -19,23 +19,17 @@ class CONSTRUCT(Operation):
             verify_ssl=False  # Optionally disable SSL verification
         )
 
-    @property
-    def description(self) -> str:
-        return "Executes a SPARQL CONSTRUCT query against a specified endpoint and returns the RDF data as a Python dict of JSON-LD."
-    
-    @property
-    def inputSchema(self) -> dict:
+    @classmethod
+    def description(cls) -> str:
+        return "Executes a SPARQL CONSTRUCT query."
+
+    @classmethod
+    def inputSchema(cls) -> dict:
         return {
             "type": "object",
             "properties": {
-                "endpoint": {
-                    "type": "string",
-                    "description": "The SPARQL endpoint URL to query."
-                },
-                "query": {
-                    "type": "string",
-                    "description": "The SPARQL CONSTRUCT query string to execute."
-                }
+                "endpoint": {"type": "string"},
+                "query": {"type": "string"},
             },
             "required": ["endpoint", "query"]
         }

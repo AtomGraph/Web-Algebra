@@ -12,12 +12,12 @@ class ForEach(Operation):
     Executes an operation (or a sequence of operations) for each row in a table.
     """
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Executes an operation for each row in a table. The operation can be a single operation or a list of operations. Each row is processed independently, and the results are collected in a list."
     
-    @property
-    def inputSchema(self):
+    @classmethod
+    def inputSchema(cls) -> dict:
         """
         Returns the JSON schema of the operation's input arguments.
         """

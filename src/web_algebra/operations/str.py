@@ -11,12 +11,12 @@ class Str(Operation):
     This class serves as a foundation for various string manipulation operations.
     """
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Base class for string operations. This class provides a common interface and shared functionality for all string-related operations."
     
-    @property
-    def inputSchema(self):
+    @classmethod
+    def inputSchema(cls) -> dict:
         """
         Returns the JSON schema of the operation's input arguments.
         """

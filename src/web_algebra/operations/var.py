@@ -7,12 +7,12 @@ class Var(Operation):
     Retrieves a value from the execution context based on a given variable (key) and returns it as an RDF term dict.
     """
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Retrieves a value from the execution context based on a given variable (key) and returns it as an RDF term dict. This operation is useful for accessing previously stored values in the context, similar to SPARQL's `?var` syntax."
 
-    @property
-    def inputSchema(self):
+    @classmethod
+    def inputSchema(cls) -> dict:
         """
         Returns the JSON schema of the operation's input arguments.
         """

@@ -13,12 +13,12 @@ class Replace(Operation):
     Aligns with SPARQL's REPLACE() function.
     """
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Replaces occurrences of a specified pattern in an input string with a given replacement. This operation aligns with SPARQL's REPLACE() function, allowing for flexible string manipulation using regular expressions."
 
-    @property
-    def inputSchema(self) -> dict:
+    @classmethod
+    def inputSchema(cls) -> dict:
         """
         Returns the JSON schema of the operation's input arguments.
         """

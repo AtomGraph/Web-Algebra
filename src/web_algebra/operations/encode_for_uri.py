@@ -12,12 +12,12 @@ class EncodeForURI(Operation):
     URL-encodes a string to make it safe for use in URIs, following SPARQL's `ENCODE_FOR_URI` behavior.
     """
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Encodes a string to be URI-safe, following SPARQL's `ENCODE_FOR_URI` behavior. It encodes characters that are not allowed in URIs, such as spaces, slashes, and colons."
     
-    @property
-    def inputSchema(self) -> dict:
+    @classmethod
+    def inputSchema(cls) -> dict:
         return {
             "type": "object",
             "properties": {

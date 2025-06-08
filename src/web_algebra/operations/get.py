@@ -24,12 +24,12 @@ class GET(Operation):
             verify_ssl=False  # Optionally disable SSL verification
         )
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Fetch RDF data from a given URL and return it as a Python dict with the JSON-LD response."
     
-    @property
-    def inputSchema(self) -> dict:
+    @classmethod
+    def inputSchema(cls) -> dict:
         return {
             "type": "object",
             "properties": {

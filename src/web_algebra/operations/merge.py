@@ -13,12 +13,12 @@ class Merge(Operation):
     Merges a list of RDF graphs as JSON-LD dicts into a single RDF graph as JSON-LD dict.
     """
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Merges a list of RDF graphs as JSON-LD dicts into a single RDF graph as JSON-LD dict."
     
-    @property
-    def inputSchema(self) -> dict:
+    @classmethod
+    def inputSchema(cls) -> dict:
         return {
             "type": "object",
             "properties": {

@@ -18,12 +18,12 @@ class Substitute(Operation):
     Note: not a safe replacement atm, can lead to invalid SPARQL queries!
     """
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Replaces variable placeholders in a SPARQL query with actual values from a given set of bindings. This operation allows for dynamic query construction by substituting variables with specific values, enabling flexible SPARQL query execution."
     
-    @property
-    def inputSchema(self):
+    @classmethod
+    def inputSchema(cls) -> dict:
         """
         Returns the JSON schema of the operation's input arguments.
         """

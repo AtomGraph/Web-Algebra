@@ -16,16 +16,16 @@ class SPARQLString(Operation):
         self.client = OpenAI(api_key=getattr(self.settings, 'openai_api_key', None))
         self.model = getattr(self.settings, 'openai_model', None)
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return """
         Converts a natural language question into a SPARQL query string.
         This operation uses OpenAI's API to generate a structured SPARQL query based on the provided question.
         The generated query will include necessary PREFIX declarations and will be formatted as a valid SPARQL query string.
         """
     
-    @property
-    def inputSchema(self) -> dict:
+    @classmethod
+    def inputSchema(cls) -> dict:
         return {
             "type": "object",
             "properties": {
