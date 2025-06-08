@@ -16,7 +16,7 @@ ChatGPT thread: https://chatgpt.com/c/679abd11-cc00-8009-8039-cecc0dd526e7
 ### Standalone
 
 ```bash
-python src/web_algebra/main.py --from-json ./examples/example.json
+poetry run python src/web_algebra/main.py --from-json ./examples/example.json
 ```
 
 See [JSON examples](examples).
@@ -27,7 +27,7 @@ See [JSON examples](examples).
 2. Execute `src/web_algebra/main.py`, it expects the path to your LDH's owner certificate and its password as arguments. For example:
 
 ```bash
-python src/web_algebra/main.py --from-json ./examples/denmark-cities.json \
+poetry run python src/web_algebra/main.py --from-json ./examples/denmark-cities.json \
   --cert_pem_path ../LinkedDataHub/ssl/owner/cert.pem \
   --cert_password Marchius
 ```

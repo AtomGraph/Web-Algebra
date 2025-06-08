@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
 import logging
 from typing import Type, Dict, Optional, Any, List, ClassVar
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 from pydantic_settings import BaseSettings
+from mcp.server.fastmcp.server import Context
+from mcp.server.session import ServerSessionT
+from mcp.shared.context import LifespanContextT
 
 
 class Operation(ABC, BaseModel):
@@ -12,9 +15,12 @@ class Operation(ABC, BaseModel):
     """
 
     registry: ClassVar[Dict[str, Type["Operation"]]] = {}
-    settings: BaseSettings
+    settings: BaseSettings = Field(exclude=True)
     context: dict = {}
-  
+
+    """Optional additional tool information."""
+    model_config = ConfigDict(extra="allow")
+
     @classmethod
     def name(cls) -> str:
         return cls.__name__
@@ -33,6 +39,13 @@ class Operation(ABC, BaseModel):
     def execute(self, arguments: dict[str, Any]) -> Any:
         pass
 
+    @abstractmethod
+    def run(
+        self,
+        arguments: dict[str, Any],
+        context: Context[ServerSessionT, LifespanContextT] | None = None) -> Any:
+        pass
+        
     @classmethod
     def register(cls, operation_cls: Type["Operation"]) -> None:
         if not issubclass(operation_cls, cls):

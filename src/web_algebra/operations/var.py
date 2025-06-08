@@ -1,5 +1,9 @@
 from typing import Any
 import logging
+from mcp.server.fastmcp.server import Context
+from mcp.server.session import ServerSessionT
+from mcp.shared.context import LifespanContextT
+from mcp import types
 from web_algebra.operation import Operation
 
 class Var(Operation):
@@ -44,3 +48,9 @@ class Var(Operation):
 
         return self.context[var] # because SPARQL results binding is a dict: {'var': {'type': 'literal', 'xml:lang': 'en', 'value': 'Whatever'} }
 
+    def run(
+        self,
+        arguments: dict[str, Any],
+        context: Context[ServerSessionT, LifespanContextT] | None = None,
+    ) -> Any:
+        return [types.TextContent(type="text", text=self.execute(arguments))]

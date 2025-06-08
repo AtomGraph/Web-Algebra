@@ -10,6 +10,7 @@ import importlib
 import inspect
 from openai import OpenAI
 from pydantic_settings import BaseSettings
+import web_algebra.operations
 from web_algebra.operation import Operation
 
 # Configure logging to show INFO level and above

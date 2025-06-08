@@ -50,9 +50,9 @@ class ResolveURI(Operation):
         if not isinstance(value, str):
             raise ValueError("Replace 'value' must resolve to a string.")
 
-        return str(urljoin(self.base, value))
+        return str(urljoin(base, value))
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,

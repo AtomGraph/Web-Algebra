@@ -52,7 +52,7 @@ class EncodeForURI(Operation):
         logging.info("Encoded URI: %s", encoded_value)
         return encoded_value
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,

@@ -49,7 +49,7 @@ class CONSTRUCT(Operation):
         logging.info(f"Executing SPARQL CONSTRUCT on %s with query:\n%s", endpoint, query)
         return self.client.query(endpoint, query)
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,

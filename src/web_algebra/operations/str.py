@@ -51,7 +51,7 @@ class Str(Operation):
         # Placeholder for actual string processing logic
         return input
     
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,

@@ -65,7 +65,7 @@ class POST(Operation):
 
         return response.status < 299
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,

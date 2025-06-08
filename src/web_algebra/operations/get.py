@@ -59,15 +59,15 @@ class GET(Operation):
         jsonld_data = json.loads(jsonld_str)
         return jsonld_data
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> list[types.TextContent]:
         json_ld_data = self.execute(arguments)
 
-        if not isinstance(json_ld_data, dict):
-            raise ValueError("Expected a JSON-LD dict from execute()")
+        # if not isinstance(json_ld_data, dict):
+        #     raise ValueError("Expected a JSON-LD dict from execute()")
 
         json_str = json.dumps(json_ld_data)
 

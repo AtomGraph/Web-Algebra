@@ -71,7 +71,7 @@ class Substitute(Operation):
         substituted_query = pss.to_string()
         return substituted_query
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,

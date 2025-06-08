@@ -57,7 +57,7 @@ class Replace(Operation):
         logging.info("Formatted result: %s", formatted_string) 
         return formatted_string
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,

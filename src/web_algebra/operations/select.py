@@ -24,7 +24,8 @@ class SELECT(Operation):
         return "Executes a SPARQL SELECT query against a specified endpoint and returns results as a list of dictionaries."
 
     @classmethod
-    def inputSchema(cls) -> dict:        return {
+    def inputSchema(cls) -> dict:
+        return {
             "type": "object",
             "properties": {
                 "endpoint": {
@@ -56,7 +57,7 @@ class SELECT(Operation):
         logging.info("SPARQL SELECT query returned %s bindings.", len(results["results"]["bindings"]))
         return results
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
