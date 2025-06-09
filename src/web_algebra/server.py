@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 async def serve() -> None:
     server = Server("web-algebra", "1.0.0")
-    settings = LinkedDataHubSettings(cert_pem_path = "../LinkedDataHub/ssl/owner/cert.pem", cert_password = "Marchius")
+    settings = LinkedDataHubSettings(cert_pem_path = "/Users/Martynas.Jusevicius/WebRoot/LinkedDataHub/ssl/owner/cert.pem", cert_password = "Marchius")
 
     def register(classes: List[Type[Operation]]):
         for cls in classes:
