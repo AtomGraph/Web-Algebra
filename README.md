@@ -35,6 +35,12 @@ poetry run python src/web_algebra/main.py --from-json ./examples/denmark-cities.
 
 ### As MCP server
 
+stdio transport:
+```bash
+poetry run mcp dev src/web_algebra/__main__.py 
+```
+
+HTTP transport:
 ```bash
 poetry run uvicorn web_algebra.server:server --reload
 ```

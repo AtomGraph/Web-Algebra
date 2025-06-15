@@ -3,13 +3,13 @@ import logging
 from mcp import Tool
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, ImageContent, EmbeddedResource
-from mcp.server.lowlevel.server import InitializationOptions, NotificationOptions
+from mcp.types import TextContent, ImageContent, EmbeddedResource, Resource
+from pydantic import AnyUrl
 from web_algebra.main import LinkedDataHubSettings, list_operation_subclasses
 import web_algebra.operations
 from web_algebra.operation import Operation
-import logging
 from web_algebra.operations.construct import CONSTRUCT
+import web_algebra.operations.select
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -48,6 +48,46 @@ async def serve() -> None:
         tool_class =  Operation.get(name)
         tool = tool_class(settings=settings)
         return tool.run(arguments)
+    
+    @server.list_resources()
+    async def list_resources() -> Sequence[EmbeddedResource]:
+        resources = []
+
+        select = web_algebra.operations.select.SELECT(settings=settings)
+        args = {
+            "query": """
+                PREFIX  sp:  <http://spinrdf.org/sp#>
+                PREFIX dct: <http://purl.org/dc/terms/>
+
+                SELECT DISTINCT  ?query ?title ?text
+                WHERE
+                { GRAPH ?g
+                    {   ?query  dct:title ?title ;
+                            sp:text ?text
+                    }
+                }
+            """,
+            "endpoint": "https://localhost:4443/sparql",
+            }
+        
+        result = select.execute(args)
+        bindings = result["results"]["bindings"]
+        logger.info(bindings)
+        
+        for binding in bindings:
+            query = binding["query"]["value"]
+            title = binding["title"]["value"]
+            #text = binding["text"]["value"]
+            resources.append(
+                Resource(
+                    uri=AnyUrl(query),
+                    name=title,
+                    #description=text,
+                    mimeType="application/sparql-query",
+                )
+            )
+    
+        return resources
     
     options = server.create_initialization_options()
     async with stdio_server() as (read_stream, write_stream):

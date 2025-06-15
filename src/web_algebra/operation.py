@@ -50,8 +50,8 @@ class Operation(ABC, BaseModel):
     def register(cls, operation_cls: Type["Operation"]) -> None:
         if not issubclass(operation_cls, cls):
             raise ValueError(f"Cannot register {operation_cls}: Must be a subclass of Operation.")
-        cls.registry[operation_cls.__name__] = operation_cls
-        logging.info(f"Registered operation: {operation_cls.__name__}")
+        cls.registry[operation_cls.name()] = operation_cls
+        logging.info(f"Registered operation: {operation_cls.name()}")
 
     @classmethod
     def list_operations(cls) -> List[Type["Operation"]]:

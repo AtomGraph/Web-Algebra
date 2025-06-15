@@ -14,7 +14,7 @@ class ForEach(Operation):
 
     @classmethod
     def description(cls) -> str:
-        return "Executes an operation for each row in a table. The operation can be a single operation or a list of operations. Each row is processed independently, and the results are collected in a list."
+        return "Executes an operation for each row in a SPARQL results bindings table. The operation can be a single operation or a list of operations. Each row is processed independently, and the results are collected in a list."
     
     @classmethod
     def inputSchema(cls) -> dict:
@@ -26,7 +26,23 @@ class ForEach(Operation):
                     "properties": {
                         "table": {
                             "type": "object",
-                            "description": "A table represented as a list of dictionaries, where each dictionary is a row with key-value pairs."
+                            "description": "A table represented as a list of dictionaries, where each dictionary is a row with key-value pairs.",
+                            "properties": {
+                                "results": {
+                                    "type": "object",
+                                    "properties": {
+                                        "bindings": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "description": "A row in the table, represented as a dictionary of key-value pairs."
+                                            }
+                                        }
+                                    },
+                                    "required": ["bindings"]
+                                }
+                            },
+                            "required": ["results"]
                         },
                         "operation": {
                             "oneOf": [
