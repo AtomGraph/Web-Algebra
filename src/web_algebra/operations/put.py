@@ -6,8 +6,8 @@ from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
 from mcp import types
-from client import LinkedDataClient
-from operation import Operation
+from web_algebra.operation import Operation
+from web_algebra.client import LinkedDataClient
 
 class PUT(Operation):
     """
@@ -21,9 +21,33 @@ class PUT(Operation):
             verify_ssl=False  # Optionally disable SSL verification
         )
 
+    @classmethod
+    def description(cls) -> str:
+        return "Sends RDF data to a specified URL using the HTTP PUT method."
+    
+    @classmethod
+    def inputSchema(cls) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The URL to send the RDF data to. This should be a valid URL."
+                },
+                "data": {
+                    "type": "object",
+                    "description": "The RDF data to send, represented as a JSON-LD dict."
+                }
+            },
+            "required": ["url", "data"]
+        }
+    
     def execute(self, arguments: dict[str, Any]) -> bool:
         """
         Sends RDF data to the specified URL using the HTTP PUT method.
+        :param arguments: A dictionary containing:
+            - `url`: The URL to send the RDF data to.
+            - `data`: The RDF data to send, represented as a JSON-LD dict.
         :return: True if successful, otherwise raises an error.
         """
         url = Operation.execute_json(self.settings, arguments["url"], self.context)
@@ -43,9 +67,9 @@ class PUT(Operation):
 
         return response.status < 299
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> Any:
-        return [types.TextContent(type="text", text=str(self.process(arguments)))]
+        return [types.TextContent(type="text", text=str(self.execute(arguments)))]

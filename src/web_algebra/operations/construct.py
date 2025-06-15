@@ -1,12 +1,11 @@
-import json
 import logging
 from typing import Any
 from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
 from mcp import types
-from operation import Operation
-from client import SPARQLClient
+from web_algebra.operation import Operation
+from web_algebra.client import SPARQLClient
 
 class CONSTRUCT(Operation):
     """
@@ -20,10 +19,21 @@ class CONSTRUCT(Operation):
             verify_ssl=False  # Optionally disable SSL verification
         )
 
-    @property
-    def description(self) -> str:
-        return "Executes a SPARQL CONSTRUCT query against a specified endpoint and returns the RDF data as a Python dict of JSON-LD."
-    
+    @classmethod
+    def description(cls) -> str:
+        return "Executes a SPARQL CONSTRUCT query."
+
+    @classmethod
+    def inputSchema(cls) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "endpoint": {"type": "string"},
+                "query": {"type": "string"},
+            },
+            "required": ["endpoint", "query"]
+        }
+   
     def execute(self, arguments: dict[str, Any]) -> dict:
         """
         :arguments: A dictionary containing:
@@ -39,9 +49,9 @@ class CONSTRUCT(Operation):
         logging.info(f"Executing SPARQL CONSTRUCT on %s with query:\n%s", endpoint, query)
         return self.client.query(endpoint, query)
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> Any:
-        return [types.TextContent(type="text", text=str(self.process(arguments)))]
+        return [types.TextContent(type="text", text=str(self.execute(arguments)))]

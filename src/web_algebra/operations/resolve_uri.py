@@ -1,17 +1,38 @@
 from typing import Any
 from urllib.parse import urljoin
-from operation import Operation
+from mcp.server.fastmcp.server import Context
+from mcp.server.session import ServerSessionT
+from mcp.shared.context import LifespanContextT
+from mcp import types
+from web_algebra.operation import Operation
 
 class ResolveURI(Operation):
     """
     Resolves a relative URI against a base URI.
     """
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return """
         Creates a new URI relative to the base URL. The relative URI **must** be pre-encoded.
         """
+    
+    @classmethod
+    def inputSchema(cls) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "base": {
+                    "type": "string",
+                    "description": "The base URI to resolve against."
+                },
+                "relative": {
+                    "type": "string",
+                    "description": "The relative URI to resolve."
+                }
+            },
+            "required": ["base", "relative"]
+        }
     
     def execute(self, arguments: dict[str, Any]) -> str:
         """
@@ -29,4 +50,11 @@ class ResolveURI(Operation):
         if not isinstance(value, str):
             raise ValueError("Replace 'value' must resolve to a string.")
 
-        return str(urljoin(self.base, value))
+        return str(urljoin(base, value))
+
+    def run(
+        self,
+        arguments: dict[str, Any],
+        context: Context[ServerSessionT, LifespanContextT] | None = None,
+    ) -> Any:
+        return [types.TextContent(type="text", text=self.execute(arguments))]

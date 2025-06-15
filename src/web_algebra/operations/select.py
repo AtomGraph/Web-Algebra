@@ -1,12 +1,11 @@
 from typing import Any
 import logging
-import requests
 from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
 from mcp import types
-from operation import Operation
-from client import SPARQLClient
+from web_algebra.operation import Operation
+from web_algebra.client import SPARQLClient
 
 class SELECT(Operation):
     """
@@ -20,10 +19,27 @@ class SELECT(Operation):
             verify_ssl=False  # Optionally disable SSL verification
         )
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Executes a SPARQL SELECT query against a specified endpoint and returns results as a list of dictionaries."
 
+    @classmethod
+    def inputSchema(cls) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "endpoint": {
+                    "type": "string",
+                    "description": "The SPARQL endpoint URL to query."
+                },
+                "query": {
+                    "type": "string",
+                    "description": "The SPARQL SELECT query string to execute."
+                }
+            },
+            "required": ["endpoint", "query"]
+        }
+    
     def execute(self, arguments: dict[str, Any]) -> list:
         """
         Executes a SPARQL SELECT query and returns results as a list of dictionaries.
@@ -41,9 +57,27 @@ class SELECT(Operation):
         logging.info("SPARQL SELECT query returned %s bindings.", len(results["results"]["bindings"]))
         return results
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> Any:
-        return [types.TextContent(type="text", text=str(self.process(arguments)))]
+        return [types.TextContent(type="text", text=sparql_json_to_csv(self.execute(arguments)))]
+
+import csv
+import io
+
+def sparql_json_to_csv(result_json: dict) -> str:
+    vars = result_json.get("head", {}).get("vars", [])
+    rows = result_json.get("results", {}).get("bindings", [])
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(vars)
+
+    for row in rows:
+        writer.writerow([
+            row.get(var, {}).get("value", "") for var in vars
+        ])
+
+    return output.getvalue()

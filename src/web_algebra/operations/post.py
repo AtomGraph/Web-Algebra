@@ -2,8 +2,12 @@ from typing import Any
 import json
 import logging
 from rdflib import Graph
-from client import LinkedDataClient
-from operation import Operation
+from mcp.server.fastmcp.server import Context
+from mcp.server.session import ServerSessionT
+from mcp.shared.context import LifespanContextT
+from mcp import types
+from web_algebra.operation import Operation
+from web_algebra.client import LinkedDataClient
 
 class POST(Operation):
     """
@@ -17,12 +21,33 @@ class POST(Operation):
             verify_ssl=False  # Optionally disable SSL verification
         )
 
+    @classmethod
+    def description(cls) -> str:
+        return "Appends RDF data to a specified URL using the HTTP POST method."
+    
+    @classmethod
+    def inputSchema(cls) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The URL to send the RDF data to. This should be a valid URL."
+                },
+                "data": {
+                    "type": "object",
+                    "description": "The RDF data to append, represented as a JSON-LD dict."
+                }
+            },
+            "required": ["url", "data"]
+        }
+    
     def execute(self, arguments: dict[str, Any]) -> bool:
         """
         Appends RDF data to the specified URL using the HTTP POST method.
         :param arguments: A dictionary containing:
             - `url`: The URL to send the RDF data to.
-            - `data`: The RDF data to append, as a Python dict.
+            - `data`: The RDF data to append, as a JSON-LD dict.
         :return: True if successful, otherwise raises an error.
         """
         url: str = Operation.execute_json(self.settings, arguments["url"], self.context)
@@ -39,3 +64,10 @@ class POST(Operation):
         logging.info("POST operation status: %s", response.status)
 
         return response.status < 299
+
+    def run(
+        self,
+        arguments: dict[str, Any],
+        context: Context[ServerSessionT, LifespanContextT] | None = None,
+    ) -> Any:
+        return [types.TextContent(type="text", text=str(self.execute(arguments)))]

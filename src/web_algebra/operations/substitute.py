@@ -8,7 +8,7 @@ from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
 import re
-from operation import Operation
+from web_algebra.operation import Operation
 
 class Substitute(Operation):
     """
@@ -18,33 +18,43 @@ class Substitute(Operation):
     Note: not a safe replacement atm, can lead to invalid SPARQL queries!
     """
 
-    @property
-    def description(self) -> str:
+    @classmethod
+    def description(cls) -> str:
         return "Replaces variable placeholders in a SPARQL query with actual values from a given set of bindings. This operation allows for dynamic query construction by substituting variables with specific values, enabling flexible SPARQL query execution."
     
-    @property
-    def inputSchema(self):
+    @classmethod
+    def inputSchema(cls) -> dict:
         """
         Returns the JSON schema of the operation's input arguments.
         """
         return {
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "SPARQL query with variable placeholders"},
+                "query": {"type": "string", "description": "The SPARQL query string with variable placeholders."},
+                "var": {"type": "string", "description": "The variable to substitute in the query (e.g., '?x')."},
                 "binding": {
                     "type": "object",
                     "properties": {
-                        "var": {"type": "string", "description": "Variable to substitute in the query"},
-                        "value": {"type": ["string", "number", "boolean"], "description": "Value to substitute for the variable"},
-                        "type": {"type": "string", "enum": ["uri", "bnode", "literal"], "description": "Type of the value"}
+                        "value": {"type": "string", "description": "The value to substitute for the variable."},
+                        "type": {"type": "string", "enum": ["uri", "bnode", "literal"], 
+                                 "description": "The type of the value to substitute."}
                     },
-                    "required": ["var", "value", "type"]
+                    "required": ["value", "type"],
+                    "description": "A dictionary containing the value and type to substitute for the variable."
                 }
             },
-            "required": ["query", "binding"]
+            "required": ["query", "var", "binding"]
         }
-    
+        
     def execute(self, arguments: dict[str, Any]) -> str:
+        """
+        Performs variable substitution in a SPARQL query.
+        :param arguments: A dictionary containing:
+            - `query`: The SPARQL query string with variable placeholders.
+            - `var`: The variable to substitute in the query (e.g., "?x").
+            - `binding`: A dictionary containing the value to substitute for the variable, with keys:
+        :return: The SPARQL query with the variable substituted with the provided value.
+        """
         query: str = Operation.execute_json(self.settings, arguments["query"], self.context)
         var: str = Operation.execute_json(self.settings, arguments["var"], self.context)
         binding: dict = Operation.execute_json(self.settings, arguments["binding"], self.context)
@@ -63,12 +73,12 @@ class Substitute(Operation):
         substituted_query = pss.to_string()
         return substituted_query
 
-    async def run(
+    def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> Any:
-        return [types.TextContent(type="text", text=str(self.process(arguments)))]
+        return [types.TextContent(type="text", text=self.execute(arguments))]
 
 from rdflib import URIRef, Literal, BNode
 from rdflib.plugins.sparql import prepareQuery

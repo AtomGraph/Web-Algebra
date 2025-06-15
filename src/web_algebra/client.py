@@ -116,7 +116,7 @@ class SPARQLClient:
         """
         self.ssl_context = ssl.create_default_context()
 
-        if cert_pem_path:
+        if cert_pem_path and cert_password:
             self.ssl_context.load_cert_chain(certfile=cert_pem_path, password=cert_password)
 
         if not verify_ssl:

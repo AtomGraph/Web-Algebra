@@ -326,9 +326,9 @@ Result (truncated)
 }
 ```
 
-## Merge(first: Graph, second: Graph) -> Graph
+## Merge(graphs: List[Dict]) -> Dict
 
-This function merges two RDF graphs (represented as JSON-LD) into one, returning the merged graph in JSON-LD format.
+This function merges a list of RDF graphs (represented as JSON-LD dicts) into one, returning the merged graph as a JSON-LD dict.
 
 ### Example JSON
 
@@ -336,24 +336,27 @@ This function merges two RDF graphs (represented as JSON-LD) into one, returning
 {
   "@op": "Merge",
   "args": {
-    "first": {
-      "@context": {
-        "dbr": "http://dbpedia.org/resource/",
-        "schema": "http://schema.org/"
+    "graphs":
+    [
+      {
+        "@context": {
+          "dbr": "http://dbpedia.org/resource/",
+          "schema": "http://schema.org/"
+        },
+        "@id": "dbr:Copenhagen",
+        "@type": "schema:City",
+        "schema:name": "City of Copenhagen"
       },
-      "@id": "dbr:Copenhagen",
-      "@type": "schema:City",
-      "schema:name": "City of Copenhagen"
-    },
-    "second": {
-      "@context": {
-        "dbr": "http://dbpedia.org/resource/",
-        "schema": "http://schema.org/"
-      },
-      "@id": "dbr:Vilnius",
-      "@type": "schema:City",
-      "schema:name": "Vilnius"
-    }
+      {
+        "@context": {
+          "dbr": "http://dbpedia.org/resource/",
+          "schema": "http://schema.org/"
+        },
+        "@id": "dbr:Vilnius",
+        "@type": "schema:City",
+        "schema:name": "Vilnius"
+      }
+    ]
   }
 }
 ```
@@ -382,7 +385,7 @@ Result (truncated)
 
 ## Var(row: Dict[str, Any], name: str) -> Dict
 
-Retrieves a value from the current context row (structured as a dictionary) for the given variable name as the key.
+Retrieves a value from the current context row (structured as a dict) for the given variable name as the key.
 
 ### Example JSON
 
@@ -405,7 +408,11 @@ Current context row:
 
 Result:
 ```json
- { "type": "literal", "value": "Copenhagen", "xml:lang": "en" }
+{
+  "type": "literal",
+  "value": "Copenhagen",
+  "xml:lang": "en"
+}
 ```
 
 ## Str(row: Dict[str, Any], input: str) -> str
@@ -419,10 +426,9 @@ Retrieves the string value of an RDF term dict.
   "@op": "Str",
   "args": {
     "input": {
-      "@op": "Var",
-      "args": {
-        "name": "cityName"
-      }
+      "type": "literal",
+      "value": "Copenhagen",
+      "xml:lang": "en"
     }
   }
 }
@@ -559,7 +565,7 @@ This function replaces occurrences of a pattern in a string with a specified rep
 
 Result:
 ```json
-"<http://dbpedia.org/resource/Copenhagen> schema:name \"Copenhagen\" ."
+"Welcome to Copenhagen"
 ```
 
 ## EncodeForURI(input: str) -> str
