@@ -12,7 +12,7 @@ from web_algebra.client import LinkedDataClient
 
 class GET(Operation):
     """
-    Fetch RDF data from a given URL and return it as a Python dict with the JSON-LD response.
+    Retrieves RDF data from a named graph using HTTP GET. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Returns the RDF graph describing the resource at that URL.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -26,7 +26,7 @@ class GET(Operation):
 
     @classmethod
     def description(cls) -> str:
-        return "Fetch RDF data from a given URL and return it as a Python dict with the JSON-LD response."
+        return "Retrieves RDF data from a named graph using HTTP GET. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Returns the RDF graph describing the resource at that URL."
     
     @classmethod
     def inputSchema(cls) -> dict:

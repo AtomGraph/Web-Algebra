@@ -9,12 +9,12 @@ from web_algebra.operation import Operation
 
 class ForEach(Operation):
     """
-    Executes an operation (or a sequence of operations) for each row in a table.
+    Executes a WebAlgebra operation (or a sequence of operations) for each row in a table.
     """
 
     @classmethod
     def description(cls) -> str:
-        return "Executes an operation for each row in a SPARQL results bindings table. The operation can be a single operation or a list of operations. Each row is processed independently, and the results are collected in a list."
+        return "Executes a WebAlgebra operation for each row in a SPARQL results bindings table. The operation can be a single operation or a list of operations. Each row is processed independently, and the results are collected in a list."
     
     @classmethod
     def inputSchema(cls) -> dict:

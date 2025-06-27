@@ -11,7 +11,7 @@ from web_algebra.client import LinkedDataClient
 
 class PUT(Operation):
     """
-    Sends RDF data to a specified URL using the HTTP PUT method.
+    Replaces RDF data in a named graph using HTTP PUT. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Completely replaces the RDF graph at that URL.
     """
 
     def model_post_init(self, __context: Any) -> None:
@@ -23,7 +23,7 @@ class PUT(Operation):
 
     @classmethod
     def description(cls) -> str:
-        return "Sends RDF data to a specified URL using the HTTP PUT method."
+        return "Replaces RDF data in a named graph using HTTP PUT. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Completely replaces the RDF graph at that URL."
     
     @classmethod
     def inputSchema(cls) -> dict:

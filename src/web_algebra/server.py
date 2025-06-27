@@ -8,7 +8,6 @@ from pydantic import AnyUrl
 from web_algebra.main import LinkedDataHubSettings, list_operation_subclasses
 import web_algebra.operations
 from web_algebra.operation import Operation
-from web_algebra.operations.construct import CONSTRUCT
 import web_algebra.operations.select
 
 logging.basicConfig(level=logging.DEBUG)

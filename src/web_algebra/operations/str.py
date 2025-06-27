@@ -7,13 +7,12 @@ from web_algebra.operation import Operation
 
 class Str(Operation):
     """
-    A base class for string operations.
-    This class serves as a foundation for various string manipulation operations.
+    Gets the string value of an RDF term (dict with 'type' and 'value')
     """
 
     @classmethod
     def description(cls) -> str:
-        return "Base class for string operations. This class provides a common interface and shared functionality for all string-related operations."
+        return "Gets the string value of an RDF term (dict with 'type' and 'value')"
     
     @classmethod
     def inputSchema(cls) -> dict:
