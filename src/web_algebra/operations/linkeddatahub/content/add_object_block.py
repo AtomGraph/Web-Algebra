@@ -19,6 +19,8 @@ class AddObjectBlock(POST):
         return """Appends an object block to a LinkedDataHub document using sequence properties.
         
         Object blocks reference external resources via URI and can have different display modes.
+        Only RDF Linked Data objects can be rendered by using display modes, so if you think you're using an RDF URI value, make sure it returns a valid RDF resource (e.g. use the GET operation to verify).
+        Non-RDF resources (for example images) will be embedded using HTML <object> element.
 
         Possible display modes include:
         - https://w3id.org/atomgraph/client#ReadMode: Default mode for displaying the object.

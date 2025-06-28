@@ -1,6 +1,7 @@
 from typing import Any
 import json
 import logging
+from urllib.error import HTTPError
 from rdflib import Graph
 from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
@@ -48,7 +49,7 @@ class PUT(Operation):
         :param arguments: A dictionary containing:
             - `url`: The URL to send the RDF data to.
             - `data`: The RDF data to send, represented as a JSON-LD dict.
-        :return: True if successful, otherwise raises an error.
+        :return: True if successful, otherwise raises an error. The second return value is the URL of the created document.
         """
         url = Operation.execute_json(self.settings, arguments["url"], self.context)
         data = Operation.execute_json(self.settings, arguments["data"], self.context)
@@ -65,11 +66,24 @@ class PUT(Operation):
         response = self.client.put(url, graph)  # ✅ Send RDF Graph
         logging.info("PUT operation status: %s", response.status)
 
-        return response.status < 299
+        # return effect URL - there might have been a redirect and the response URL is the final one
+        return response.status < 299, response.geturl()
 
     def run(
         self,
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> Any:
-        return [types.TextContent(type="text", text=str(self.execute(arguments)))]
+        try:
+            success, final_url = self.execute(arguments)
+            status_msg = "✅ PUT operation successful" if success else "⚠️ PUT operation completed with warnings"
+            return [
+                types.TextContent(type="text", text=status_msg),
+                types.TextContent(type="text", text=f"Final URL: {final_url}")
+            ]
+        except HTTPError as e:
+            error_msg = f"HTTP Error {e.code}: {e.reason} when accessing {e.url}"
+            return [
+                types.TextContent(type="text", text=error_msg)
+            ]
+

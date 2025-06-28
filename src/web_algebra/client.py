@@ -1,5 +1,4 @@
-from typing import Optional, Union
-from io import BytesIO
+from typing import Optional
 import ssl
 import json
 import urllib.request
@@ -8,7 +7,18 @@ from rdflib import Graph
 from rdflib.query import Result
 from rdflib.plugins.sparql.parser import parseQuery
 
+import urllib.request
 
+class HTTPRedirectHandler308(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        """Handle 308 Permanent Redirect by preserving method and body"""
+        if code == 308:
+            return urllib.request.Request(newurl, 
+                                        data=req.data, 
+                                        headers=req.headers,
+                                        method=req.get_method())
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+    
 class LinkedDataClient:
     def __init__(self, cert_pem_path: Optional[str] = None, cert_password: Optional[str] = None, verify_ssl: bool = True):
         """
@@ -29,7 +39,7 @@ class LinkedDataClient:
             self.ssl_context.verify_mode = ssl.CERT_NONE
 
         # Create an HTTPS handler with the configured SSL context
-        self.opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=self.ssl_context))
+        self.opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=self.ssl_context), HTTPRedirectHandler308())
 
     def get(self, url: str) -> Graph:
         """
