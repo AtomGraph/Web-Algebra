@@ -205,9 +205,9 @@ true
 
 ---
 
-## SPARQLString(question: str, endpoint: URL?) -> Union[Select, Ask, Describe, Construct]
+## SPARQLString(question: str) -> Union[Select, Ask, Describe, Construct]
 
-This function accepts a natural language question and returns a valid SPARQL query string (either `Select` or `Describe` form) that provides a result which answers the query. An optional endpoint URL can be provided which could help you identify which dataset the query should be tailored for.
+This function accepts a natural language question and returns a valid SPARQL query string (either `Select` or `Describe` form) that provides a result which answers the query. Uses OpenAI's API to generate a structured SPARQL query based on the provided question.
 Use the `Select` form when you want to list resources and their property values and get a tabular result.
 Use the `Describe` form when you want to get RDF graph descriptions of one or more resources.
 Do not return `SELECT *` or `DESCRIBE *`. The query must explicitly list all variables projected in the result.
@@ -218,8 +218,7 @@ Do not return `SELECT *` or `DESCRIBE *`. The query must explicitly list all var
 {
   "@op": "SPARQLString",
   "args": {
-    "question": "Provide the description of the City of Copenhagen",
-    "endpoint": "https://dbpedia.org/sparql"
+    "question": "Provide the description of the City of Copenhagen"
   }
 }
 ```
@@ -383,9 +382,9 @@ Result (truncated)
 }
 ```
 
-## Var(row: Dict[str, Any], name: str) -> Dict
+## Var(name: str) -> Dict
 
-Retrieves a value from the current context row (structured as a dict) for the given variable name as the key.
+Retrieves a value from the execution context based on a given variable name and returns it as an RDF term dict. This operation is useful for accessing previously stored values in the context, similar to SPARQL's `?var` syntax.
 
 ### Example JSON
 
@@ -415,9 +414,9 @@ Result:
 }
 ```
 
-## Str(row: Dict[str, Any], input: str) -> str
+## Str(input: str) -> str
 
-Retrieves the string value of an RDF term dict.
+Gets the string value of an RDF term (dict with 'type' and 'value').
 
 ### Example JSON
 
@@ -589,24 +588,140 @@ Result:
 "Malm%C3%B6%20Municipality"
 ```
 
-## STRUUID() -> str
+## Execute(operation: Dict) -> Any
 
-This function generates a fresh **UUID (Universally Unique Identifier)** as a string, following the behavior of SPARQL's `STRUUID()`. The generated UUID consists of **32 hexadecimal digits** grouped into standard **UUID format** (`xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`), where `x` is any hexadecimal digit and `y` is one of `8`, `9`, `a`, or `b` (as per RFC 4122).  
+This operation executes a (potentially nested) operation from its JSON representation. The operation is expected to be an instance of the Operation class.
 
-Each invocation of `STRUUID()` produces a **new unique identifier**.
+### Example JSON
 
-### **Example JSON**
 ```json
 {
-  "@op": "STRUUID",
-  "args": {}
+  "@op": "Execute",
+  "args": {
+    "operation": {
+      "@op": "GET",
+      "args": {
+        "url": "http://dbpedia.org/resource/Copenhagen"
+      }
+    }
+  }
+}
+```
+
+Result: Returns the result of the executed operation.
+
+## ldh-List(uri: str, endpoint?: str, base?: str) -> List[Dict[str, Any]]
+
+Returns a list of children documents for the given LinkedDataHub URL. Requires either an endpoint or base parameter.
+
+### Example JSON
+
+```json
+{
+  "@op": "ldh-List",
+  "args": {
+    "uri": "http://localhost:4443/",
+    "base": "http://localhost:4443/"
+  }
+}
+```
+
+Result: Returns a SPARQL results table with children documents.
+
+## ldh-CreateContainer(url: str, title: str, description?: str) -> bool
+
+Creates a LinkedDataHub Container document with proper structure. Includes important constraints about URI hierarchy requirements.
+
+### Example JSON
+
+```json
+{
+  "@op": "ldh-CreateContainer",
+  "args": {
+    "url": "http://localhost:4443/containers/cities/",
+    "title": "Cities Container",
+    "description": "Container for city data"
+  }
 }
 ```
 
 Result:
 ```json
-"550e8400-e29b-41d4-a716-446655440000"
+true
 ```
+
+## ldh-CreateItem(url: str, title: str, description?: str) -> bool
+
+Creates a LinkedDataHub Item document with proper structure. Includes important constraints about URI hierarchy requirements.
+
+### Example JSON
+
+```json
+{
+  "@op": "ldh-CreateItem",
+  "args": {
+    "url": "http://localhost:4443/items/copenhagen",
+    "title": "Copenhagen",
+    "description": "Capital city of Denmark"
+  }
+}
+```
+
+Result:
+```json
+true
+```
+
+## ExtractClasses(endpoint: str) -> Graph
+
+Extracts OWL classes from an RDF dataset via SPARQL endpoint.
+
+### Example JSON
+
+```json
+{
+  "@op": "ExtractClasses",
+  "args": {
+    "endpoint": "https://dbpedia.org/sparql"
+  }
+}
+```
+
+Result: Returns JSON-LD graph containing OWL class definitions.
+
+## ExtractObjectProperties(endpoint: str) -> Graph
+
+Extracts OWL object properties from an RDF dataset via SPARQL endpoint, including domain/range detection.
+
+### Example JSON
+
+```json
+{
+  "@op": "ExtractObjectProperties",
+  "args": {
+    "endpoint": "https://dbpedia.org/sparql"
+  }
+}
+```
+
+Result: Returns JSON-LD graph containing OWL object property definitions.
+
+## ExtractDatatypeProperties(endpoint: str) -> Graph
+
+Extracts OWL datatype properties from an RDF dataset via SPARQL endpoint, including datatype analysis.
+
+### Example JSON
+
+```json
+{
+  "@op": "ExtractDatatypeProperties",
+  "args": {
+    "endpoint": "https://dbpedia.org/sparql"
+  }
+}
+```
+
+Result: Returns JSON-LD graph containing OWL datatype property definitions.
 
 ## Substitute(query: str, var: str, binding: Any) -> str
 

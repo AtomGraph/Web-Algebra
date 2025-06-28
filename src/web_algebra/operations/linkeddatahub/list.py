@@ -45,11 +45,11 @@ class LDHList(Operation):
         return {
             "type": "object",
             "properties": {
-                "uri": {"type": "string", "description": "The URL of the document to list children for."},
+                "url": {"type": "string", "description": "The URL of the document to list children for."},
                 "endpoint": {"type": "string", "description": "The SPARQL endpoint URL to query."},
                 "base": {"type": "string", "description": "Base URL for constructing the SPARQL endpoint."}
             },
-            "required": ["uri"],
+            "required": ["url"],
             "oneOf": [
                 {"required": ["endpoint"]},
                 {"required": ["base"]}
@@ -59,13 +59,13 @@ class LDHList(Operation):
     def execute(self, arguments: dict[str, str]) -> list[dict]:
         """
         :arguments: A dictionary containing:
-            - `uri`: The URL of the document to list children for.
+            - `url`: The URL of the document to list children for.
             - `endpoint`: The SPARQL endpoint URL to query.
             - `base`: Base URL for constructing the SPARQL endpoint (optional if `endpoint` is provided).
         :return: A list of dictionaries representing the children documents.
         """
-        uri: str = Operation.execute_json(self.settings, arguments["uri"], self.context)
-        if not isinstance(uri, str):
+        url: str = Operation.execute_json(self.settings, arguments["url"], self.context)
+        if not isinstance(url, str):
             raise ValueError("LDHList operation expects 'url' to be a string.")
         
         if "endpoint" in arguments:
@@ -80,13 +80,13 @@ class LDHList(Operation):
         else:
             raise ValueError("LDHList operation requires either 'endpoint' or 'base' to be provided.")
         
-        logging.info(f"Executing ldh:List on <%s> (SPARQL endpoint: %s)", uri, endpoint)
+        logging.info(f"Executing ldh:List on <%s> (SPARQL endpoint: %s)", url, endpoint)
 
         substitute = Substitute(settings=self.settings, context=self.context)
         query = substitute.execute({
                 "query": self.query,
                 "var": "this",
-                "binding": {"value": uri, "type": "uri"}
+                "binding": {"value": url, "type": "uri"}
             })
         
         select = SELECT(settings=self.settings, context=self.context)
