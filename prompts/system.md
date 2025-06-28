@@ -610,9 +610,9 @@ This operation executes a (potentially nested) operation from its JSON represent
 
 Result: Returns the result of the executed operation.
 
-## ldh-List(uri: str, endpoint?: str, base?: str) -> List[Dict[str, Any]]
+## ldh-List(url: str, endpoint?: str, base?: str) -> List[Dict[str, Any]]
 
-Returns a list of children documents for the given LinkedDataHub URL. Requires either an endpoint or base parameter.
+Returns a list of children documents for the given LinkedDataHub URL. Requires either an endpoint or base parameter. If base is provided, the endpoint is constructed as base + "sparql".
 
 ### Example JSON
 
@@ -620,7 +620,7 @@ Returns a list of children documents for the given LinkedDataHub URL. Requires e
 {
   "@op": "ldh-List",
   "args": {
-    "uri": "http://localhost:4443/",
+    "url": "http://localhost:4443/",
     "base": "http://localhost:4443/"
   }
 }
