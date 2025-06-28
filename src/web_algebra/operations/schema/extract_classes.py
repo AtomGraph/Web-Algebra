@@ -1,5 +1,5 @@
 from typing import Any
-from web_algebra.operations.construct import CONSTRUCT
+from web_algebra.operations.sparql.construct import CONSTRUCT
 
 class ExtractClasses(CONSTRUCT):
 

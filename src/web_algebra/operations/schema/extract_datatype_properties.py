@@ -1,11 +1,11 @@
 from typing import Any
-from web_algebra.operations.construct import CONSTRUCT
+from web_algebra.operations.sparql.construct import CONSTRUCT
 
-class ExtractObjectProperties(CONSTRUCT):
+class ExtractDatatypeProperties(CONSTRUCT):
 
     @classmethod
     def description(cls) -> str:
-        return "Extracts OWL object properties from an RDF dataset."
+        return "Extracts OWL datatype properties from an RDF dataset."
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -24,42 +24,34 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 CONSTRUCT {
-  ?property a owl:ObjectProperty ;
+  ?property a owl:DatatypeProperty ;
            rdfs:domain ?domain ;
-           rdfs:range ?range .
+           rdfs:range ?datatype .
 }
 WHERE {
   {
-    ?subject ?property ?object .
+    ?subject ?property ?literal .
     FILTER(?property != rdf:type)
-    FILTER(!isLiteral(?object))
+    FILTER(isLiteral(?literal))
     
     OPTIONAL { 
       { ?subject a ?domain }
       UNION 
       { GRAPH ?subjG { ?subject a ?domain } }
     }
-    OPTIONAL { 
-      { ?object a ?range }
-      UNION 
-      { GRAPH ?objG { ?object a ?range } }
-    }
+    BIND(datatype(?literal) as ?datatype)
   } UNION {
     GRAPH ?g {
-      ?subject ?property ?object .
+      ?subject ?property ?literal .
       FILTER(?property != rdf:type)
-      FILTER(!isLiteral(?object))
+      FILTER(isLiteral(?literal))
       
       OPTIONAL { 
         { ?subject a ?domain }
         UNION 
         { GRAPH ?subjG { ?subject a ?domain } }
       }
-      OPTIONAL { 
-        { ?object a ?range }
-        UNION 
-        { GRAPH ?objG { ?object a ?range } }
-      }
+      BIND(datatype(?literal) as ?datatype)
     }
   }
 }

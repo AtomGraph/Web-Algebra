@@ -8,7 +8,7 @@ from pydantic import AnyUrl
 from web_algebra.main import LinkedDataHubSettings, list_operation_subclasses
 import web_algebra.operations
 from web_algebra.operation import Operation
-import web_algebra.operations.select
+import web_algebra.operations.sparql.select
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ async def serve() -> None:
     async def list_resources() -> Sequence[EmbeddedResource]:
         resources = []
 
-        select = web_algebra.operations.select.SELECT(settings=settings)
+        select = web_algebra.operations.sparql.select.SELECT(settings=settings)
         args = {
             "query": """
                 PREFIX  sp:  <http://spinrdf.org/sp#>

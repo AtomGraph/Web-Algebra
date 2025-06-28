@@ -5,8 +5,8 @@ from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
 from mcp import types
 from web_algebra.operation import Operation
-from web_algebra.operations.substitute import Substitute
-from web_algebra.operations.select import SELECT, sparql_json_to_csv
+from web_algebra.operations.sparql.substitute import Substitute
+from web_algebra.operations.sparql.select import SELECT, sparql_json_to_csv
 
 class LDHList(Operation):
 
