@@ -8,33 +8,29 @@ from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.post import POST
 from web_algebra.operations.linked_data.get import GET
 
-class AddXHTMLBlock(POST):
+class AddObjectBlock(POST):
     
     @classmethod
     def name(cls):
-        return "ldh-AddXHTMLBlock"
+        return "ldh-AddObjectBlock"
     
     @classmethod
     def description(cls) -> str:
-        return """Appends an XHTML block to a LinkedDataHub document using sequence properties.
+        return """Appends an object block to a LinkedDataHub document using sequence properties.
         
-        IMPORTANT: The value parameter must be canonical XML literal - well-formed XHTML content
-        that will be stored as rdf:XMLLiteral datatype.
-        The top-level XHTML element must be <div xmlns="http://www.w3.org/1999/xhtml"></div>.
-        The XHTML can use CSS classes for inline elements from Bootstrap 2.3.2, but no inline CSS styles.
-        
-        Canonical XML Rules (TL;DR):
-        ✅ Well-formed XML - proper opening/closing tags, escaped special chars (&lt; &gt; &amp;)
-        ✅ Attributes alphabetically ordered - <tag attr1="x" attr2="y"> not <tag attr2="y" attr1="x">
-        ✅ No comments or processing instructions - strip <!-- --> and <?xml ?>
-        ✅ Consistent encoding - UTF-8, normalized whitespace
-        Bottom line: Valid XML + deterministic formatting = canonical XML.
+        Object blocks reference external resources via URI and can have different display modes.
+
+        Possible display modes include:
+        - https://w3id.org/atomgraph/client#ReadMode: Default mode for displaying the object.
+        - https://w3id.org/atomgraph/client#GraphMode: Displays the object as a graph.
+        - https://w3id.org/atomgraph/client#MapMode: Displays the object as a map.
+        - https://w3id.org/atomgraph/client#ChartMode: Displays the object as a chart.
         
         This tool:
         - Fetches the current document to find the next sequence number (rdf:_1, rdf:_2, etc.)
-        - Creates an ldh:XHTML resource with rdf:value containing the XML literal
-        - Posts the new XHTML block to the target document
-        - Supports optional title, description, and fragment identifier"""
+        - Creates an ldh:Object resource with rdf:value pointing to the target resource URI
+        - Posts the new object block to the target document
+        - Supports optional title, description, fragment identifier, and display mode"""
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -43,23 +39,34 @@ class AddXHTMLBlock(POST):
             "properties": {
                 "url": {
                     "type": "string", 
-                    "description": "The URI of the document to append the XHTML block to."
+                    "description": "The URI of the document to append the object block to."
                 },
                 "value": {
                     "type": "string", 
-                    "description": "XHTML content as canonical XML literal (must be well-formed XML)."
+                    "description": "URI of the object resource to reference."
                 },
                 "title": {
                     "type": "string", 
-                    "description": "Optional title for the XHTML block."
+                    "description": "Optional title for the object block."
                 },
                 "description": {
                     "type": "string", 
-                    "description": "Optional description for the XHTML block."
+                    "description": "Optional description for the object block."
                 },
                 "fragment": {
                     "type": "string", 
-                    "description": "Optional fragment identifier for the XHTML block URI (e.g., 'intro' creates #intro)."
+                    "description": "Optional fragment identifier for the object block URI (e.g., 'intro' creates #intro)."
+                },
+                "mode": {
+                    "type": "string",
+                    "description": "Optional URI of the block mode. Defaults to ReadMode if not specified.",
+                    "enum": [
+                        "https://w3id.org/atomgraph/client#GraphMode",
+                        "https://w3id.org/atomgraph/client#MapMode", 
+                        "https://w3id.org/atomgraph/client#ChartMode",
+                        "https://w3id.org/atomgraph/client#ReadMode"
+                    ],
+                    "default": "https://w3id.org/atomgraph/client#ReadMode"
                 }
             },
             "required": ["url", "value"]
@@ -67,52 +74,58 @@ class AddXHTMLBlock(POST):
     
     def execute(self, arguments: dict[str, str]) -> Any:
         """
-        Creates and appends an XHTML block to a LinkedDataHub document
+        Creates and appends an object block to a LinkedDataHub document
         
         :arguments: A dictionary containing:
             - `url`: URI of the document to append to
-            - `value`: Canonical XML literal content
+            - `value`: URI of the object resource to reference
             - `title`: Optional title
             - `description`: Optional description  
             - `fragment`: Optional fragment identifier
+            - `mode`: Optional display mode URI
         :return: Result from POST operation
         """
         url: str = Operation.execute_json(self.settings, arguments["url"], self.context)
         if not isinstance(url, str):
-            raise ValueError("CreateXHTMLBlock operation expects 'url' to be a string.")
+            raise ValueError("AddObjectBlock operation expects 'url' to be a string.")
         
         value: str = Operation.execute_json(self.settings, arguments["value"], self.context)
         if not isinstance(value, str):
-            raise ValueError("CreateXHTMLBlock operation expects 'value' to be a string.")
+            raise ValueError("AddObjectBlock operation expects 'value' to be a string.")
         
         title = arguments.get("title")
         if title:
             title = Operation.execute_json(self.settings, title, self.context)
             if not isinstance(title, str):
-                raise ValueError("CreateXHTMLBlock operation expects 'title' to be a string.")
+                raise ValueError("AddObjectBlock operation expects 'title' to be a string.")
         
         description = arguments.get("description")
         if description:
             description = Operation.execute_json(self.settings, description, self.context)
             if not isinstance(description, str):
-                raise ValueError("CreateXHTMLBlock operation expects 'description' to be a string.")
+                raise ValueError("AddObjectBlock operation expects 'description' to be a string.")
         
         fragment = arguments.get("fragment")
         if fragment:
             fragment = Operation.execute_json(self.settings, fragment, self.context)
             if not isinstance(fragment, str):
-                raise ValueError("CreateXHTMLBlock operation expects 'fragment' to be a string.")
+                raise ValueError("AddObjectBlock operation expects 'fragment' to be a string.")
         
-        logging.info(f"Creating XHTML block for document <%s>", url)
+        mode = arguments.get("mode")
+        if mode:
+            mode = Operation.execute_json(self.settings, mode, self.context)
+            if not isinstance(mode, str):
+                raise ValueError("AddObjectBlock operation expects 'mode' to be a string.")
+        
+        logging.info(f"Creating object block for document <%s> with value <%s>", url, value)
         
         # Step 1: Get current document to find next sequence number
         get_op = GET(settings=self.settings, context=self.context)
         doc = get_op.execute({
             "url": url
         })
-        logging.info(f"DOC: %s", doc)
 
-        # Step 2: Extract sequence numbers from rdf:_N properties in JSON-LD @graph
+        # Step 2: Extract sequence numbers from rdf:_N properties in JSON-LD list
         sequence_numbers = []
         if isinstance(doc, list):
             for resource in doc:
@@ -140,39 +153,44 @@ class AddXHTMLBlock(POST):
         if fragment:
             block_id = f"{url}#{fragment}"
         else:
-            block_id = "_:xhtml-block"
+            block_id = "_:object-block"
         
-        # Step 5: Build JSON-LD structure for the XHTML block
+        # Step 5: Build JSON-LD structure for the object block
         data = {
             "@context": {
                 "ldh": "https://w3id.org/atomgraph/linkeddatahub#",
                 "dct": "http://purl.org/dc/terms/",
-                "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+                "ac": "https://w3id.org/atomgraph/client#"
             },
             "@id": url
         }
         
-        # Add the XHTML block resource
+        # Add the object block resource
         block = {
             "@id": block_id,
-            "@type": "ldh:XHTML",
+            "@type": "ldh:Object",
             "rdf:value": {
-                "@type": "rdf:XMLLiteral",
-                "@value": value
+                "@id": value
             }
         }
         
-        # Add optional properties to XHTML block
+        # Add optional properties to object block
         if title:
             block["dct:title"] = title
         
         if description:
             block["dct:description"] = description
+            
+        if mode:
+            block["ac:mode"] = {
+                "@id": mode
+            }
         
-        # Add XHTML block to the data structure
+        # Add object block to the data structure
         data[sequence_property] = block
         
-        logging.info(f"Posting XHTML block with JSON-LD data: {data}")
+        logging.info(f"Posting object block with JSON-LD data: {data}")
         
         # Step 6: POST the JSON-LD content to the target URI
         return super().execute({
@@ -188,14 +206,15 @@ class AddXHTMLBlock(POST):
         try:
             result = self.execute(arguments)
             url = Operation.execute_json(self.settings, arguments["url"], self.context)
+            value = Operation.execute_json(self.settings, arguments["value"], self.context)
             title = arguments.get("title")
             title_text = f"Title: {title}" if title else "No title"
             return [types.TextContent(
                 type="text", 
-                text=f"Created XHTML Block in document: {url}\n{title_text}\nResult: {result}"
+                text=f"Created Object Block in document: {url}\nTarget resource: {value}\n{title_text}\nResult: {result}"
             )]
         except Exception as e:
             return [types.TextContent(
                 type="text", 
-                text=f"Error creating XHTML block: {str(e)}"
+                text=f"Error creating object block: {str(e)}"
             )]
