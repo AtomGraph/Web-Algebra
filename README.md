@@ -1,15 +1,28 @@
-# LinkedDataHub DSL operations
+# WebAlgebra
 
-# Architecture
+A composable RDF operations system that translates natural language instructions into JSON-formatted domain-specific language operations for loading, querying, and writing RDF Linked Data.
 
-* GPT [system prompt](prompts/system.md)
-  * operation definitions
-  * JSON format specification ([JSON examples](examples))
-* [`Operation` interface](src/operation.py)
-  * JSON intepreter
-* [Operation implementations](src/operations)
+## Overview
 
-ChatGPT thread: https://chatgpt.com/c/679abd11-cc00-8009-8039-cecc0dd526e7
+This system implements generic operations for RDF Linked Data and SPARQL management, as well as some LinkedDataHub-specific operations. Operations can be consumed in two ways:
+
+1. **Executable JSON format**: Operations are composed into JSON structures and executed by the provided execution engine
+2. **Model Context Protocol (MCP)**: Operations are exposed as tools for AI agents to use interactively
+
+## Architecture
+
+The system is built around the `Operation` abstract base class that provides:
+- **Registry System**: Auto-discovery of operations from `src/web_algebra/operations/`
+- **JSON DSL**: Operations use `@op` key with `args` for parameters, supporting nested operation calls
+- **Execution Engine**: Both standalone execution and MCP server integration
+- **Context System**: ForEach operations set row context for inner operations
+
+### Key Components
+
+- **[System Prompt](prompts/system.md)**: Complete operation definitions and JSON format specification
+- **[Operation Interface](src/web_algebra/operation.py)**: Base class and JSON interpreter
+- **[Operation Implementations](src/web_algebra/operations/)**: Directory containing all available operations
+- **[JSON Examples](examples/)**: Sample operation compositions
 
 ## Usage
 
@@ -29,7 +42,7 @@ See [JSON examples](examples).
 ```bash
 poetry run python src/web_algebra/main.py --from-json ./examples/denmark-cities.json \
   --cert_pem_path ../LinkedDataHub/ssl/owner/cert.pem \
-  --cert_password Marchius
+  --cert_password **********
 ```
 3. Enter instruction (see [examples](examples.md))
 
