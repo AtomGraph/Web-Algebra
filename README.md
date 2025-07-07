@@ -26,6 +26,13 @@ The system is built around the `Operation` abstract base class that provides:
 
 ## Usage
 
+### Pre-requisites
+
+1. [Install Poetry](https://python-poetry.org/docs/#installation)
+2. ```bash
+   poetry install
+   ```
+
 ### Standalone
 
 ```bash
@@ -56,4 +63,31 @@ poetry run mcp dev src/web_algebra/__main__.py
 HTTP transport:
 ```bash
 poetry run uvicorn web_algebra.server:server --reload
+```
+
+#### Claude Desktop tool config
+
+Add Web Algebra entry to the `mcpServer` configuration your `claude_desktop_config.json` file:
+```json
+{
+    "mcpServers": {
+        "Web Algebra": {
+            "command": "uv",
+            "args": [
+                "run",
+                "--with",
+                "mcp[cli]",
+                "--with",
+                "rdflib",
+                "--with",
+                "openai",
+                "python",
+                "/Users/Martynas.Jusevicius/WebRoot/Web-Algebra/src/web_algebra/__main__.py"
+            ],
+            "env": {
+                "PYTHONPATH": "/Users/Martynas.Jusevicius/WebRoot/Web-Algebra/src"
+            }
+        }
+    }
+}
 ```

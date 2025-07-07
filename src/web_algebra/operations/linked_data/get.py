@@ -6,7 +6,6 @@ from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
 from mcp import types
-from pydantic import ConfigDict
 from web_algebra.operation import Operation
 from web_algebra.client import LinkedDataClient
 
@@ -14,8 +13,6 @@ class GET(Operation):
     """
     Retrieves RDF data from a named graph using HTTP GET. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Returns the RDF graph describing the resource at that URL.
     """
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def model_post_init(self, __context: Any) -> None:
         self.client = LinkedDataClient(

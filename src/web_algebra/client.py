@@ -110,6 +110,22 @@ class LinkedDataClient:
 
         return self.opener.open(request)
 
+    def patch(self, url: str, sparql_update: str) -> HTTPResponse:
+        """
+        Sends a SPARQL UPDATE query to the given URL using HTTP PATCH.
+
+        :param url: The URL to send the SPARQL UPDATE to.
+        :param sparql_update: The SPARQL UPDATE query string.
+        :return: The HTTPResponse object.
+        """
+        headers = {
+            "Content-Type": "application/sparql-update",
+            "Accept": "application/n-triples"
+        }
+        request = urllib.request.Request(url, data=sparql_update.encode("utf-8"), headers=headers, method="PATCH")
+
+        return self.opener.open(request)
+
 class SPARQLClient:
     def __init__(
         self,
