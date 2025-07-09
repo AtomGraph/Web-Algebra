@@ -47,7 +47,7 @@ class LDHList(Operation):
             "properties": {
                 "url": {"type": "string", "description": "The URL of the document to list children for."},
                 "endpoint": {"type": "string", "description": "The SPARQL endpoint URL to query."},
-                "base": {"type": "string", "description": "Base URL for constructing the SPARQL endpoint."}
+                "base": {"type": "string", "description": "Base URL for constructing the SPARQL endpoint. Needs to end with a slash."}
             },
             "required": ["url"],
             "oneOf": [
@@ -74,6 +74,8 @@ class LDHList(Operation):
                 raise ValueError("LDHList operation expects 'endpoint' to be a string.")
         elif "base" in arguments:
             base: str = Operation.execute_json(self.settings, arguments["base"], self.context)
+            if not base.endswith("/"):
+                base += "/"
             if not isinstance(base, str):
                 raise ValueError("LDHList operation expects 'base' to be a string.")
             endpoint = base + "sparql"
