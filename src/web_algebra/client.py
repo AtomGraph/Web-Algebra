@@ -28,9 +28,11 @@ class LinkedDataClient:
         :param cert_password: Password for the encrypted private key in the .pem file.
         :param verify_ssl: Whether to verify the server's SSL certificate. Default is True.
         """
+        # Always create SSL context
+        self.ssl_context = ssl.create_default_context()
+        
+        # Load client certificate if provided
         if cert_pem_path and cert_password:
-            self.ssl_context = ssl.create_default_context()
-            # Load client certificate
             self.ssl_context.load_cert_chain(certfile=cert_pem_path, password=cert_password)
 
         # Configure SSL verification
@@ -140,11 +142,14 @@ class SPARQLClient:
         :param cert_password: Password for the PEM file
         :param verify_ssl: Whether to verify server SSL certificate
         """
+        # Always create SSL context
         self.ssl_context = ssl.create_default_context()
 
+        # Load client certificate if provided
         if cert_pem_path and cert_password:
             self.ssl_context.load_cert_chain(certfile=cert_pem_path, password=cert_password)
 
+        # Configure SSL verification
         if not verify_ssl:
             self.ssl_context.check_hostname = False
             self.ssl_context.verify_mode = ssl.CERT_NONE

@@ -21,8 +21,8 @@ logging.basicConfig(
 )
 
 class LinkedDataHubSettings(BaseSettings):
-    cert_pem_path: str
-    cert_password: str
+    cert_pem_path: Optional[str] = None
+    cert_password: Optional[str] = None
     openai_client: Optional[OpenAI] = None
     openai_model: str = "gpt-4o-mini"
 

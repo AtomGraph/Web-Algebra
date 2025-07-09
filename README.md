@@ -28,15 +28,17 @@ The system is built around the `Operation` abstract base class that provides:
 
 ### Pre-requisites
 
-1. [Install Poetry](https://python-poetry.org/docs/#installation)
+1. [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 2. ```bash
-   poetry install
+   uv venv
+  uv sync
+  uv pip install .
    ```
 
 ### Standalone
 
 ```bash
-poetry run python src/web_algebra/main.py --from-json ./examples/example.json
+uv run python src/web_algebra/main.py --from-json ./examples/substitute-test.json
 ```
 
 See [JSON examples](examples).
@@ -47,33 +49,66 @@ See [JSON examples](examples).
 2. Execute `src/web_algebra/main.py`, it expects the path to your LDH's owner certificate and its password as arguments. For example:
 
 ```bash
-poetry run python src/web_algebra/main.py --from-json ./examples/denmark-cities.json \
+uv run python src/web_algebra/main.py --from-json ./examples/united-kingdom-cities.json \
   --cert_pem_path ../LinkedDataHub/ssl/owner/cert.pem \
   --cert_password **********
 ```
 3. Enter instruction (see [examples](examples.md))
 
+_Here and throughout this guide, the client certificate/password arguments are only required for authentication with LinkedDataHub. You don't need them if you're not using LinkedDataHub with Web Algebra._
+
 ### As MCP server
 
-stdio transport:
+#### stdio transport
+
 ```bash
-poetry run mcp dev src/web_algebra/__main__.py 
+uv run python -m web_algebra
 ```
 
-HTTP transport:
+#### Streamable HTTP transport
+
 ```bash
-poetry run uvicorn web_algebra.server:server --reload
+uv run uvicorn web_algebra.server:app --reload
+```
+or with LinkedDataHub certificate credentials (change the path and password to yours):
+
+```bash
+CERT_PEM_PATH="/Users/Martynas.Jusevicius/WebRoot/LinkedDataHub/ssl/owner/cert.pem" CERT_PASSWORD="********" uv run uvicorn web_algebra.server:app --reload
 ```
 
-#### Claude Desktop tool config
+#### [MCP Inspector](https://github.com/modelcontextprotocol/inspector) configf
 
-Add Web Algebra entry to the `mcpServer` configuration your `claude_desktop_config.json` file:
+You can the inspector like this:
+
+```bash
+npx @modelcontextprotocol/inspector
+```
+and then open on the URL printed in its console output, for example:
+```
+http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=b31e4b3d852b5a2445f45032c484e54e319bf16359585858cf88fe9a90816744
+```
+
+The `MCP_PROXY_AUTH_TOKEN` is required. If the link does not appear, you need to copy the session token from the console and paste it into inspector's Proxy Session Token config.
+
+Web Algebra's settings:
+<dd>
+    <dt>Transport Type</dt>
+    <dd>Streamable HTTP</dd>
+    <dt>URL</dt>
+    <dd>http://localhost:8000/mcp</dd>
+</dd>
+
+#### [Claude Desktop](https://claude.ai/download) tool config
+
+Add Web Algebra entry (that uses stdio transport) to the `mcpServer` configuration your `claude_desktop_config.json` file:
 ```json
 {
     "mcpServers": {
         "Web Algebra": {
             "command": "uv",
             "args": [
+                "--directory",
+                "/Users/Martynas.Jusevicius/WebRoot/Web-Algebra/src",
                 "run",
                 "--with",
                 "mcp[cli]",
@@ -82,12 +117,19 @@ Add Web Algebra entry to the `mcpServer` configuration your `claude_desktop_conf
                 "--with",
                 "openai",
                 "python",
-                "/Users/Martynas.Jusevicius/WebRoot/Web-Algebra/src/web_algebra/__main__.py"
+                "-m",
+                "web_algebra"
             ],
             "env": {
-                "PYTHONPATH": "/Users/Martynas.Jusevicius/WebRoot/Web-Algebra/src"
+                "CERT_PEM_PATH": "/Users/Martynas.Jusevicius/WebRoot/LinkedDataHub/ssl/owner/cert.pem",
+                "CERT_PASSWORD": "********"
             }
         }
     }
 }
 ```
+_Leave the command as it is. Those `uv run --with` arguments are important, otherwise 3rd party packages cannot be found._
+
+On my Mac, the path to `uv` has to be absolute, otherwise it doesn't work in Claude Desktop 🤷‍♂️.
+
+`CERT_PEM_PATH` and `CERT_PASSWORD` env values are optional.
