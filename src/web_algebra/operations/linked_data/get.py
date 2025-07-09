@@ -54,6 +54,7 @@ class GET(Operation):
         logging.info("Returning RDF data as a Python dict of JSON-LD (%s triple(s))", len(graph))
         jsonld_str = graph.serialize(format="json-ld", encoding="utf-8")
         jsonld_data = json.loads(jsonld_str)
+
         return jsonld_data
 
     def run(
@@ -62,19 +63,7 @@ class GET(Operation):
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> list[types.TextContent]:
         json_ld_data = self.execute(arguments)
-
-        # if not isinstance(json_ld_data, dict):
-        #     raise ValueError("Expected a JSON-LD dict from execute()")
-
-        json_str = json.dumps(json_ld_data)
-
-        graph = Graph()
-        try:
-            graph.parse(data=json_str, format="json-ld")
-        except Exception as e:
-            logging.error("Failed to parse JSON-LD data: %s", e)
-            raise
-
-        turtle_str = graph.serialize(format="turtle")
-
-        return [types.TextContent(type="text", text=turtle_str)]
+        jsonld_str = json.dumps(json_ld_data)
+        
+        logging.info("Returning JSON-LD data as text content.")
+        return [types.TextContent(type="text", text=jsonld_str)]

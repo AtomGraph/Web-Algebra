@@ -9,6 +9,13 @@ from rdflib.plugins.sparql.parser import parseQuery
 
 import urllib.request
 
+MEDIA_TYPES = {
+    "application/n-triples": "nt",
+    "text/turtle": "turtle",
+    "application/ld+json": "json-ld",
+    "application/rdf+xml": "xml",
+}
+
 class HTTPRedirectHandler308(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         """Handle 308 Permanent Redirect by preserving method and body"""
@@ -50,8 +57,9 @@ class LinkedDataClient:
         :param url: The URL to fetch RDF data from.
         :return: An RDFLib Graph object containing the parsed RDF data.
         """
-        # Set the Accept header to request N-Triples format
-        headers = {"Accept": "application/n-triples"}
+        # Set the Accept header
+        accept_header = ", ".join(MEDIA_TYPES.keys())
+        headers = {"Accept": accept_header}
         request = urllib.request.Request(url, headers=headers)
 
         # Perform the HTTP request
@@ -59,10 +67,14 @@ class LinkedDataClient:
 
         # Read and decode the response data
         data = response.read().decode("utf-8")
+        content_type = response.headers.get("Content-Type").split(";")[0]
+        rdf_format = MEDIA_TYPES.get(content_type)
+        if not rdf_format:
+            raise ValueError(f"Unsupported Content-Type: {content_type}. Supported types are: {', '.join(MEDIA_TYPES.keys())}")
 
-        # Parse the N-Triples data into an RDFLib Graph
+        # Parse the RDF data into an RDFLib Graph
         g = Graph()
-        g.parse(data=data, format="nt")
+        g.parse(data=data, format=rdf_format, publicID=url)
         return g
 
     def post(self, url: str, graph: Graph) -> HTTPResponse:
