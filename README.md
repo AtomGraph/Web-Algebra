@@ -32,7 +32,6 @@ The system is built around the `Operation` abstract base class that provides:
 2. ```bash
    uv venv
    uv sync
-   uv pip install .
    ```
 
 ### Standalone
@@ -95,7 +94,7 @@ Web Algebra's settings:
     <dt>Transport Type</dt>
     <dd>Streamable HTTP</dd>
     <dt>URL</dt>
-    <dd>http://localhost:8000/mcp</dd>
+    <dd>http://127.0.0.1:8000/mcp</dd>
 </dd>
 
 #### [Claude Desktop](https://claude.ai/download) tool config
