@@ -36,15 +36,30 @@ The system is built around the `Operation` abstract base class that provides:
 
 ### Standalone
 
+#### Natural language instruction
+
+```bash
+uv run python src/web_algebra/main.py
+```
+
+Then enter instruction, for example:
+> Select random 10 UK cities from DBpedia
+
+See [more examples](examples.md)
+
+_Currently requires OpenAI API access. `OPENAI_API_KEY` env value has to be set._
+
+#### Execute JSON
+
 ```bash
 uv run python src/web_algebra/main.py --from-json ./examples/substitute-test.json
 ```
 
 See [JSON examples](examples).
 
-#### With LinkedDataHub
+#### With [LinkedDataHub](https://atomgraph.github.io/LinkedDataHub/)
 
-1. Run LinkedDataHub (ideally v5 from the `develop` branch)
+1. Run LinkedDataHub v5
 2. Execute `src/web_algebra/main.py`, it expects the path to your LDH's owner certificate and its password as arguments. For example:
 
 ```bash
@@ -52,7 +67,6 @@ uv run python src/web_algebra/main.py --from-json ./examples/united-kingdom-citi
   --cert_pem_path ../LinkedDataHub/ssl/owner/cert.pem \
   --cert_password **********
 ```
-3. Enter instruction (see [examples](examples.md))
 
 _Here and throughout this guide, the client certificate/password arguments are only required for authentication with LinkedDataHub. You don't need them if you're not using LinkedDataHub with Web Algebra._
 
