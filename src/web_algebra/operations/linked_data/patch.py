@@ -9,7 +9,11 @@ from web_algebra.client import LinkedDataClient
 
 class PATCH(Operation):
     """
-    Updates RDF data in a named graph using HTTP PATCH with SPARQL UPDATE. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Updates the RDF graph at that URL.
+    Updates RDF data in a named graph using HTTP PATCH with SPARQL Update.
+    The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
+    Updates the RDF graph at that URL using the SPARQL update payload provided in the `update` argument.
+    Returns True if the operation was successful, False otherwise.
+    Note: This operation does not return the updated graph, it only confirms the success of the operation.
     """
 
     def model_post_init(self, __context: Any) -> None:
@@ -21,7 +25,13 @@ class PATCH(Operation):
 
     @classmethod
     def description(cls) -> str:
-        return "Updates RDF data in a named graph using HTTP PATCH with SPARQL UPDATE. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Updates the RDF graph at that URL."
+        return """
+        Updates RDF data in a named graph using HTTP PATCH with SPARQL Update.
+        The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
+        Updates the RDF graph at that URL using the SPARQL update payload provided in the `update` argument.
+        Returns True if the operation was successful, False otherwise.
+        Note: This operation does not return the updated graph, it only confirms the success of the operation.
+        """
     
     @classmethod
     def inputSchema(cls) -> dict:
@@ -32,12 +42,12 @@ class PATCH(Operation):
                     "type": "string",
                     "description": "The URL to send the SPARQL UPDATE to. This should be a valid URL."
                 },
-                "query": {
+                "update": {
                     "type": "string",
-                    "description": "The SPARQL UPDATE query string to execute."
+                    "description": "The SPARQL update string to execute."
                 }
             },
-            "required": ["url", "query"]
+            "required": ["url", "update"]
         }
     
     def execute(self, arguments: dict[str, Any]) -> bool:
@@ -45,14 +55,14 @@ class PATCH(Operation):
         Updates RDF data at the specified URL using the HTTP PATCH method with SPARQL UPDATE.
         :param arguments: A dictionary containing:
             - `url`: The URL to send the SPARQL UPDATE to.
-            - `query`: The SPARQL UPDATE query string to execute.
+            - `update`: The SPARQL update string to execute.
         :return: True if successful, otherwise raises an error.
         """
         url: str = Operation.execute_json(self.settings, arguments["url"], self.context)
-        query: str = Operation.execute_json(self.settings, arguments["query"], self.context)
-        logging.info(f"Executing PATCH operation with URL: %s and SPARQL UPDATE: %s", url, query)
+        update: str = Operation.execute_json(self.settings, arguments["update"], self.context)
+        logging.info(f"Executing PATCH operation with URL: %s and SPARQL update: %s", url, update)
 
-        response = self.client.patch(url, query)  # ✅ Send SPARQL UPDATE query
+        response = self.client.patch(url, update)  # ✅ Send SPARQL update
         logging.info("PATCH operation status: %s", response.status)
 
         return response.status < 299

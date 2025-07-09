@@ -12,7 +12,13 @@ from web_algebra.client import LinkedDataClient
 
 class PUT(Operation):
     """
-    Replaces RDF data in a named graph using HTTP PUT. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Completely replaces the RDF graph at that URL.
+    Replaces RDF data in a named graph using HTTP PUT.
+    The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
+    Completely replaces the RDF graph (provided as JSON-LD payload) at that URL.
+    Returns 2 results:
+    - True if the operation was successful, otherwise False.
+    - The URL of the created document, which may differ from the original URL due to redirects.
+    Note: This operation does not return the updated graph, it only confirms the success of the operation.
     """
 
     def model_post_init(self, __context: Any) -> None:
@@ -24,7 +30,15 @@ class PUT(Operation):
 
     @classmethod
     def description(cls) -> str:
-        return "Replaces RDF data in a named graph using HTTP PUT. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Completely replaces the RDF graph at that URL."
+        return """Replaces RDF data in a named graph using HTTP PUT.
+        The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
+        Completely replaces the RDF graph (provided as JSON-LD payload) at that URL.
+        Returns 2 results:
+        - True if the operation was successful, otherwise False.
+        - The URL of the created document, which may differ from the original URL due to redirects.
+        Note: This operation does not return the updated graph, it only confirms the success of the operation.
+        """
+
     
     @classmethod
     def inputSchema(cls) -> dict:
@@ -74,16 +88,8 @@ class PUT(Operation):
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> Any:
-        try:
-            success, final_url = self.execute(arguments)
-            status_msg = "✅ PUT operation successful" if success else "⚠️ PUT operation completed with warnings"
-            return [
-                types.TextContent(type="text", text=status_msg),
-                types.TextContent(type="text", text=f"Final URL: {final_url}")
-            ]
-        except HTTPError as e:
-            error_msg = f"HTTP Error {e.code}: {e.reason} when accessing {e.url}"
-            return [
-                types.TextContent(type="text", text=error_msg)
-            ]
-
+        success, final_url = self.execute(arguments)
+        return [
+            types.TextContent(type="text", text=str(success)),
+            types.TextContent(type="text", text=str(final_url))
+        ]

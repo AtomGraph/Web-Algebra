@@ -11,7 +11,11 @@ from web_algebra.client import LinkedDataClient
 
 class POST(Operation):
     """
-    Creates or appends RDF data to a named graph using HTTP POST. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Creates or adds to the RDF graph at that URL.
+    Creates or appends RDF data to a named graph using HTTP POST.
+    The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
+    Creates or adds to the RDF graph (provided as JSON-LD payload) at that URL.
+    Returns True if the operation was successful, False otherwise.
+    Note: This operation does not return the updated graph, it only confirms the success of the operation.
     """
 
     def model_post_init(self, __context: Any) -> None:
@@ -23,7 +27,12 @@ class POST(Operation):
 
     @classmethod
     def description(cls) -> str:
-        return "Creates or appends RDF data to a named graph using HTTP POST. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Creates or adds to the RDF graph at that URL."
+        return """Creates or appends RDF data to a named graph using HTTP POST.
+        The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
+        Creates or adds to the RDF graph (provided as JSON-LD payload) at that URL.
+        Returns True if the operation was successful, False otherwise.
+        Note: This operation does not return the updated graph, it only confirms the success of the operation.
+        """
     
     @classmethod
     def inputSchema(cls) -> dict:
