@@ -1,12 +1,13 @@
 from typing import Any
 import logging
+import json
 from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
 from mcp import types
 from web_algebra.operation import Operation
 from web_algebra.operations.sparql.substitute import Substitute
-from web_algebra.operations.sparql.select import SELECT, sparql_json_to_csv
+from web_algebra.operations.sparql.select import SELECT
 
 class LDHList(Operation):
 
@@ -38,7 +39,7 @@ class LDHList(Operation):
     
     @classmethod
     def description(cls) -> str:
-        return "Returns a list of children documents for the given URL."
+        return "Returns a list of children documents for the given URL as SPARQL results JSON." \
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -103,4 +104,8 @@ class LDHList(Operation):
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> Any:
-        return [types.TextContent(type="text", text=sparql_json_to_csv(self.execute(arguments)))]
+        json_data = self.execute(arguments)
+        json_str = json.dumps(json_data)
+        
+        logging.info("Returning SPARQL Results JSON data as text content.")
+        return [types.TextContent(type="text", text=json_str)]

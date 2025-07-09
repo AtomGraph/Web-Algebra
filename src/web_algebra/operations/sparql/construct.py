@@ -1,5 +1,6 @@
 import logging
 from typing import Any
+import json
 from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
@@ -9,7 +10,7 @@ from web_algebra.client import SPARQLClient
 
 class CONSTRUCT(Operation):
     """
-    Executes a SPARQL CONSTRUCT query against a specified endpoint and returns a Python dict with the JSON-LD response.
+    Executes a SPARQL CONSTRUCT query against a specified endpoint and returns a JSON-LD response.
     """
 
     def model_post_init(self, __context: Any) -> None:
@@ -54,4 +55,8 @@ class CONSTRUCT(Operation):
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> Any:
-        return [types.TextContent(type="text", text=str(self.execute(arguments)))]
+        json_ld_data = self.execute(arguments)
+        jsonld_str = json.dumps(json_ld_data)
+        
+        logging.info("Returning JSON-LD data as text content.")
+        return [types.TextContent(type="text", text=jsonld_str)]

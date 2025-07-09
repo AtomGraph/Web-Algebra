@@ -11,7 +11,9 @@ from web_algebra.client import LinkedDataClient
 
 class GET(Operation):
     """
-    Retrieves RDF data from a named graph using HTTP GET. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Returns the RDF graph describing the resource at that URL.
+    Retrieves RDF data from a named graph using HTTP GET.
+    The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
+    Returns the RDF graph (describing the resource at that URL) as JSON-LD.
     """
 
     def model_post_init(self, __context: Any) -> None:

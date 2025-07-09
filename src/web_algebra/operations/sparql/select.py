@@ -1,5 +1,6 @@
 from typing import Any
 import logging
+import json
 from mcp.server.fastmcp.server import Context
 from mcp.server.session import ServerSessionT
 from mcp.shared.context import LifespanContextT
@@ -21,7 +22,7 @@ class SELECT(Operation):
 
     @classmethod
     def description(cls) -> str:
-        return "Executes a SPARQL SELECT query against a specified endpoint and returns results as a list of dictionaries."
+        return "Executes a SPARQL SELECT query against a specified endpoint and returns results as a list of dictionaries (SPARQL results JSON)."
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -62,22 +63,8 @@ class SELECT(Operation):
         arguments: dict[str, Any],
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> Any:
-        return [types.TextContent(type="text", text=sparql_json_to_csv(self.execute(arguments)))]
-
-import csv
-import io
-
-def sparql_json_to_csv(result_json: dict) -> str:
-    vars = result_json.get("head", {}).get("vars", [])
-    rows = result_json.get("results", {}).get("bindings", [])
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(vars)
-
-    for row in rows:
-        writer.writerow([
-            row.get(var, {}).get("value", "") for var in vars
-        ])
-
-    return output.getvalue()
+        json_data = self.execute(arguments)
+        json_str = json.dumps(json_data)
+        
+        logging.info("Returning SPARQL Results JSON data as text content.")
+        return [types.TextContent(type="text", text=json_str)]

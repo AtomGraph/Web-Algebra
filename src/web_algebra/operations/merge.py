@@ -10,12 +10,12 @@ from web_algebra.operation import Operation
 
 class Merge(Operation):
     """
-    Merges a list of RDF graphs as JSON-LD dicts into a single RDF graph as JSON-LD dict.
+    Merges a list of RDF graphs as JSON-LD into a single RDF graph as JSON-LD.
     """
 
     @classmethod
     def description(cls) -> str:
-        return "Merges a list of RDF graphs as JSON-LD dicts into a single RDF graph as JSON-LD dict."
+        return "Merges a list of RDF graphs as JSON-LD dicts into a single RDF graph as JSON-LD."
     
     @classmethod
     def inputSchema(cls) -> dict:
@@ -65,10 +65,6 @@ class Merge(Operation):
         context: Context[ServerSessionT, LifespanContextT] | None = None,
     ) -> list[types.TextContent]:
         json_ld_data = self.execute(arguments)
-
-        if not isinstance(json_ld_data, dict):
-            raise ValueError("Expected a JSON-LD dict from execute()")
-
         json_str = json.dumps(json_ld_data)
 
         graph = Graph()
@@ -78,6 +74,7 @@ class Merge(Operation):
             logging.error("Failed to parse JSON-LD data: %s", e)
             raise
 
-        turtle_str = graph.serialize(format="turtle")
+        jsonld_str = graph.serialize(format="json-ld", encoding="utf-8")
+        logging.info("Returning JSON-LD data as text content.")
 
-        return [types.TextContent(type="text", text=turtle_str)]
+        return [types.TextContent(type="text", text=jsonld_str)]
