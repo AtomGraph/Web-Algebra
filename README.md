@@ -31,8 +31,8 @@ The system is built around the `Operation` abstract base class that provides:
 1. [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 2. ```bash
    uv venv
-  uv sync
-  uv pip install .
+   uv sync
+   uv pip install .
    ```
 
 ### Standalone
