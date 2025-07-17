@@ -74,7 +74,8 @@ class PUT(Operation):
 
         logging.info("Parsing data as JSON-LD...")
         graph = Graph()
-        graph.parse(data=json_str, format="json-ld")  # ✅ Convert string into RDF Graph
+        # ✅ Pass the request URL as base URI to resolve relative URIs
+        graph.parse(data=json_str, format="json-ld", publicID=url)
 
         # ✅ Send PUT request with parsed RDF Graph
         response = self.client.put(url, graph)  # ✅ Send RDF Graph

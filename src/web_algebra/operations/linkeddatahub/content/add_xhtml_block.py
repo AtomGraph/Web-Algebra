@@ -1,9 +1,5 @@
 from typing import Any
 import logging
-from mcp.server.fastmcp.server import Context
-from mcp.server.session import ServerSessionT
-from mcp.shared.context import LifespanContextT
-from mcp import types
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.post import POST
 from web_algebra.operations.linked_data.get import GET
@@ -34,7 +30,11 @@ class AddXHTMLBlock(POST):
         - Fetches the current document to find the next sequence number (rdf:_1, rdf:_2, etc.)
         - Creates an ldh:XHTML resource with rdf:value containing the XML literal
         - Posts the new XHTML block to the target document
-        - Supports optional title, description, and fragment identifier"""
+        - Supports optional title, description, and fragment identifier
+        
+        Returns True if the operation was successful, False otherwise.
+        Note: This operation does not return the updated graph, it only confirms the success of the operation.
+        """
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -179,23 +179,3 @@ class AddXHTMLBlock(POST):
             "url": url,
             "data": data
         })
-
-    def run(
-        self,
-        arguments: dict[str, Any],
-        context: Context[ServerSessionT, LifespanContextT] | None = None,
-    ) -> Any:
-        try:
-            result = self.execute(arguments)
-            url = Operation.execute_json(self.settings, arguments["url"], self.context)
-            title = arguments.get("title")
-            title_text = f"Title: {title}" if title else "No title"
-            return [types.TextContent(
-                type="text", 
-                text=f"Created XHTML Block in document: {url}\n{title_text}\nResult: {result}"
-            )]
-        except Exception as e:
-            return [types.TextContent(
-                type="text", 
-                text=f"Error creating XHTML block: {str(e)}"
-            )]

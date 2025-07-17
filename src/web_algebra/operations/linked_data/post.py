@@ -61,13 +61,14 @@ class POST(Operation):
         """
         url: str = Operation.execute_json(self.settings, arguments["url"], self.context)
         data: dict = Operation.execute_json(self.settings, arguments["data"], self.context)
-        logging.info(f"Executing PUT operation with URL: %s and data: %s", url, data)
+        logging.info(f"Executing POST operation with URL: %s and data: %s", url, data)
 
         json_str = json.dumps(data)
 
         logging.info("Parsing data as JSON-LD...")
         graph = Graph()
-        graph.parse(data=json_str, format="json-ld")  # ✅ Convert string into RDF Graph
+        # ✅ Pass the request URL as base URI to resolve relative URIs
+        graph.parse(data=json_str, format="json-ld", publicID=url)
 
         response = self.client.post(url, graph)  # ✅ Send RDF Graph
         logging.info("POST operation status: %s", response.status)

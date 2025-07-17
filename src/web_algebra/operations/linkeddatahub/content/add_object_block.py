@@ -1,9 +1,5 @@
 from typing import Any
 import logging
-from mcp.server.fastmcp.server import Context
-from mcp.server.session import ServerSessionT
-from mcp.shared.context import LifespanContextT
-from mcp import types
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.post import POST
 from web_algebra.operations.linked_data.get import GET
@@ -32,7 +28,11 @@ class AddObjectBlock(POST):
         - Fetches the current document to find the next sequence number (rdf:_1, rdf:_2, etc.)
         - Creates an ldh:Object resource with rdf:value pointing to the target resource URI
         - Posts the new object block to the target document
-        - Supports optional title, description, fragment identifier, and display mode"""
+        - Supports optional title, description, fragment identifier, and display mode
+        
+        Returns True if the operation was successful, False otherwise.
+        Note: This operation does not return the updated graph, it only confirms the success of the operation.
+        """
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -199,24 +199,3 @@ class AddObjectBlock(POST):
             "url": url,
             "data": data
         })
-
-    def run(
-        self,
-        arguments: dict[str, Any],
-        context: Context[ServerSessionT, LifespanContextT] | None = None,
-    ) -> Any:
-        try:
-            result = self.execute(arguments)
-            url = Operation.execute_json(self.settings, arguments["url"], self.context)
-            value = Operation.execute_json(self.settings, arguments["value"], self.context)
-            title = arguments.get("title")
-            title_text = f"Title: {title}" if title else "No title"
-            return [types.TextContent(
-                type="text", 
-                text=f"Created Object Block in document: {url}\nTarget resource: {value}\n{title_text}\nResult: {result}"
-            )]
-        except Exception as e:
-            return [types.TextContent(
-                type="text", 
-                text=f"Error creating object block: {str(e)}"
-            )]
