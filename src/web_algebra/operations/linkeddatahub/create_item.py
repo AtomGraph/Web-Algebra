@@ -19,13 +19,12 @@ class CreateItem(PUT):
         return """Creates a LinkedDataHub Item document with proper structure.
         
         IMPORTANT CONSTRAINTS:
+        - The document URL needs to end with a trailing slash (/)
         - Documents can only be created at URLs relative to existing container's URL
         - Example: if https://localhost/blog/ exists, you cannot create https://localhost/blog/posts/something/
           before creating https://localhost/blog/posts/
         - LinkedDataHub automatically manages timestamps (dct:created, dct:modified)
-        - LinkedDataHub automatically manages parent-child relationships (sioc:has_parent) based on URI hierarchy
-        
-        Use this tool to create the item hierarchy from root down to your target location."""
+        - LinkedDataHub automatically manages parent-child relationships (sioc:has_parent) based on URI hierarchy"""
 
     @classmethod
     def inputSchema(cls) -> dict:

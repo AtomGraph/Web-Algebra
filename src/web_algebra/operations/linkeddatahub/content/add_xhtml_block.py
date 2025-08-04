@@ -13,7 +13,8 @@ class AddXHTMLBlock(POST):
     @classmethod
     def description(cls) -> str:
         return """Appends an XHTML block to a LinkedDataHub document using sequence properties.
-        
+        Only XHTML blocks and object blocks are shown in the content mode. Other resources can still be added to the document, but they will not be displayed in the content mode.
+
         IMPORTANT: The value parameter must be canonical XML literal - well-formed XHTML content
         that will be stored as rdf:XMLLiteral datatype.
         The top-level XHTML element must be <div xmlns="http://www.w3.org/1999/xhtml"></div>.

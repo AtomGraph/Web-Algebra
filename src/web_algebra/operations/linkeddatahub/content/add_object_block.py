@@ -12,7 +12,8 @@ class AddObjectBlock(POST):
     
     @classmethod
     def description(cls) -> str:
-        return """Appends an object block to a LinkedDataHub document using sequence properties.
+        return """Appends an object block to a LinkedDataHub document content mode using sequence properties.
+        Only XHTML blocks and object blocks are shown in the content mode. Other resources can still be added to the document, but they will not be displayed in the content mode.
         
         Object blocks reference external resources via URI and can have different display modes.
         Only RDF Linked Data objects can be rendered by using display modes, so if you think you're using an RDF URI value, make sure it returns a valid RDF resource (e.g. use the GET operation to verify).

@@ -9,6 +9,12 @@ This system implements generic operations for RDF Linked Data and SPARQL managem
 1. **Executable JSON format**: Operations are composed into JSON structures and executed by the provided execution engine
 2. **Model Context Protocol (MCP)**: Operations are exposed as tools for AI agents to use interactively
 
+## Demo
+
+[WebAlgebra Demo Tweet](https://x.com/namedgraph/status/1940072384046014902)
+
+*See WebAlgebra in action - translating natural language into RDF operations.*
+
 ## Architecture
 
 The system is built around the `Operation` abstract base class that provides:
@@ -23,6 +29,28 @@ The system is built around the `Operation` abstract base class that provides:
 - **[Operation Interface](src/web_algebra/operation.py)**: Base class and JSON interpreter
 - **[Operation Implementations](src/web_algebra/operations/)**: Directory containing all available operations
 - **[JSON Examples](examples/)**: Sample operation compositions
+
+### Operations
+
+The operations cover read-write Linked Data, SPARQL queries, and LinkedDataHub-specific resource creation. Non-exhaustive list:
+
+- Linked Data
+  - `GET`
+  - `PATCH`
+  - `POST`
+  - `PUT`
+- SPARQL
+  - `CONSTRUCT`
+  - `DESCRIBE`
+  - `SELECT`
+- LinkedDataHub-specific
+  - `CreateContainer`
+  - `CreateItem`
+  - `List`
+  - `AddGenericService`
+  - `AddResultSetChart`
+  - `AddSelect`
+  - `AddView`
 
 ## Usage
 
