@@ -11,7 +11,7 @@ This system implements generic operations for RDF Linked Data and SPARQL managem
 
 ## Demo
 
-[WebAlgebra Demo Tweet](https://x.com/namedgraph/status/1940072384046014902)
+[![ Agentic Content Management with Web-Algebra MCP](https://img.youtube.com/vi/eRMrSqKc9_E/0.jpg)](https://www.youtube.com/watch?v=eRMrSqKc9_E)
 
 *See WebAlgebra in action - translating natural language into RDF operations.*
 
