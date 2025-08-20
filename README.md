@@ -133,12 +133,12 @@ The `MCP_PROXY_AUTH_TOKEN` is required. If the link does not appear, you need to
 
 Web Algebra's settings:
 
-<dd>
+<dl>
     <dt>Transport Type</dt>
     <dd>Streamable HTTP</dd>
     <dt>URL</dt>
     <dd>http://127.0.0.1:8000/mcp</dd>
-</dd>
+</dl>
 
 #### [Claude Desktop](https://claude.ai/download) tool config
 
