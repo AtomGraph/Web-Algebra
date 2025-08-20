@@ -117,7 +117,7 @@ or with LinkedDataHub certificate credentials (change the path and password to y
 CERT_PEM_PATH="/Users/Martynas.Jusevicius/WebRoot/LinkedDataHub/ssl/owner/cert.pem" CERT_PASSWORD="********" uv run uvicorn web_algebra.server:app --reload
 ```
 
-#### [MCP Inspector](https://github.com/modelcontextprotocol/inspector) configf
+#### [MCP Inspector](https://github.com/modelcontextprotocol/inspector) config
 
 You can the inspector like this:
 
@@ -132,6 +132,7 @@ http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=b31e4b3d852b5a2445f45032c484e54e319b
 The `MCP_PROXY_AUTH_TOKEN` is required. If the link does not appear, you need to copy the session token from the console and paste it into inspector's Proxy Session Token config.
 
 Web Algebra's settings:
+
 <dd>
     <dt>Transport Type</dt>
     <dd>Streamable HTTP</dd>
