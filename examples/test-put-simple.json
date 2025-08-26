@@ -1,0 +1,29 @@
+{
+  "@op": "PUT",
+  "args": {
+    "url": {
+      "@op": "Uri",
+      "args": {
+        "input": "https://localhost:4443/test/"
+      }
+    },
+    "data": {
+      "@context": {
+        "schema": "https://schema.org/"
+      },
+      "@id": {
+        "@op": "Uri",
+        "args": {
+          "input": "https://example.org/test"
+        }
+      },
+      "@type": "schema:Person",
+      "schema:name": {
+        "@op": "Str",
+        "args": {
+          "input": "Test Person"
+        }
+      }
+    }
+  }
+}

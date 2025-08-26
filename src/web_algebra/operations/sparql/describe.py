@@ -1,12 +1,13 @@
 import logging
 from typing import Any
 import json
-from mcp.server.fastmcp.server import Context
-from mcp.server.session import ServerSessionT
-from mcp.shared.context import LifespanContextT
+import rdflib
+from rdflib import URIRef, Literal, Graph
+from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.operation import Operation
 from web_algebra.client import SPARQLClient
+
 
 class DESCRIBE(Operation):
     """
@@ -15,9 +16,9 @@ class DESCRIBE(Operation):
 
     def model_post_init(self, __context: Any) -> None:
         self.client = SPARQLClient(
-            cert_pem_path=getattr(self.settings, 'cert_pem_path', None),
-            cert_password=getattr(self.settings, 'cert_password', None),
-            verify_ssl=False  # Optionally disable SSL verification
+            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
+            cert_password=getattr(self.settings, "cert_password", None),
+            verify_ssl=False,  # Optionally disable SSL verification
         )
 
     @classmethod
@@ -32,31 +33,68 @@ class DESCRIBE(Operation):
                 "endpoint": {"type": "string"},
                 "query": {"type": "string"},
             },
-            "required": ["endpoint", "query"]
+            "required": ["endpoint", "query"],
         }
-   
-    def execute(self, arguments: dict[str, Any]) -> dict:
-        """
-        :arguments: A dictionary containing:
-            - `endpoint`: The SPARQL endpoint URL to query.
-            - `query`: The SPARQL DESCRIBE query string to execute.
-        :return: A Python dict representing the JSON-LD response from the SPARQL DESCRIBE query."""
-        endpoint: str = Operation.execute_json(self.settings, arguments["endpoint"], self.context)
-        query: str = Operation.execute_json(self.settings, arguments["query"], self.context)
 
-        if not isinstance(query, str):
-            raise ValueError("DESCRIBE operation expects 'query' to be a string.")
+    def execute(self, endpoint: rdflib.URIRef, query: rdflib.Literal) -> rdflib.Graph:
+        """Pure function: execute SPARQL DESCRIBE query"""
+        if not isinstance(endpoint, URIRef):
+            raise TypeError(
+                f"DESCRIBE operation expects endpoint to be URIRef, got {type(endpoint)}"
+            )
+        if not isinstance(query, Literal) or query.datatype != XSD.string:
+            raise TypeError(
+                f"DESCRIBE operation expects query to be string Literal, got {type(query)}"
+            )
 
-        logging.info(f"Executing SPARQL DESCRIBE on %s with query:\n%s", endpoint, query)
-        return self.client.query(endpoint, query)
+        endpoint_url = str(endpoint)
+        query_str = str(query)
 
-    def run(
-        self,
-        arguments: dict[str, Any],
-        context: Context[ServerSessionT, LifespanContextT] | None = None,
-    ) -> Any:
-        json_ld_data = self.execute(arguments)
-        jsonld_str = json.dumps(json_ld_data)
-        
-        logging.info("Returning JSON-LD data as text content.")
-        return [types.TextContent(type="text", text=jsonld_str)]
+        logging.info(
+            "Executing SPARQL DESCRIBE on %s with query:\n%s", endpoint_url, query_str
+        )
+
+        # Execute using the SPARQL client and get JSON-LD response
+        json_ld_response = self.client.query(endpoint_url, query_str)
+
+        # Convert JSON-LD to RDF Graph
+        graph = Graph()
+        json_str = json.dumps(json_ld_response)
+        graph.parse(data=json_str, format="json-ld")
+
+        return graph
+
+    def execute_json(self, arguments: dict, variable_stack: list = []) -> rdflib.Graph:
+        """JSON execution: process arguments and return rdflib.Graph (same as execute)"""
+        # Process endpoint
+        endpoint_data = Operation.process_json(
+            self.settings, arguments["endpoint"], self.context, variable_stack
+        )
+        if not isinstance(endpoint_data, URIRef):
+            raise TypeError(
+                f"DESCRIBE operation expects 'endpoint' to be URIRef, got {type(endpoint_data)}"
+            )
+
+        # Process query
+        query_data = Operation.process_json(
+            self.settings, arguments["query"], self.context, variable_stack
+        )
+        if not isinstance(query_data, Literal) or query_data.datatype != XSD.string:
+            raise TypeError(
+                f"DESCRIBE operation expects 'query' to be string Literal, got {type(query_data)}"
+            )
+
+        # Return Graph directly (same as execute) - serialization only at boundaries  
+        return self.execute(endpoint_data, query_data)
+
+    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
+        """MCP execution: plain args → plain results"""
+        endpoint = URIRef(arguments["endpoint"])
+        query = Literal(arguments["query"], datatype=XSD.string)
+
+        result_graph = self.execute(endpoint, query)
+
+        # Convert Graph back to JSON-LD for MCP response
+        json_ld_data = result_graph.serialize(format="json-ld")
+
+        return [types.TextContent(type="text", text=json_ld_data)]

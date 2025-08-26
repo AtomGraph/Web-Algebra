@@ -1,0 +1,50 @@
+{
+  "@op": "ldh-AddXHTMLBlock",
+  "args": {
+    "url": {
+      "@op": "ldh-AddObjectBlock",
+      "args": {
+        "url": {
+          "@op": "ldh-CreateItem",
+          "args": {
+            "url": {
+              "@op": "Uri",
+              "args": {
+                "input": "https://linkeddatahub.com/demo/"
+              }
+            },
+            "slug": {
+              "@op": "Str",
+              "args": {
+                "input": "test-item"
+              }
+            },
+            "title": {
+              "@op": "Str",
+              "args": {
+                "input": "Test Item with Blocks"
+              }
+            }
+          }
+        },
+        "object": {
+          "@op": "GET",
+          "args": {
+            "url": {
+              "@op": "Uri",
+              "args": {
+                "input": "http://dbpedia.org/resource/London"
+              }
+            }
+          }
+        }
+      }
+    },
+    "xhtml": {
+      "@op": "Str",
+      "args": {
+        "input": "<div><h2>London Information</h2><p>This content block contains information about London.</p></div>"
+      }
+    }
+  }
+}

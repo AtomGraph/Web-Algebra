@@ -1,0 +1,11 @@
+{
+  "@op": "Str",
+  "args": {
+    "input": {
+      "@op": "Uri",
+      "args": {
+        "input": "https://example.org/test"
+      }
+    }
+  }
+}

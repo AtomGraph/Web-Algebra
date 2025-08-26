@@ -1,0 +1,40 @@
+{
+  "@op": "ForEach",
+  "args": {
+    "select": {
+      "@op": "SELECT", 
+      "args": {
+        "endpoint": {
+          "@op": "Uri",
+          "args": {
+            "input": "https://dbpedia.org/sparql"
+          }
+        },
+        "query": {
+          "@op": "Str",
+          "args": {
+            "input": "SELECT ?city ?country WHERE { ?city <http://dbpedia.org/ontology/country> ?country . ?city <http://dbpedia.org/ontology/populationTotal> ?pop . FILTER(?pop > 1000000) } LIMIT 5"
+          }
+        }
+      }
+    },
+    "operation": {
+      "@op": "Replace",
+      "args": {
+        "input": "CITY is located in COUNTRY", 
+        "pattern": "CITY",
+        "replacement": {
+          "@op": "Str",
+          "args": {
+            "input": {
+              "@op": "Value",
+              "args": {
+                "name": "city"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "@op": "PATCH", 
+  "args": {
+    "url": {
+      "@op": "Uri",
+      "args": {
+        "input": "https://localhost:4443/test/"
+      }
+    },
+    "update": {
+      "@op": "Str",
+      "args": {
+        "input": "DELETE WHERE { ?s ?p ?o } ; INSERT DATA { <urn:test> <urn:name> \"Updated Name\" }"
+      }
+    }
+  }
+}

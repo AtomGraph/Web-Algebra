@@ -1,0 +1,17 @@
+{
+  "@op": "SELECT",
+  "args": {
+    "endpoint": {
+      "@op": "Uri",
+      "args": {
+        "input": "https://dbpedia.org/sparql"
+      }
+    },
+    "query": {
+      "@op": "Str",
+      "args": {
+        "input": "SELECT * WHERE { ?s ?p ?o } LIMIT 1"
+      }
+    }
+  }
+}

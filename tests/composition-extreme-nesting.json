@@ -1,0 +1,88 @@
+{
+  "@op": "Merge",
+  "args": {
+    "graphs": [
+      {
+        "@op": "CONSTRUCT",
+        "args": {
+          "endpoint": {
+            "@op": "Uri",
+            "args": {
+              "input": "https://dbpedia.org/sparql"
+            }
+          },
+          "query": {
+            "@op": "Replace",
+            "args": {
+              "input": {
+                "@op": "Str",
+                "args": {
+                  "input": "CONSTRUCT { ?s <http://example.org/processedBy> <PROCESSOR> } WHERE { ?s <http://xmlns.com/foaf/0.1/name> ?o . ?s <http://dbpedia.org/ontology/birthPlace> <http://dbpedia.org/resource/New_York> } LIMIT 5"
+                }
+              },
+              "pattern": "PROCESSOR",
+              "replacement": {
+                "@op": "Str",
+                "args": {
+                  "input": {
+                    "@op": "ResolveURI",
+                    "args": {
+                      "relative": {
+                        "@op": "EncodeForURI",
+                        "args": {
+                          "input": {
+                            "@op": "Str",
+                            "args": {
+                              "input": "Web Algebra System v1.0"
+                            }
+                          }
+                        }
+                      },
+                      "base": {
+                        "@op": "Uri",
+                        "args": {
+                          "input": "http://example.org/"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "@context": {
+          "ex": "http://example.org/",
+          "dct": "http://purl.org/dc/terms/"
+        },
+        "@id": "_:metadata",
+        "dct:created": {
+          "@op": "Str",
+          "args": {
+            "input": "2024-08-24T10:00:00Z"
+          }
+        },
+        "ex:complexity": {
+          "@op": "Str",
+          "args": {
+            "input": {
+              "@op": "Replace",
+              "args": {
+                "input": "Nesting level: LEVEL",
+                "pattern": "LEVEL",
+                "replacement": {
+                  "@op": "Str",
+                  "args": {
+                    "input": "6"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

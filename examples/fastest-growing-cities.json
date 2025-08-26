@@ -1,0 +1,190 @@
+{
+  "@op": "ForEach",
+  "args": {
+    "select": {
+      "@op": "SELECT",
+      "args": {
+        "endpoint": {
+          "@op": "Uri",
+          "args": {
+            "input": "https://dbpedia.org/sparql"
+          }
+        },
+        "query": {
+          "@op": "Str",
+          "args": {
+            "input": "SELECT DISTINCT ?city ?cityName ?country ?countryName ?population ?growthRate WHERE { ?city a <http://dbpedia.org/ontology/City> . ?city <http://xmlns.com/foaf/0.1/name> ?cityName . ?city <http://dbpedia.org/ontology/country> ?country . ?country <http://xmlns.com/foaf/0.1/name> ?countryName . ?city <http://dbpedia.org/ontology/populationTotal> ?population . OPTIONAL { ?city <http://dbpedia.org/ontology/populationDensity> ?density . BIND(?density / 1000 AS ?growthRate) } FILTER(LANG(?cityName) = \"en\" && LANG(?countryName) = \"en\") FILTER(?population > 500000) } ORDER BY DESC(?growthRate) LIMIT 10"
+          }
+        }
+      }
+    },
+    "operation": [
+      {
+        "@op": "Variable",
+        "args": {
+          "name": "cityDetails",
+          "value": {
+            "@op": "DESCRIBE",
+            "args": {
+              "endpoint": {
+                "@op": "Uri",
+                "args": {
+                  "input": "https://dbpedia.org/sparql"
+                }
+              },
+              "query": {
+                "@op": "Substitute",
+                "args": {
+                  "query": {
+                    "@op": "Str",
+                    "args": {
+                      "input": "DESCRIBE ?city"
+                    }
+                  },
+                  "var": "city",
+                  "binding": {
+                    "value": {
+                      "@op": "Str",
+                      "args": {
+                        "input": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "city"
+                          }
+                        }
+                      }
+                    },
+                    "type": "uri"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "@op": "PUT",
+        "args": {
+          "url": {
+            "@op": "ResolveURI",
+            "args": {
+              "base": {
+                "@op": "Uri",
+                "args": {
+                  "input": "https://localhost:4443/urban-growth/cities/"
+                }
+              },
+              "relative": {
+                "@op": "Replace",
+                "args": {
+                  "input": {
+                    "@op": "EncodeForURI",
+                    "args": {
+                      "input": {
+                        "@op": "Str",
+                        "args": {
+                          "input": {
+                            "@op": "Value",
+                            "args": {
+                              "name": "cityName"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "pattern": "%20",
+                  "replacement": "-"
+                }
+              }
+            }
+          },
+          "data": {
+            "@op": "Merge",
+            "args": {
+              "graphs": [
+                {
+                  "@op": "Variable",
+                  "args": {
+                    "name": "$cityDetails"
+                  }
+                },
+                {
+                  "@context": {
+                    "foaf": "http://xmlns.com/foaf/0.1/",
+                    "dct": "http://purl.org/dc/terms/",
+                    "urban": "http://example.org/urban/",
+                    "schema": "https://schema.org/",
+                    "dbo": "http://dbpedia.org/ontology/"
+                  },
+                  "@id": {
+                    "@op": "Str",
+                    "args": {
+                      "input": {
+                        "@op": "Value",
+                        "args": {
+                          "name": "city"
+                        }
+                      }
+                    }
+                  },
+                  "@type": "schema:City",
+                  "foaf:name": {
+                    "@op": "Str",
+                    "args": {
+                      "input": {
+                        "@op": "Value",
+                        "args": {
+                          "name": "cityName"
+                        }
+                      }
+                    }
+                  },
+                  "schema:containedInPlace": {
+                    "@op": "Str",
+                    "args": {
+                      "input": {
+                        "@op": "Value",
+                        "args": {
+                          "name": "countryName"
+                        }
+                      }
+                    }
+                  },
+                  "dbo:populationTotal": {
+                    "@op": "Str",
+                    "args": {
+                      "input": {
+                        "@op": "Value",
+                        "args": {
+                          "name": "population"
+                        }
+                      }
+                    }
+                  },
+                  "urban:growthIndicator": {
+                    "@op": "Str",
+                    "args": {
+                      "input": {
+                        "@op": "Value",
+                        "args": {
+                          "name": "growthRate"
+                        }
+                      }
+                    }
+                  },
+                  "dct:created": {
+                    "@op": "Str",
+                    "args": {
+                      "input": "2024-08-24T12:00:00Z"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

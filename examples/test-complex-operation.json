@@ -1,0 +1,18 @@
+{
+  "@op": "Replace",
+  "args": {
+    "input": {
+      "@op": "Str",
+      "args": {
+        "input": "Hello World"
+      }
+    },
+    "pattern": "World",
+    "replacement": {
+      "@op": "Str", 
+      "args": {
+        "input": "Universe"
+      }
+    }
+  }
+}

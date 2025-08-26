@@ -1,11 +1,10 @@
-from typing import Sequence, List, Type, Optional
+from typing import Sequence, List, Type
 import logging
 import os
 from mcp import Tool
 from mcp.server import Server
 from mcp.types import TextContent, ImageContent, EmbeddedResource, Resource
 from pydantic import AnyUrl
-from pydantic_settings import BaseSettings
 from web_algebra.main import LinkedDataHubSettings, list_operation_subclasses
 import web_algebra.operations
 from web_algebra.operation import Operation
@@ -23,13 +22,18 @@ server = Server("web-algebra", "1.0.0")
 cert_pem_path = os.getenv("CERT_PEM_PATH")
 cert_password = os.getenv("CERT_PASSWORD")
 
-settings = LinkedDataHubSettings(cert_pem_path=cert_pem_path, cert_password=cert_password)
+settings = LinkedDataHubSettings(
+    cert_pem_path=cert_pem_path, cert_password=cert_password
+)
+
 
 def register(classes: List[Type[Operation]]):
     for cls in classes:
         Operation.register(cls)
 
+
 register(list_operation_subclasses(web_algebra.operations, Operation))
+
 
 @server.list_tools()
 async def list_tools() -> list[Tool]:
@@ -46,13 +50,15 @@ async def list_tools() -> list[Tool]:
 
     return tools
 
+
 @server.call_tool()
 async def call_tool(
     name: str, arguments: dict
 ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
-    tool_class =  Operation.get(name)
+    tool_class = Operation.get(name)
     tool = tool_class(settings=settings)
-    return tool.run(arguments)
+    return tool.mcp_run(arguments)
+
 
 @server.list_resources()
 async def list_resources() -> Sequence[EmbeddedResource]:
@@ -73,30 +79,31 @@ async def list_resources() -> Sequence[EmbeddedResource]:
             }
         """,
         "endpoint": "https://localhost:4443/sparql",
-        }
-    
+    }
+
     result = select.execute(args)
     bindings = result["results"]["bindings"]
     logger.info(bindings)
-    
+
     for binding in bindings:
         query = binding["query"]["value"]
         title = binding["title"]["value"]
-        #text = binding["text"]["value"]
+        # text = binding["text"]["value"]
         resources.append(
             Resource(
                 uri=AnyUrl(query),
                 name=title,
-                #description=text,
+                # description=text,
                 mimeType="application/sparql-query",
             )
         )
 
     return resources
 
+
 def create_app() -> Starlette:
     """Create Starlette app that wraps the MCP server"""
-    
+
     # Create the session manager
     session_manager = StreamableHTTPSessionManager(
         app=server,
@@ -106,12 +113,11 @@ def create_app() -> Starlette:
     # Create an ASGI application that uses the session manager
     app = Starlette(
         debug=True,
-        routes=[
-            Mount("/mcp", app=session_manager.handle_request)
-        ],
-        lifespan=lambda app: session_manager.run()
+        routes=[Mount("/mcp", app=session_manager.handle_request)],
+        lifespan=lambda app: session_manager.run(),
     )
 
     return app
+
 
 app = create_app()

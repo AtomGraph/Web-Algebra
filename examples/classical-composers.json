@@ -1,0 +1,182 @@
+{
+  "@op": "ForEach",
+  "args": {
+    "select": {
+      "@op": "SELECT",
+      "args": {
+        "endpoint": {
+          "@op": "Uri",
+          "args": {
+            "input": "https://query.wikidata.org/sparql"
+          }
+        },
+        "query": {
+          "@op": "Str",
+          "args": {
+            "input": "SELECT DISTINCT ?composer ?composerLabel ?birthPlace ?birthPlaceLabel ?deathDate ?birthDate WHERE { ?composer wdt:P106 wd:Q36834 . ?composer wdt:P19 ?birthPlace . ?birthPlace wdt:P30 wd:Q46 . OPTIONAL { ?composer wdt:P569 ?birthDate } OPTIONAL { ?composer wdt:P570 ?deathDate } SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". } FILTER(?birthDate >= \"1600-01-01\"^^xsd:dateTime) FILTER(?birthDate <= \"1910-01-01\"^^xsd:dateTime) } ORDER BY ?birthDate LIMIT 20"
+          }
+        }
+      }
+    },
+    "operation": [
+      {
+        "@op": "Variable",
+        "args": {
+          "name": "compositions",
+          "value": {
+            "@op": "SELECT",
+            "args": {
+              "endpoint": {
+                "@op": "Uri",
+                "args": {
+                  "input": "https://query.wikidata.org/sparql"
+                }
+              },
+              "query": {
+                "@op": "Substitute",
+                "args": {
+                  "query": {
+                    "@op": "Str",
+                    "args": {
+                      "input": "SELECT ?work ?workLabel ?genre ?genreLabel WHERE { ?work wdt:P86 ?composer . ?work wdt:P31/wdt:P279* wd:Q207628 . OPTIONAL { ?work wdt:P136 ?genre } SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". } } ORDER BY ?workLabel LIMIT 10"
+                    }
+                  },
+                  "Value": "composer",
+                  "binding": {
+                    "value": {
+                      "@op": "Str",
+                      "args": {
+                        "input": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "composer"
+                          }
+                        }
+                      }
+                    },
+                    "type": "uri"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "@op": "PUT",
+        "args": {
+          "url": {
+            "@op": "ResolveURI",
+            "args": {
+              "base": {
+                "@op": "Uri",
+                "args": {
+                  "input": "https://localhost:4443/music/composers/"
+                }
+              },
+              "relative": {
+                "@op": "Replace",
+                "args": {
+                  "input": {
+                    "@op": "EncodeForURI",
+                    "args": {
+                      "input": {
+                        "@op": "Str",
+                        "args": {
+                          "input": {
+                            "@op": "Value",
+                            "args": {
+                              "name": "composerLabel"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "pattern": "%20",
+                  "replacement": "-"
+                }
+              }
+            }
+          },
+          "data": {
+            "@context": {
+              "foaf": "http://xmlns.com/foaf/0.1/",
+              "dct": "http://purl.org/dc/terms/",
+              "music": "http://example.org/music/",
+              "schema": "https://schema.org/",
+              "mo": "http://purl.org/ontology/mo/"
+            },
+            "@id": {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "composer"
+                  }
+                }
+              }
+            },
+            "@type": ["schema:Person", "mo:MusicArtist"],
+            "foaf:name": {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "composerLabel"
+                  }
+                }
+              }
+            },
+            "schema:birthPlace": {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "birthPlaceLabel"
+                  }
+                }
+              }
+            },
+            "schema:birthDate": {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "birthDate"
+                  }
+                }
+              }
+            },
+            "schema:deathDate": {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "deathDate"
+                  }
+                }
+              }
+            },
+            "music:compositions": {
+              "@op": "Bindings",
+              "args": {
+                "table": {
+                  "@op": "Variable",
+                  "args": {
+                    "name": "$compositions"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

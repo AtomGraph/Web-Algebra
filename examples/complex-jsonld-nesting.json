@@ -1,0 +1,105 @@
+{
+  "@op": "Merge",
+  "args": {
+    "graphs": [
+      {
+        "@context": {
+          "schema": "https://schema.org/",
+          "dct": "http://purl.org/dc/terms/"
+        },
+        "@id": {
+          "@op": "Uri",
+          "args": {
+            "input": "https://example.org/product/1"
+          }
+        },
+        "@type": "schema:Product",
+        "schema:name": {
+          "@op": "Str",
+          "args": {
+            "input": "Dynamic Product"
+          }
+        },
+        "schema:identifier": {
+          "@op": "STRUUID",
+          "args": {}
+        },
+        "schema:url": {
+          "@op": "ResolveURI",
+          "args": {
+            "base": {
+              "@op": "Uri",
+              "args": {
+                "input": "https://shop.example.org/"
+              }
+            },
+            "relative": {
+              "@op": "Replace",
+              "args": {
+                "input": {
+                  "@op": "STRUUID",
+                  "args": {}
+                },
+                "pattern": "-",
+                "replacement": ""
+              }
+            }
+          }
+        },
+        "dct:created": {
+          "@op": "Str",
+          "args": {
+            "input": "2025-01-01T00:00:00Z"
+          }
+        }
+      },
+      {
+        "@context": {
+          "schema": "https://schema.org/"
+        },
+        "@id": {
+          "@op": "Uri",
+          "args": {
+            "input": "https://example.org/organization/1"
+          }
+        },
+        "@type": "schema:Organization",
+        "schema:name": {
+          "@op": "Str",
+          "args": {
+            "input": "Test Organization"
+          }
+        },
+        "schema:url": {
+          "@op": "ResolveURI",
+          "args": {
+            "base": {
+              "@op": "Uri",
+              "args": {
+                "input": "https://example.org/"
+              }
+            },
+            "relative": {
+              "@op": "EncodeForURI",
+              "args": {
+                "input": {
+                  "@op": "Replace",
+                  "args": {
+                    "input": {
+                      "@op": "Str",
+                      "args": {
+                        "input": "Test Organization"
+                      }
+                    },
+                    "pattern": " ",
+                    "replacement": "-"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

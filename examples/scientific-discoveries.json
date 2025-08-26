@@ -1,0 +1,237 @@
+{
+  "@op": "ForEach",
+  "args": {
+    "select": {
+      "@op": "SELECT",
+      "args": {
+        "endpoint": {
+          "@op": "Uri",
+          "args": {
+            "input": "https://query.wikidata.org/sparql"
+          }
+        },
+        "query": {
+          "@op": "Str",
+          "args": {
+            "input": "SELECT DISTINCT ?discovery ?discoveryLabel ?discoverer ?discovererLabel ?field ?fieldLabel ?year WHERE { ?discovery wdt:P31/wdt:P279* wd:Q35758 . ?discovery wdt:P61 ?discoverer . ?discovery wdt:P101 ?field . FILTER(?field IN (wd:Q11190, wd:Q12772)) OPTIONAL { ?discovery wdt:P575 ?year } FILTER(?year >= \"1800-01-01\"^^xsd:dateTime) SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". } } ORDER BY DESC(?year) LIMIT 15"
+          }
+        }
+      }
+    },
+    "operation": [
+      {
+        "@op": "Variable",
+        "args": {
+          "name": "discoveryDetails",
+          "value": {
+            "@op": "DESCRIBE",
+            "args": {
+              "endpoint": {
+                "@op": "Uri",
+                "args": {
+                  "input": "https://query.wikidata.org/sparql"
+                }
+              },
+              "query": {
+                "@op": "Substitute",
+                "args": {
+                  "query": {
+                    "@op": "Str",
+                    "args": {
+                      "input": "DESCRIBE ?discovery"
+                    }
+                  },
+                  "var": "discovery",
+                  "binding": {
+                    "value": {
+                      "@op": "Str",
+                      "args": {
+                        "input": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "discovery"
+                          }
+                        }
+                      }
+                    },
+                    "type": "uri"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "@op": "Variable",
+        "args": {
+          "name": "applications",
+          "value": {
+            "@op": "SELECT",
+            "args": {
+              "endpoint": {
+                "@op": "Uri",
+                "args": {
+                  "input": "https://query.wikidata.org/sparql"
+                }
+              },
+              "query": {
+                "@op": "Substitute",
+                "args": {
+                  "query": {
+                    "@op": "Str",
+                    "args": {
+                      "input": "SELECT ?application ?applicationLabel WHERE { ?application wdt:P144 ?discovery . ?application wdt:P31/wdt:P279* wd:Q2695280 . SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". } } LIMIT 5"
+                    }
+                  },
+                  "var": "discovery",
+                  "binding": {
+                    "value": {
+                      "@op": "Str",
+                      "args": {
+                        "input": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "discovery"
+                          }
+                        }
+                      }
+                    },
+                    "type": "uri"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "@op": "PUT",
+        "args": {
+          "url": {
+            "@op": "ResolveURI",
+            "args": {
+              "base": {
+                "@op": "Uri",
+                "args": {
+                  "input": "https://localhost:4443/science/discoveries/"
+                }
+              },
+              "relative": {
+                "@op": "Replace",
+                "args": {
+                  "input": {
+                    "@op": "EncodeForURI",
+                    "args": {
+                      "input": {
+                        "@op": "Str",
+                        "args": {
+                          "input": {
+                            "@op": "Value",
+                            "args": {
+                              "name": "discoveryLabel"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "pattern": "%20",
+                  "replacement": "-"
+                }
+              }
+            }
+          },
+          "data": {
+            "@op": "Merge",
+            "args": {
+              "graphs": [
+                {
+                  "@op": "Variable",
+                  "args": {
+                    "name": "$discoveryDetails"
+                  }
+                },
+                {
+                  "@context": {
+                    "foaf": "http://xmlns.com/foaf/0.1/",
+                    "dct": "http://purl.org/dc/terms/",
+                    "science": "http://example.org/science/",
+                    "schema": "https://schema.org/"
+                  },
+                  "@id": {
+                    "@op": "Str",
+                    "args": {
+                      "input": {
+                        "@op": "Value",
+                        "args": {
+                          "name": "discovery"
+                        }
+                      }
+                    }
+                  },
+                  "@type": "science:Discovery",
+                  "dct:title": {
+                    "@op": "Str",
+                    "args": {
+                      "input": {
+                        "@op": "Value",
+                        "args": {
+                          "name": "discoveryLabel"
+                        }
+                      }
+                    }
+                  },
+                  "science:discoverer": {
+                    "@op": "Str",
+                    "args": {
+                      "input": {
+                        "@op": "Value",
+                        "args": {
+                          "name": "discovererLabel"
+                        }
+                      }
+                    }
+                  },
+                  "science:field": {
+                    "@op": "Str",
+                    "args": {
+                      "input": {
+                        "@op": "Value",
+                        "args": {
+                          "name": "fieldLabel"
+                        }
+                      }
+                    }
+                  },
+                  "science:year": {
+                    "@op": "Str",
+                    "args": {
+                      "input": {
+                        "@op": "Value",
+                        "args": {
+                          "name": "year"
+                        }
+                      }
+                    }
+                  },
+                  "science:applications": {
+                    "@op": "Bindings",
+                    "args": {
+                      "table": {
+                        "@op": "Variable",
+                        "args": {
+                          "name": "$applications"
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

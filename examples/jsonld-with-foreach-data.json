@@ -1,0 +1,103 @@
+{
+  "@op": "ForEach",
+  "args": {
+    "select": {
+      "@op": "SELECT",
+      "args": {
+        "endpoint": {
+          "@op": "Uri",
+          "args": {
+            "input": "https://dbpedia.org/sparql"
+          }
+        },
+        "query": "PREFIX dbo: <http://dbpedia.org/ontology/>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?person ?name WHERE {\n  ?person a dbo:Person ;\n          rdfs:label ?name .\n  FILTER(lang(?name) = 'en')\n} LIMIT 3"
+      }
+    },
+    "operation": {
+      "@op": "PUT",
+      "args": {
+        "url": {
+          "@op": "ResolveURI",
+          "args": {
+            "base": {
+              "@op": "Uri",
+              "args": {
+                "input": "https://localhost:4443/people/"
+              }
+            },
+            "relative": {
+              "@op": "EncodeForURI",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "name"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "data": {
+          "@context": {
+            "schema": "https://schema.org/",
+            "foaf": "http://xmlns.com/foaf/0.1/",
+            "dct": "http://purl.org/dc/terms/"
+          },
+          "@id": {
+            "@op": "Value",
+            "args": {
+              "name": "person"
+            }
+          },
+          "@type": "schema:Person",
+          "schema:name": {
+            "@op": "Value",
+            "args": {
+              "name": "name"
+            }
+          },
+          "dct:source": {
+            "@op": "Uri",
+            "args": {
+              "input": "https://dbpedia.org/"
+            }
+          },
+          "schema:sameAs": {
+            "@op": "Value",
+            "args": {
+              "name": "person"
+            }
+          },
+          "foaf:homepage": {
+            "@op": "ResolveURI",
+            "args": {
+              "base": {
+                "@op": "Uri",
+                "args": {
+                  "input": "https://example.org/people/"
+                }
+              },
+              "relative": {
+                "@op": "EncodeForURI",
+                "args": {
+                  "input": {
+                    "@op": "Str",
+                    "args": {
+                      "input": {
+                        "@op": "Value",
+                        "args": {
+                          "name": "name"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

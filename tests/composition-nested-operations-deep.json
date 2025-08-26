@@ -1,0 +1,28 @@
+{
+  "@op": "Str",
+  "args": {
+    "input": {
+      "@op": "Replace",
+      "args": {
+        "input": {
+          "@op": "EncodeForURI",
+          "args": {
+            "input": {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Uri",
+                  "args": {
+                    "input": "http://example.org/test with spaces"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pattern": "%20",
+        "replacement": "_"
+      }
+    }
+  }
+}

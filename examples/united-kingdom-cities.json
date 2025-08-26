@@ -2,10 +2,15 @@
     {
         "@op": "ForEach",
         "args": {
-            "table": {
+            "select": {
                 "@op": "SELECT",
                 "args": {
-                    "endpoint": "https://dbpedia.org/sparql",
+                    "endpoint": {
+                        "@op": "Uri",
+                        "args": {
+                            "input": "https://dbpedia.org/sparql"
+                        }
+                    },
                     "query": "PREFIX dbo: <http://dbpedia.org/ontology/>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?city ?cityName WHERE {\n  ?city a dbo:City ;\n        dbo:country <http://dbpedia.org/resource/United_Kingdom> ;\n        dbo:populationTotal ?pop ;\n        rdfs:label ?cityName .\n  FILTER(lang(?cityName) = 'en')\n} ORDER BY RAND() LIMIT 2"
                 }
             },
@@ -13,18 +18,18 @@
                 "@op": "PUT",
                 "args": {
                     "url": {
-                        "@op": "Replace",
+                        "@op": "Uri",
                         "args": {
-                            "input": "https://localhost:4443/united-kingdom/${cityName}/",
-                            "pattern": "\\$\\{cityName\\}",
-                            "replacement": {
-                                "@op": "EncodeForURI",
+                            "input": {
+                                "@op": "Replace",
                                 "args": {
-                                    "input": {
-                                        "@op": "Str",
+                                    "input": "https://localhost:4443/united-kingdom/${cityName}/",
+                                    "pattern": "\\$\\{cityName\\}",
+                                    "replacement": {
+                                        "@op": "EncodeForURI",
                                         "args": {
                                             "input": {
-                                                "@op": "Var",
+                                                "@op": "Value",
                                                 "args": {
                                                     "name": "cityName"
                                                 }
@@ -43,10 +48,10 @@
                                     "@op": "GET",
                                     "args": {
                                         "url": {
-                                            "@op": "Str",
+                                            "@op": "Uri",
                                             "args": {
                                                 "input": {
-                                                    "@op": "Var",
+                                                    "@op": "Value",
                                                     "args": {
                                                         "name": "city"
                                                     }
@@ -60,18 +65,18 @@
                                         "schema": "https://schema.org/"
                                     },
                                     "@id": {
-                                        "@op": "Replace",
+                                        "@op": "Uri",
                                         "args": {
-                                            "input": "https://localhost:4443/united-kingdom/${cityName}/",
-                                            "pattern": "\\$\\{cityName\\}",
-                                            "replacement": {
-                                                "@op": "EncodeForURI",
+                                            "input": {
+                                                "@op": "Replace",
                                                 "args": {
-                                                    "input": {
-                                                        "@op": "Str",
+                                                    "input": "https://localhost:4443/united-kingdom/${cityName}/",
+                                                    "pattern": "\\$\\{cityName\\}",
+                                                    "replacement": {
+                                                        "@op": "EncodeForURI",
                                                         "args": {
                                                             "input": {
-                                                                "@op": "Var",
+                                                                "@op": "Value",
                                                                 "args": {
                                                                     "name": "cityName"
                                                                 }
@@ -83,14 +88,9 @@
                                         }
                                     },
                                     "schema:name": {
-                                        "@op": "Str",
+                                        "@op": "Value",
                                         "args": {
-                                            "input": {
-                                                "@op": "Var",
-                                                "args": {
-                                                    "name": "cityName"
-                                                }
-                                            }
+                                            "name": "cityName"
                                         }
                                     }
                                 }

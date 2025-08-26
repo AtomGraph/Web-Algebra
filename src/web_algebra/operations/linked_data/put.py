@@ -1,14 +1,14 @@
 from typing import Any
 import json
 import logging
-from urllib.error import HTTPError
-from rdflib import Graph
-from mcp.server.fastmcp.server import Context
-from mcp.server.session import ServerSessionT
-from mcp.shared.context import LifespanContextT
+import rdflib
+from rdflib import URIRef, Graph, Literal
+from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.operation import Operation
+from rdflib.query import Result
 from web_algebra.client import LinkedDataClient
+
 
 class PUT(Operation):
     """
@@ -23,9 +23,9 @@ class PUT(Operation):
 
     def model_post_init(self, __context: Any) -> None:
         self.client = LinkedDataClient(
-            cert_pem_path=getattr(self.settings, 'cert_pem_path', None),
-            cert_password=getattr(self.settings, 'cert_password', None),
-            verify_ssl=False  # Optionally disable SSL verification
+            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
+            cert_password=getattr(self.settings, "cert_password", None),
+            verify_ssl=False,  # Optionally disable SSL verification
         )
 
     @classmethod
@@ -33,13 +33,10 @@ class PUT(Operation):
         return """Replaces RDF data in a named graph using HTTP PUT.
         The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
         Completely replaces the RDF graph (provided as JSON-LD payload) at that URL.
-        Returns 2 results:
-        - True if the operation was successful, otherwise False.
-        - The URL of the created document, which may differ from the original URL due to redirects.
+        Returns True if the operation was successful, False otherwise.
         Note: This operation does not return the updated graph, it only confirms the success of the operation.
         """
 
-    
     @classmethod
     def inputSchema(cls) -> dict:
         return {
@@ -47,50 +44,88 @@ class PUT(Operation):
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URL to send the RDF data to. This should be a valid URL."
+                    "description": "The URL to send the RDF data to. This should be a valid URL.",
                 },
                 "data": {
                     "type": "object",
-                    "description": "The RDF data to send, represented as a JSON-LD dict."
-                }
+                    "description": "The RDF data to send, represented as a JSON-LD dict.",
+                },
             },
-            "required": ["url", "data"]
+            "required": ["url", "data"],
         }
-    
-    def execute(self, arguments: dict[str, Any]) -> bool:
-        """
-        Sends RDF data to the specified URL using the HTTP PUT method.
-        :param arguments: A dictionary containing:
-            - `url`: The URL to send the RDF data to.
-            - `data`: The RDF data to send, represented as a JSON-LD dict.
-        :return: True if successful, otherwise raises an error. The second return value is the URL of the created document.
-        """
-        url = Operation.execute_json(self.settings, arguments["url"], self.context)
-        data = Operation.execute_json(self.settings, arguments["data"], self.context)
-        
-        logging.info("Executing PUT operation with URL: %s", url)
 
-        json_str = json.dumps(data)
+    def execute(self, url: rdflib.URIRef, data: rdflib.Graph) -> Result:
+        """Pure function: PUT RDF graph to URL with RDFLib terms"""
+        if not isinstance(url, URIRef):
+            raise TypeError(f"PUT operation expects url to be URIRef, got {type(url)}")
+        if not isinstance(data, Graph):
+            raise TypeError(f"PUT operation expects data to be Graph, got {type(data)}")
 
-        logging.info("Parsing data as JSON-LD...")
-        graph = Graph()
-        # ✅ Pass the request URL as base URI to resolve relative URIs
-        graph.parse(data=json_str, format="json-ld", publicID=url)
+        url_str = str(url)
+        logging.info("Executing PUT operation with URL: %s", url_str)
 
-        # ✅ Send PUT request with parsed RDF Graph
-        response = self.client.put(url, graph)  # ✅ Send RDF Graph
+        response = self.client.put(url_str, data)
         logging.info("PUT operation status: %s", response.status)
 
-        # return effect URL - there might have been a redirect and the response URL is the final one
-        return response.status < 299, response.geturl()
+        # Return SPARQL results format
+        from web_algebra.json_result import JSONResult
 
-    def run(
-        self,
-        arguments: dict[str, Any],
-        context: Context[ServerSessionT, LifespanContextT] | None = None,
-    ) -> Any:
-        success, final_url = self.execute(arguments)
-        return [
-            types.TextContent(type="text", text=str(success)),
-            types.TextContent(type="text", text=str(final_url))
-        ]
+        return JSONResult(
+            vars=["status", "url"],
+            bindings=[
+                {
+                    "status": Literal(response.status, datatype=XSD.integer),
+                    "url": URIRef(response.geturl()),
+                }
+            ],
+        )
+
+    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+        """JSON execution: process arguments with strict type checking"""
+        # Process URL
+        url_data = Operation.process_json(
+            self.settings, arguments["url"], self.context, variable_stack
+        )
+        if not isinstance(url_data, URIRef):
+            raise TypeError(
+                f"PUT operation expects 'url' to be URIRef, got {type(url_data)}"
+            )
+
+        # Process data - may return dict with processed nested operations
+        data_result = Operation.process_json(
+            self.settings, arguments["data"], self.context, variable_stack
+        )
+
+        # Convert processed data to Graph object
+        if isinstance(data_result, Graph):
+            # Already a Graph (from some operation result)
+            graph_data = data_result
+        elif isinstance(data_result, dict):
+            # Processed JSON-LD - convert to Graph
+            import json
+            json_str = json.dumps(data_result)
+            graph = Graph()
+            graph.parse(data=json_str, format="json-ld")
+            graph_data = graph
+        else:
+            raise TypeError(
+                f"PUT operation expects data to be Graph or dict, got {type(data_result)}"
+            )
+
+        return self.execute(url_data, graph_data)
+
+    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
+        """MCP execution: plain args → plain results"""
+        url = URIRef(arguments["url"])
+
+        # Convert JSON-LD data to Graph
+        data_dict = arguments["data"]
+        json_str = json.dumps(data_dict)
+        graph = Graph()
+        graph.parse(data=json_str, format="json-ld", publicID=str(url))
+
+        result = self.execute(url, graph)
+
+        # Extract status for MCP response
+        status_binding = result.bindings[0]["status"]
+        return [types.TextContent(type="text", text=f"PUT status: {status_binding}")]

@@ -1,19 +1,17 @@
 from typing import Any
 import logging
-from mcp.server.fastmcp.server import Context
-from mcp.server.session import ServerSessionT
-from mcp.shared.context import LifespanContextT
 from mcp import types
+from rdflib import Literal, URIRef
+from rdflib.namespace import XSD
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.patch import PATCH
 
 
 class RemoveBlock(PATCH):
-    
     @classmethod
     def name(cls):
         return "ldh-RemoveBlock"
-    
+
     @classmethod
     def description(cls) -> str:
         return """Removes a content block from a LinkedDataHub document.
@@ -31,54 +29,70 @@ class RemoveBlock(PATCH):
             "type": "object",
             "properties": {
                 "url": {
-                    "type": "string", 
-                    "description": "The URI of the document to remove the block from."
+                    "type": "string",
+                    "description": "The URI of the document to remove the block from.",
                 },
                 "block": {
-                    "type": "string", 
-                    "description": "Optional URI of the specific content block to remove. If not provided, will remove blocks based on sequence properties."
-                }
+                    "type": "string",
+                    "description": "Optional URI of the specific content block to remove. If not provided, will remove blocks based on sequence properties.",
+                },
             },
-            "required": ["url"]
+            "required": ["url"],
         }
-    
-    def execute(self, arguments: dict[str, str]) -> Any:
-        """
-        Removes a content block from a LinkedDataHub document using SPARQL UPDATE
-        
-        :arguments: A dictionary containing:
-            - `url`: URI of the document to remove block from
-            - `block`: Optional URI of the specific block to remove
-        :return: Result from PATCH operation
-        """
-        url: str = Operation.execute_json(self.settings, arguments["url"], self.context)
-        if not isinstance(url, str):
-            raise ValueError("ldh-RemoveBlock operation expects 'url' to be a string.")
-        
-        block = arguments.get("block")
-        if block:
-            block = Operation.execute_json(self.settings, block, self.context)
-            if not isinstance(block, str):
-                raise ValueError("ldh-RemoveBlock operation expects 'block' to be a string.")
-        
-        logging.info(f"Removing block from document <%s>", url)
-        if block:
-            logging.info(f"Targeting specific block <%s>", block)
-        
+
+    def execute_json(self, arguments: dict[str, str], variable_stack: list = []) -> Any:
+        """JSON execution: process arguments and delegate to execute()"""
+        # Process required arguments
+        url_data = Operation.process_json(
+            self.settings, arguments["url"], self.context, variable_stack
+        )
+        if not isinstance(url_data, URIRef):
+            raise TypeError(f"RemoveBlock operation expects 'url' to be URIRef, got {type(url_data)}")
+
+        # Process optional arguments
+        block_uri = None
+        if "block" in arguments:
+            block_data = Operation.process_json(
+                self.settings, arguments["block"], self.context, variable_stack
+            )
+            if not isinstance(block_data, URIRef):
+                raise TypeError(f"RemoveBlock operation expects 'block' to be URIRef, got {type(block_data)}")
+            block_uri = block_data
+            
+        return self.execute(url_data, block_uri)
+
+    def execute(
+        self,
+        url: URIRef,
+        block: URIRef = None,
+    ) -> Any:
+        """Pure function: remove content block with RDFLib terms"""
+        if not isinstance(url, URIRef):
+            raise TypeError(f"RemoveBlock.execute expects url to be URIRef, got {type(url)}")
+        if block is not None and not isinstance(block, URIRef):
+            raise TypeError(f"RemoveBlock.execute expects block to be URIRef, got {type(block)}")
+
+        url_str = str(url)
+        block_str = str(block) if block else None
+
+        logging.info("Removing block from document <%s>", url_str)
+        if block_str:
+            logging.info("Targeting specific block <%s>", block_str)
+
         # Construct SPARQL UPDATE query
         # If block is specified, use it as <block_uri>, otherwise use ?block variable
-        block_ref = f"<{block}>" if block else "?block"
-        
+        block_ref = f"<{block_str}>" if block_str else "?block"
+
         sparql_query = f"""PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
 DELETE
 {{
-    <{url}> ?seq {block_ref} .
+    <{url_str}> ?seq {block_ref} .
     {block_ref} ?p ?o .
 }}
 WHERE
 {{
-    <{url}> ?seq {block_ref} .
+    <{url_str}> ?seq {block_ref} .
     FILTER(strstarts(str(?seq), concat(str(rdf:), "_")))
     OPTIONAL
     {{
@@ -87,30 +101,32 @@ WHERE
 }}"""
 
         logging.info(f"SPARQL UPDATE query: {sparql_query}")
-        
-        # Use parent PATCH operation to execute the SPARQL UPDATE
-        return super().execute({
-            "url": url,
-            "query": sparql_query
-        })
 
-    def run(
+        # Use parent PATCH operation to execute the SPARQL UPDATE
+        return super().execute(url, Literal(sparql_query, datatype=XSD.string))
+
+    def mcp_run(
         self,
         arguments: dict[str, Any],
-        context: Context[ServerSessionT, LifespanContextT] | None = None,
+        context: Any = None,
     ) -> Any:
-        try:
-            result = self.execute(arguments)
-            url = Operation.execute_json(self.settings, arguments["url"], self.context)
-            block = arguments.get("block")
-            block_text = f"Block: {block}" if block else "Any blocks found via sequence properties"
-            
-            return [types.TextContent(
-                type="text", 
-                text=f"Removed content block from document: {url}\n{block_text}\nResult: Block(s) successfully removed"
-            )]
-        except Exception as e:
-            return [types.TextContent(
-                type="text", 
-                text=f"Error removing block: {str(e)}"
-            )]
+        """MCP execution: plain args → plain results"""
+        url = URIRef(arguments["url"])
+        block = None
+        if "block" in arguments and arguments["block"]:
+            block = URIRef(arguments["block"])
+        
+        self.execute(url, block)
+        
+        block_text = (
+            f"Block: {block}"
+            if block
+            else "Any blocks found via sequence properties"
+        )
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Removed content block from document: {str(url)}\n{block_text}\nResult: Block(s) successfully removed",
+            )
+        ]

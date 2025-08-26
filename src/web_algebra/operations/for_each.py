@@ -1,94 +1,114 @@
-from typing import Any
+from typing import Any, List, Union
 import logging
-from mcp.server.fastmcp.server import Context
-from mcp.server.session import ServerSessionT
-from mcp.shared.context import LifespanContextT
 from mcp import types
-
 from web_algebra.operation import Operation
+from rdflib.query import Result
+
 
 class ForEach(Operation):
     """
-    Executes a WebAlgebra operation (or a sequence of operations) for each row in a table.
+    Applies operations to each item in sequences or SPARQL results, similar to XSLT's xsl:for-each
     """
 
     @classmethod
     def description(cls) -> str:
-        return "Executes a WebAlgebra operation for each row in a SPARQL results bindings table. The operation can be a single operation or a list of operations. Each row is processed independently, and the results are collected in a list."
-    
+        return """Applies operations to each item in sequences or SPARQL results.
+        
+        Similar to XSLT's <xsl:for-each select="...">, this operation can iterate over:
+        - Sequences: Each item becomes the context for the operation
+        - Result (SPARQL results): Each result row (ResultRow) becomes the context
+        
+        Returns a sequence of operation results."""
+
     @classmethod
     def inputSchema(cls) -> dict:
-        """
-        Returns the JSON schema of the operation's input arguments.
-        """
         return {
-                    "type": "object",
-                    "properties": {
-                        "table": {
-                            "type": "object",
-                            "description": "A table represented as a list of dictionaries, where each dictionary is a row with key-value pairs.",
-                            "properties": {
-                                "results": {
-                                    "type": "object",
-                                    "properties": {
-                                        "bindings": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "description": "A row in the table, represented as a dictionary of key-value pairs."
-                                            }
-                                        }
-                                    },
-                                    "required": ["bindings"]
-                                }
-                            },
-                            "required": ["results"]
-                        },
-                        "operation": {
-                            "oneOf": [
-                                {"type": "string", "description": "Single operation to execute for each row"},
-                                {
-                                    "type": "array",
-                                    "items": {"type": "string"},
-                                    "description": "List of operations to execute for each row"
-                                }
-                            ],
-                            "description": "Operation(s) to execute for each row in the table"
-                        }
-                    },
-                    "required": ["table", "operation"],
-                }
-
+            "type": "object",
+            "properties": {
+                "select": {
+                    "description": "Sequence or Result to iterate over (like XSLT's select attribute)"
+                },
+                "operation": {"description": "Operation(s) to execute for each item"},
+            },
+            "required": ["select", "operation"],
+        }
 
     def execute(
-        self,
-        arguments: dict[str, Any]
-    ) -> list:
-        """
-        Executes the operation(s) for each row in the resolved table.
-        :param arguments: A dictionary containing:
-            - `table`: A list of dictionaries representing the table rows.
-            - `operation`: The operation(s) to execute for each row. This can be a single operation or a list of operations.
-        :return: A list of results, where each item corresponds to the result(s) for a row.
-        """
-        table = Operation.execute_json(self.settings, arguments["table"], self.context)
-        bindings = table["results"]["bindings"]
-        op = arguments["operation"]  # raw!
+        self, select_data: Union[List[Any], Result], operation: Any
+    ) -> List[Any]:
+        """Pure function: apply operation to each item in sequence or SPARQL results"""
+        # This is complex because we need to execute operations with context
+        # For now, this will be handled in execute_json
+        raise NotImplementedError(
+            "ForEach pure function needs operation execution context"
+        )
 
-        logging.info("Executing ForEach operation on %d rows with operation: %s", len(bindings), op)
+    def execute_json(self, arguments: dict, variable_stack: list = []) -> List[Any]:
+        """JSON execution: apply operations to each item in sequence or SPARQL results"""
+        # Get the select data (sequence or Result)
+        select_data = Operation.process_json(
+            self.settings, arguments["select"], self.context, variable_stack
+        )
+
+        operation = arguments["operation"]  # raw operation
+
+        # Determine iteration items based on select data type
+        if isinstance(select_data, list):
+            # Sequence iteration
+            items = select_data
+            logging.info(
+                "Executing ForEach operation on %d sequence items with operation: %s",
+                len(items),
+                operation,
+            )
+        elif isinstance(select_data, Result):
+            # SPARQL results iteration - use built-in Result iteration
+            items = list(
+                select_data
+            )  # Result provides iteration over ResultRow objects
+            logging.info(
+                "Executing ForEach operation on %d SPARQL result rows with operation: %s",
+                len(items),
+                operation,
+            )
+        else:
+            raise TypeError(
+                f"ForEach expects 'select' to be sequence (list) or Result, got {type(select_data)}"
+            )
 
         results = []
-        for row in bindings:
-            logging.info("Processing row: %s", row)
-            result = Operation.execute_json(self.settings, op, context=row)
-            results.append(result)
+        for item in items:
+            logging.info("Processing item: %s", item)
+
+            # Handle list of operations or single operation
+            if isinstance(operation, list):
+                # Execute operations in sequence, with item as context
+                last_result = None
+
+                for op in operation:
+                    result = Operation.process_json(
+                        self.settings, op, context=item, variable_stack=variable_stack
+                    )
+                    if result is not None:
+                        last_result = result
+
+                # Only collect the last non-None result
+                if last_result is not None:
+                    results.append(last_result)
+            else:
+                # Single operation
+                result = Operation.process_json(
+                    self.settings,
+                    operation,
+                    context=item,
+                    variable_stack=variable_stack,
+                )
+                # Only collect non-None results
+                if result is not None:
+                    results.append(result)
 
         return results
 
-    def run(
-        self,
-        arguments: dict[str, Any],
-        context: Context[ServerSessionT, LifespanContextT] | None = None,
-    ) -> Any:
-        results = self.execute(arguments)
-        return [types.TextContent(type="text", text=str(result)) for result in results]
+    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
+        """MCP execution: plain args → plain results"""
+        return [types.TextContent(type="text", text="ForEach operation completed")]

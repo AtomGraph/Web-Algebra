@@ -1,0 +1,18 @@
+{
+  "@op": "Str",
+  "args": {
+    "input": {
+      "@op": "Replace",
+      "args": {
+        "input": {
+          "@op": "EncodeForURI",
+          "args": {
+            "input": "hello world with spaces"
+          }
+        },
+        "pattern": "%20",
+        "replacement": "_"
+      }
+    }
+  }
+}
