@@ -8,6 +8,7 @@ from typing import List, Type, Optional
 import pkgutil
 import importlib
 import inspect
+import rdflib
 from openai import OpenAI
 from pydantic_settings import BaseSettings
 import web_algebra.operations
@@ -17,8 +18,9 @@ from web_algebra.operation import Operation
 logging.basicConfig(
     level=logging.INFO,  # ✅ Show INFO, WARNING, ERROR, and CRITICAL messages
     format="%(asctime)s - %(levelname)s - %(message)s",  # ✅ Add timestamps for clarity
-    handlers=[logging.StreamHandler()]  # ✅ Ensure output goes to console
+    handlers=[logging.StreamHandler()],  # ✅ Ensure output goes to console
 )
+
 
 class LinkedDataHubSettings(BaseSettings):
     cert_pem_path: Optional[str] = None
@@ -28,28 +30,31 @@ class LinkedDataHubSettings(BaseSettings):
 
 
 def list_operation_subclasses(
-    pkg: ModuleType,
-    base_class: Type[Operation]
+    pkg: ModuleType, base_class: Type[Operation]
 ) -> List[Type[Operation]]:
     subclasses = []
 
-    for loader, module_name, is_pkg in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."):
+    for loader, module_name, is_pkg in pkgutil.walk_packages(
+        pkg.__path__, pkg.__name__ + "."
+    ):
         module = importlib.import_module(module_name)
 
         for name, obj in inspect.getmembers(module, inspect.isclass):
             # Filter: class defined in the module AND is a subclass of Operation (but not Operation itself)
             if (
-                obj.__module__ == module.__name__ and
-                issubclass(obj, base_class) and
-                obj is not base_class
+                obj.__module__ == module.__name__
+                and issubclass(obj, base_class)
+                and obj is not base_class
             ):
                 subclasses.append(obj)
 
     return subclasses
 
+
 def register(classes: List[Type[Operation]]):
     for cls in classes:
         Operation.register(cls)
+
 
 def main(settings: BaseSettings, json_data: Optional[str]):
     register(list_operation_subclasses(web_algebra.operations, Operation))
@@ -61,7 +66,15 @@ def main(settings: BaseSettings, json_data: Optional[str]):
             json_input = json.load(json_file)
 
         # Execute the JSON input
-        print(Operation.execute_json(settings, json_input))
+        result = Operation.process_json(settings, json_input)
+
+        # Serialize final result for output
+        if isinstance(result, rdflib.Graph):
+            # Serialize Graph to JSON-LD for final output
+            jsonld_str = result.serialize(format="json-ld")
+            print(json.loads(jsonld_str))
+        else:
+            print(result)
     else:
         # Load API key
         api_key = os.getenv("OPENAI_API_KEY")
@@ -72,9 +85,12 @@ def main(settings: BaseSettings, json_data: Optional[str]):
         model = "gpt-4o-mini"
 
         # Load prompts
-        with open("prompts/system.md") as system_prompt_file, open("prompts/user.template.txt") as user_prompt_template_file:
+        with (
+            open("prompts/system.md") as system_prompt_file,
+            open("prompts/user.template.txt") as user_prompt_template_file,
+        ):
             system_prompt = system_prompt_file.read()
-            messages = [ {"role": "system", "content": system_prompt} ]
+            messages = [{"role": "system", "content": system_prompt}]
 
             user_prompt_template = user_prompt_template_file.read()
 
@@ -89,7 +105,7 @@ def main(settings: BaseSettings, json_data: Optional[str]):
                 chat_completion = client.chat.completions.create(
                     model=model,
                     messages=messages,
-                    response_format={ "type": "json_object" }
+                    response_format={"type": "json_object"},
                 )
 
                 reply_json = json.loads(chat_completion.choices[0].message.content)
@@ -97,7 +113,7 @@ def main(settings: BaseSettings, json_data: Optional[str]):
                 logging.info("Generated response: %s", reply_json)
 
                 # Execute the generated operation
-                print(Operation.execute_json(settings, reply_json))
+                print(Operation.process_json(settings, reply_json))
 
 
 if __name__ == "__main__":
@@ -121,8 +137,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.cert_pem_path and args.cert_password:
-        settings = LinkedDataHubSettings(cert_pem_path = args.cert_pem_path, cert_password = args.cert_password)
+        settings = LinkedDataHubSettings(
+            cert_pem_path=args.cert_pem_path, cert_password=args.cert_password
+        )
     else:
         settings = BaseSettings()
-    
+
     main(settings, args.from_json)

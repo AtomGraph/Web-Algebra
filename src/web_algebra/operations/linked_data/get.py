@@ -1,15 +1,13 @@
-import json
 import logging
-from rdflib import Graph
+from rdflib import Graph, URIRef
 from typing import Any
-from mcp.server.fastmcp.server import Context
-from mcp.server.session import ServerSessionT
-from mcp.shared.context import LifespanContextT
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.client import LinkedDataClient
 
-class GET(Operation):
+
+class GET(Operation, MCPTool):
     """
     Retrieves RDF data from a named graph using HTTP GET.
     The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
@@ -18,15 +16,15 @@ class GET(Operation):
 
     def model_post_init(self, __context: Any) -> None:
         self.client = LinkedDataClient(
-            cert_pem_path=getattr(self.settings, 'cert_pem_path', None),
-            cert_password=getattr(self.settings, 'cert_password', None),
-            verify_ssl=False  # Optionally disable SSL verification
+            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
+            cert_password=getattr(self.settings, "cert_password", None),
+            verify_ssl=False,  # Optionally disable SSL verification
         )
 
     @classmethod
     def description(cls) -> str:
         return "Retrieves RDF data from a named graph using HTTP GET. The URL serves as both the resource identifier and the named graph address in systems with direct graph identification. Returns the RDF graph describing the resource at that URL."
-    
+
     @classmethod
     def inputSchema(cls) -> dict:
         return {
@@ -34,38 +32,46 @@ class GET(Operation):
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URL to fetch RDF data from. This should be a valid URL pointing to RDF content."
+                    "description": "The URL to fetch RDF data from. This should be a valid URL pointing to RDF content.",
                 }
             },
-            "required": ["url"]
+            "required": ["url"],
         }
-    
-    def execute(self, arguments: dict[str, Any]) -> dict:
-        """
-        Fetch RDF data from the specified URL and return a Python dict representing JSON-LD.
-        :param arguments: A dictionary containing:
-            - `url`: The URL to fetch RDF data from.
-        :return: A Python dict of JSON-LD data from the resolved URL.
-        """
-        url: str = Operation.execute_json(self.settings, arguments["url"], self.context)
-        logging.info("Executing GET operation with URL: %s", url)
 
-        graph: Graph = self.client.get(url)  # Let exceptions propagate
-        logging.info("Successfully fetched RDF data from %s.", url)
+    def execute(self, url: URIRef) -> Graph:
+        """Pure function: GET RDF graph from URL with RDFLib terms"""
+        if not isinstance(url, URIRef):
+            raise TypeError(f"GET.execute expects url to be URIRef, got {type(url)}")
 
-        logging.info("Returning RDF data as a Python dict of JSON-LD (%s triple(s))", len(graph))
-        jsonld_str = graph.serialize(format="json-ld", encoding="utf-8")
-        jsonld_data = json.loads(jsonld_str)
+        url_str = str(url)
+        logging.info("Executing GET operation with URL: %s", url_str)
 
-        return jsonld_data
+        graph = self.client.get(url_str)
+        logging.info(
+            "Successfully fetched RDF data from %s (%s triple(s))", url_str, len(graph)
+        )
 
-    def run(
-        self,
-        arguments: dict[str, Any],
-        context: Context[ServerSessionT, LifespanContextT] | None = None,
-    ) -> list[types.TextContent]:
-        json_ld_data = self.execute(arguments)
-        jsonld_str = json.dumps(json_ld_data)
-        
-        logging.info("Returning JSON-LD data as text content.")
+        return graph
+
+    def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
+        """JSON execution: process arguments and delegate to execute()"""
+        url_data = Operation.process_json(
+            self.settings, arguments["url"], self.context, variable_stack
+        )
+        if not isinstance(url_data, URIRef):
+            raise TypeError(
+                f"GET operation expects 'url' to be URIRef, got {type(url_data)}"
+            )
+
+        # Return Graph directly (same as execute) - serialization only at boundaries
+        return self.execute(url_data)
+
+    def mcp_run(self, arguments: dict, context: Any = None) -> list[types.TextContent]:
+        """MCP execution: plain args → plain results"""
+        url = URIRef(arguments["url"])
+
+        graph = self.execute(url)
+
+        # Convert Graph to JSON-LD for MCP response
+        jsonld_str = graph.serialize(format="json-ld")
         return [types.TextContent(type="text", text=jsonld_str)]

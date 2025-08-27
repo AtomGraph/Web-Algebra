@@ -4,10 +4,8 @@ import json
 import urllib.request
 from http.client import HTTPResponse
 from rdflib import Graph
-from rdflib.query import Result
 from rdflib.plugins.sparql.parser import parseQuery
 
-import urllib.request
 
 MEDIA_TYPES = {
     "application/n-triples": "nt",
@@ -16,18 +14,24 @@ MEDIA_TYPES = {
     "application/rdf+xml": "xml",
 }
 
+
 class HTTPRedirectHandler308(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         """Handle 308 Permanent Redirect by preserving method and body"""
         if code == 308:
-            return urllib.request.Request(newurl, 
-                                        data=req.data, 
-                                        headers=req.headers,
-                                        method=req.get_method())
+            return urllib.request.Request(
+                newurl, data=req.data, headers=req.headers, method=req.get_method()
+            )
         return super().redirect_request(req, fp, code, msg, headers, newurl)
-    
+
+
 class LinkedDataClient:
-    def __init__(self, cert_pem_path: Optional[str] = None, cert_password: Optional[str] = None, verify_ssl: bool = True):
+    def __init__(
+        self,
+        cert_pem_path: Optional[str] = None,
+        cert_password: Optional[str] = None,
+        verify_ssl: bool = True,
+    ):
         """
         Initializes the LinkedDataClient with SSL configuration.
 
@@ -37,10 +41,12 @@ class LinkedDataClient:
         """
         # Always create SSL context
         self.ssl_context = ssl.create_default_context()
-        
+
         # Load client certificate if provided
         if cert_pem_path and cert_password:
-            self.ssl_context.load_cert_chain(certfile=cert_pem_path, password=cert_password)
+            self.ssl_context.load_cert_chain(
+                certfile=cert_pem_path, password=cert_password
+            )
 
         # Configure SSL verification
         if not verify_ssl:
@@ -48,7 +54,18 @@ class LinkedDataClient:
             self.ssl_context.verify_mode = ssl.CERT_NONE
 
         # Create an HTTPS handler with the configured SSL context
-        self.opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=self.ssl_context), HTTPRedirectHandler308())
+        self.opener = urllib.request.build_opener(
+            urllib.request.HTTPSHandler(context=self.ssl_context),
+            HTTPRedirectHandler308(),
+        )
+
+        # Add proper User-Agent header for external services like Wikidata
+        self.opener.addheaders = [
+            (
+                "User-Agent",
+                "Web-Algebra/1.0 (LinkedData Processing System; https://github.com/atomgraph/Web-Algebra)",
+            )
+        ]
 
     def get(self, url: str) -> Graph:
         """
@@ -70,11 +87,13 @@ class LinkedDataClient:
         content_type = response.headers.get("Content-Type").split(";")[0]
         rdf_format = MEDIA_TYPES.get(content_type)
         if not rdf_format:
-            raise ValueError(f"Unsupported Content-Type: {content_type}. Supported types are: {', '.join(MEDIA_TYPES.keys())}")
+            raise ValueError(
+                f"Unsupported Content-Type: {content_type}. Supported types are: {', '.join(MEDIA_TYPES.keys())}"
+            )
 
         # Parse the RDF data into an RDFLib Graph
         g = Graph()
-        g.parse(data=data, format=rdf_format, publicID=url)
+        g.parse(data=data, format=rdf_format, base=url)
         return g
 
     def post(self, url: str, graph: Graph) -> HTTPResponse:
@@ -89,9 +108,11 @@ class LinkedDataClient:
         data = graph.serialize(format="nt")
         headers = {
             "Content-Type": "application/n-triples",
-            "Accept": "application/n-triples"
+            "Accept": "application/n-triples",
         }
-        request = urllib.request.Request(url, data=data.encode("utf-8"), headers=headers, method="POST")
+        request = urllib.request.Request(
+            url, data=data.encode("utf-8"), headers=headers, method="POST"
+        )
 
         return self.opener.open(request)
 
@@ -107,9 +128,11 @@ class LinkedDataClient:
         data = graph.serialize(format="nt")
         headers = {
             "Content-Type": "application/n-triples",
-            "Accept": "application/n-triples"
+            "Accept": "application/n-triples",
         }
-        request = urllib.request.Request(url, data=data.encode("utf-8"), headers=headers, method="PUT")
+        request = urllib.request.Request(
+            url, data=data.encode("utf-8"), headers=headers, method="PUT"
+        )
 
         return self.opener.open(request)
 
@@ -134,18 +157,21 @@ class LinkedDataClient:
         """
         headers = {
             "Content-Type": "application/sparql-update",
-            "Accept": "application/n-triples"
+            "Accept": "application/n-triples",
         }
-        request = urllib.request.Request(url, data=sparql_update.encode("utf-8"), headers=headers, method="PATCH")
+        request = urllib.request.Request(
+            url, data=sparql_update.encode("utf-8"), headers=headers, method="PATCH"
+        )
 
         return self.opener.open(request)
+
 
 class SPARQLClient:
     def __init__(
         self,
         cert_pem_path: Optional[str] = None,
         cert_password: Optional[str] = None,
-        verify_ssl: bool = True
+        verify_ssl: bool = True,
     ):
         """
         Initializes the SPARQLClient with optional SSL certificate.
@@ -159,7 +185,9 @@ class SPARQLClient:
 
         # Load client certificate if provided
         if cert_pem_path and cert_password:
-            self.ssl_context.load_cert_chain(certfile=cert_pem_path, password=cert_password)
+            self.ssl_context.load_cert_chain(
+                certfile=cert_pem_path, password=cert_password
+            )
 
         # Configure SSL verification
         if not verify_ssl:
@@ -169,6 +197,14 @@ class SPARQLClient:
         self.opener = urllib.request.build_opener(
             urllib.request.HTTPSHandler(context=self.ssl_context)
         )
+
+        # Add proper User-Agent header for external services like Wikidata
+        self.opener.addheaders = [
+            (
+                "User-Agent",
+                "Web-Algebra/1.0 (LinkedData Processing System; https://github.com/atomgraph/Web-Algebra)",
+            )
+        ]
 
     def query(self, endpoint_url: str, query_string: str) -> dict:
         """
@@ -206,4 +242,4 @@ class SPARQLClient:
             return jsonld_data
         else:
             # return SPARQL JSON results as a dict
-            return json.loads(data.decode('utf-8'))
+            return json.loads(data.decode("utf-8"))

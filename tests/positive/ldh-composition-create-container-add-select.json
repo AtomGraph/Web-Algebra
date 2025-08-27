@@ -1,0 +1,49 @@
+{
+  "name": "LDH Create container and add SELECT",
+  "operation": {
+    "@op": "ldh-AddSelect",
+    "args": {
+      "url": {
+        "@op": "ldh-CreateContainer",
+        "args": {
+          "parent": {
+            "@op": "URI",
+            "args": {
+              "input": "https://localhost:4443/"
+            }
+          },
+          "slug": {
+            "@op": "Str",
+            "args": {
+              "input": "test-container"
+            }
+          },
+          "title": {
+            "@op": "Str",
+            "args": {
+              "input": "Test Container for Query"
+            }
+          }
+        }
+      },
+      "query": {
+        "@op": "SPARQLString",
+        "args": {
+          "question": {
+            "@op": "Str",
+            "args": {
+              "input": "What are all the people and their names?"
+            }
+          }
+        }
+      },
+      "title": {
+        "@op": "Str",
+        "args": {
+          "input": "Generated SPARQL Query"
+        }
+      }
+    }
+  },
+  "comment": "This operation should succeed and produce the expected output (requires LinkedDataHub authentication)"
+}

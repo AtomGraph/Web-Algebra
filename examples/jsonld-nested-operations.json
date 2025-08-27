@@ -1,0 +1,46 @@
+{
+  "@op": "PUT",
+  "args": {
+    "url": {
+      "@op": "URI",
+      "args": {
+        "input": "https://localhost:4443/test/nested-jsonld/"
+      }
+    },
+    "data": {
+      "@context": {
+        "schema": "https://schema.org/",
+        "foaf": "http://xmlns.com/foaf/0.1/"
+      },
+      "@id": {
+        "@op": "URI",
+        "args": {
+          "input": "https://localhost:4443/test/nested-jsonld/"
+        }
+      },
+      "@type": "schema:Person",
+      "schema:name": {
+        "@op": "Str",
+        "args": {
+          "input": "Test Person"
+        }
+      },
+      "foaf:homepage": {
+        "@op": "ResolveURI",
+        "args": {
+          "base": {
+            "@op": "URI",
+            "args": {
+              "input": "https://example.org/"
+            }
+          },
+          "relative": "homepage"
+        }
+      },
+      "schema:identifier": {
+        "@op": "STRUUID",
+        "args": {}
+      }
+    }
+  }
+}

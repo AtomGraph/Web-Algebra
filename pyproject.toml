@@ -30,4 +30,5 @@ webalgebra = { workspace = true }
 [dependency-groups]
 dev = [
     "webalgebra",
+    "ruff",
 ]

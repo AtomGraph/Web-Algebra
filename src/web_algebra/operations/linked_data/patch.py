@@ -1,26 +1,30 @@
 from typing import Any
 import logging
-from mcp.server.fastmcp.server import Context
-from mcp.server.session import ServerSessionT
-from mcp.shared.context import LifespanContextT
+from rdflib import URIRef, Literal
+from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
+from rdflib.query import Result
 from web_algebra.client import LinkedDataClient
 
-class PATCH(Operation):
+
+class PATCH(Operation, MCPTool):
     """
     Updates RDF data in a named graph using HTTP PATCH with SPARQL Update.
     The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
     Updates the RDF graph at that URL using the SPARQL update payload provided in the `update` argument.
+    Only INSERT/WHERE and DELETE WHERE forms of SPARQL Update are supported by PATCH! Only a single update operation is allowed.
+
     Returns True if the operation was successful, False otherwise.
     Note: This operation does not return the updated graph, it only confirms the success of the operation.
     """
 
     def model_post_init(self, __context: Any) -> None:
         self.client = LinkedDataClient(
-            cert_pem_path=getattr(self.settings, 'cert_pem_path', None),
-            cert_password=getattr(self.settings, 'cert_password', None),
-            verify_ssl=False  # Optionally disable SSL verification
+            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
+            cert_password=getattr(self.settings, "cert_password", None),
+            verify_ssl=False,  # Optionally disable SSL verification
         )
 
     @classmethod
@@ -29,10 +33,12 @@ class PATCH(Operation):
         Updates RDF data in a named graph using HTTP PATCH with SPARQL Update.
         The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
         Updates the RDF graph at that URL using the SPARQL update payload provided in the `update` argument.
+        Only INSERT/WHERE and DELETE WHERE forms of SPARQL Update are supported by PATCH! Only a single update operation is allowed.
+
         Returns True if the operation was successful, False otherwise.
         Note: This operation does not return the updated graph, it only confirms the success of the operation.
         """
-    
+
     @classmethod
     def inputSchema(cls) -> dict:
         return {
@@ -40,36 +46,80 @@ class PATCH(Operation):
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URL to send the SPARQL UPDATE to. This should be a valid URL."
+                    "description": "The URL to send the SPARQL UPDATE to. This should be a valid URL.",
                 },
                 "update": {
                     "type": "string",
-                    "description": "The SPARQL update string to execute."
-                }
+                    "description": "The SPARQL update string to execute.",
+                },
             },
-            "required": ["url", "update"]
+            "required": ["url", "update"],
         }
-    
-    def execute(self, arguments: dict[str, Any]) -> bool:
-        """
-        Updates RDF data at the specified URL using the HTTP PATCH method with SPARQL UPDATE.
-        :param arguments: A dictionary containing:
-            - `url`: The URL to send the SPARQL UPDATE to.
-            - `update`: The SPARQL update string to execute.
-        :return: True if successful, otherwise raises an error.
-        """
-        url: str = Operation.execute_json(self.settings, arguments["url"], self.context)
-        update: str = Operation.execute_json(self.settings, arguments["update"], self.context)
-        logging.info(f"Executing PATCH operation with URL: %s and SPARQL update: %s", url, update)
 
-        response = self.client.patch(url, update)  # ✅ Send SPARQL update
+    def execute(self, url: URIRef, update: Literal) -> Result:
+        """Pure function: PATCH SPARQL update to URL with RDFLib terms"""
+        if not isinstance(url, URIRef):
+            raise TypeError(f"PATCH.execute expects url to be URIRef, got {type(url)}")
+        if not isinstance(update, Literal):
+            raise TypeError(
+                f"PATCH.execute expects update to be Literal, got {type(update)}"
+            )
+
+        url_str = str(url)
+        update_str = str(update)
+        logging.info(
+            "Executing PATCH operation with URL: %s and SPARQL update: %s",
+            url_str,
+            update_str,
+        )
+
+        response = self.client.patch(url_str, update_str)
         logging.info("PATCH operation status: %s", response.status)
 
-        return response.status < 299
+        # Return SPARQL results format
+        from web_algebra.json_result import JSONResult
 
-    def run(
-        self,
-        arguments: dict[str, Any],
-        context: Context[ServerSessionT, LifespanContextT] | None = None,
-    ) -> Any:
-        return [types.TextContent(type="text", text=str(self.execute(arguments)))]
+        return JSONResult(
+            vars=["status", "url"],
+            bindings=[
+                {
+                    "status": Literal(response.status, datatype=XSD.integer),
+                    "url": URIRef(response.geturl()),
+                }
+            ],
+        )
+
+    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+        """JSON execution: process arguments and call pure function"""
+        # Process URL
+        url_data = Operation.process_json(
+            self.settings, arguments["url"], self.context, variable_stack
+        )
+        url = Operation.json_to_rdflib(url_data)
+        if not isinstance(url, URIRef):
+            raise TypeError(
+                f"PATCH operation expects 'url' to be URIRef, got {type(url)}"
+            )
+
+        # Process update query
+        update_data = Operation.process_json(
+            self.settings, arguments["update"], self.context, variable_stack
+        )
+        update = Operation.json_to_rdflib(update_data)
+        if not isinstance(update, Literal):
+            raise TypeError(
+                f"PATCH operation expects 'update' to be Literal, got {type(update)}"
+            )
+
+        return self.execute(url, update)
+
+    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
+        """MCP execution: plain args → plain results"""
+        url = URIRef(arguments["url"])
+        update = Literal(arguments["update"], datatype=XSD.string)
+
+        result = self.execute(url, update)
+
+        # Extract status for MCP response
+        status_binding = result.bindings[0]["status"]
+        return [types.TextContent(type="text", text=f"PATCH status: {status_binding}")]

@@ -1,0 +1,27 @@
+{
+  "name": "LinkedDataHub PUT operation",
+  "operation": {
+    "@op": "PUT",
+    "args": {
+      "url": {
+        "@op": "URI",
+        "args": {
+          "input": "https://localhost:4443/put-test/"
+        }
+      },
+      "data": {
+        "@op": "CONSTRUCT",
+        "args": {
+          "query": "PREFIX  dct:  <http://purl.org/dc/terms/> CONSTRUCT { ?dated dct:title ?title ; dct:created  ?created } { GRAPH ?graph { ?dated dct:title ?title ; dct:created  ?created }}",
+          "endpoint": {
+            "@op": "URI",
+            "args": {
+              "input": "https://localhost:4443/sparql"
+            }
+          }
+        }
+      }
+    }
+  },
+  "comment": "This operation should succeed and produce the expected output (requires LinkedDataHub authentication)"
+}

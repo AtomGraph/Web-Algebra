@@ -1,0 +1,159 @@
+{
+  "@op": "ForEach",
+  "args": {
+    "select": {
+      "@op": "SELECT",
+      "args": {
+        "endpoint": {
+          "@op": "URI",
+          "args": {
+            "input": "https://dbpedia.org/sparql"
+          }
+        },
+        "query": {
+          "@op": "Str",
+          "args": {
+            "input": "SELECT DISTINCT ?director ?directorName ?biography WHERE { ?director a <http://dbpedia.org/ontology/Person> . ?director <http://dbpedia.org/ontology/occupation> <http://dbpedia.org/resource/Film_director> . ?director <http://xmlns.com/foaf/0.1/name> ?directorName . OPTIONAL { ?director <http://dbpedia.org/ontology/abstract> ?biography . FILTER(LANG(?biography) = \"en\") } FILTER(strlen(?biography) > 100) } ORDER BY ?directorName LIMIT 15"
+          }
+        }
+      }
+    },
+    "operation": [
+      {
+        "@op": "Variable",
+        "args": {
+          "name": "directorMovies",
+          "value": {
+            "@op": "SELECT",
+            "args": {
+              "endpoint": {
+                "@op": "URI",
+                "args": {
+                  "input": "https://dbpedia.org/sparql"
+                }
+              },
+              "query": {
+                "@op": "Substitute",
+                "args": {
+                  "query": {
+                    "@op": "Str",
+                    "args": {
+                      "input": "SELECT ?movie ?movieTitle WHERE { ?movie <http://dbpedia.org/ontology/director> ?director . ?movie <http://xmlns.com/foaf/0.1/name> ?movieTitle . ?movie a <http://dbpedia.org/ontology/Film> } ORDER BY ?movieTitle LIMIT 3"
+                    }
+                  },
+                  "var": "director",
+                  "binding": {
+                    "value": {
+                      "@op": "Str",
+                      "args": {
+                        "input": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "director"
+                          }
+                        }
+                      }
+                    },
+                    "type": "uri"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "@op": "PUT",
+        "args": {
+          "url": {
+            "@op": "ResolveURI",
+            "args": {
+              "base": {
+                "@op": "URI",
+                "args": {
+                  "input": "https://localhost:4443/film/directors/"
+                }
+              },
+              "relative": {
+                "@op": "Replace",
+                "args": {
+                  "input": {
+                    "@op": "EncodeForURI",
+                    "args": {
+                      "input": {
+                        "@op": "Str",
+                        "args": {
+                          "input": {
+                            "@op": "Value",
+                            "args": {
+                              "name": "directorName"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "pattern": "%20",
+                  "replacement": "-"
+                }
+              }
+            }
+          },
+          "data": {
+            "@context": {
+              "foaf": "http://xmlns.com/foaf/0.1/",
+              "dct": "http://purl.org/dc/terms/",
+              "film": "http://example.org/film/",
+              "schema": "https://schema.org/"
+            },
+            "@id": {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "director"
+                  }
+                }
+              }
+            },
+            "@type": "schema:Person",
+            "foaf:name": {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "directorName"
+                  }
+                }
+              }
+            },
+            "dct:description": {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "biography"
+                  }
+                }
+              }
+            },
+            "film:notableWorks": {
+              "@op": "Bindings",
+              "args": {
+                "table": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$directorMovies"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

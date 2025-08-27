@@ -1,14 +1,14 @@
 import json
 import logging
-from typing import Any
+from typing import Any, List
+import rdflib
 from rdflib import Graph
-from mcp.server.fastmcp.server import Context
-from mcp.server.session import ServerSessionT
-from mcp.shared.context import LifespanContextT
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 
-class Merge(Operation):
+
+class Merge(Operation, MCPTool):
     """
     Merges a list of RDF graphs as JSON-LD into a single RDF graph as JSON-LD.
     """
@@ -16,7 +16,7 @@ class Merge(Operation):
     @classmethod
     def description(cls) -> str:
         return "Merges a list of RDF graphs as JSON-LD dicts into a single RDF graph as JSON-LD."
-    
+
     @classmethod
     def inputSchema(cls) -> dict:
         return {
@@ -26,55 +26,85 @@ class Merge(Operation):
                     "type": "array",
                     "items": {
                         "type": "object",
-                        "description": "A JSON-LD object representing an RDF graph."
+                        "description": "A JSON-LD object representing an RDF graph.",
                     },
-                    "description": "List of JSON-LD objects to merge into a single RDF graph."
+                    "description": "List of JSON-LD objects to merge into a single RDF graph.",
                 }
             },
-            "required": ["graphs"]
+            "required": ["graphs"],
         }
 
-    def execute(self, arguments: dict[str, Any]) -> Graph:
-        """
-        :param arguments: {"data": List[Dict]} where each dict is a JSON-LD object
-        :return: Merged RDFLib Graph
-        """
-        graphs = Operation.execute_json(self.settings, arguments["graphs"], self.context)
+    def execute(self, graphs: List[rdflib.Graph]) -> rdflib.Graph:
+        """Pure function: merge list of RDF graphs"""
         if not isinstance(graphs, list):
-            raise ValueError("Merge expects 'data' to be a list of JSON-LD dicts.")
+            raise TypeError(
+                f"Merge operation expects graphs to be list, got {type(graphs)}"
+            )
+
+        for i, graph in enumerate(graphs):
+            if not isinstance(graph, Graph):
+                raise TypeError(
+                    f"Merge operation expects graph {i} to be Graph, got {type(graph)}"
+                )
 
         merged_graph = Graph()
 
-        for i, data in enumerate(graphs):
+        for i, graph in enumerate(graphs):
+            logging.info(f"Merging graph {i + 1}/{len(graphs)}...")
+            merged_graph += graph
+
+        logging.info("Merged RDF data (%s triple(s))", len(merged_graph))
+        return merged_graph
+
+    def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
+        """JSON execution: process arguments and delegate to execute()"""
+        # Process graphs argument - may return dicts with processed nested operations
+        graphs_data = Operation.process_json(
+            self.settings, arguments["graphs"], self.context, variable_stack
+        )
+
+        if not isinstance(graphs_data, list):
+            raise TypeError(
+                f"Merge operation expects 'graphs' to be list, got {type(graphs_data)}"
+            )
+
+        # Convert processed data to Graph objects
+        graph_objects = []
+        for item in graphs_data:
+            if isinstance(item, Graph):
+                # Already a Graph (from some operation result)
+                graph_objects.append(item)
+            elif isinstance(item, dict):
+                # Processed JSON-LD - convert to Graph
+                import json
+
+                json_str = json.dumps(item)
+                graph = Graph()
+                graph.parse(data=json_str, format="json-ld")
+                graph_objects.append(graph)
+            else:
+                raise TypeError(
+                    f"Merge operation expects graph items to be Graph or dict, got {type(item)}"
+                )
+
+        # Delegate to execute() with Graph objects
+        return self.execute(graph_objects)
+
+    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
+        """MCP execution: plain args → plain results"""
+        graphs_data = arguments["graphs"]
+
+        # Convert JSON-LD objects to RDF Graphs
+        graphs = []
+        for data in graphs_data:
             json_str = json.dumps(data)
-            logging.info(f"Parsing JSON-LD object {i+1}/{len(graphs)}...")
-             
-            g = Graph()
-            g.parse(data=json_str, format="json-ld")
-
-            merged_graph += g
-
-        logging.info("Returning RDF data as a Python dict of JSON-LD (%s triple(s))", len(merged_graph))
-        jsonld_str = merged_graph.serialize(format="json-ld", encoding="utf-8")
-        jsonld_data = json.loads(jsonld_str)
-        return jsonld_data
-
-    def run(
-        self,
-        arguments: dict[str, Any],
-        context: Context[ServerSessionT, LifespanContextT] | None = None,
-    ) -> list[types.TextContent]:
-        json_ld_data = self.execute(arguments)
-        json_str = json.dumps(json_ld_data)
-
-        graph = Graph()
-        try:
+            graph = Graph()
             graph.parse(data=json_str, format="json-ld")
-        except Exception as e:
-            logging.error("Failed to parse JSON-LD data: %s", e)
-            raise
+            graphs.append(graph)
 
-        jsonld_str = graph.serialize(format="json-ld", encoding="utf-8")
-        logging.info("Returning JSON-LD data as text content.")
+        result_graph = self.execute(graphs)
+
+        # Convert back to JSON-LD for MCP response
+        jsonld_str = result_graph.serialize(format="json-ld")
 
         return [types.TextContent(type="text", text=jsonld_str)]

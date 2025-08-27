@@ -1,0 +1,108 @@
+{
+  "@op": "ForEach",
+  "args": {
+    "select": {
+      "@op": "SELECT",
+      "args": {
+        "endpoint": {
+          "@op": "URI",
+          "args": {
+            "input": "https://query.wikidata.org/sparql"
+          }
+        },
+        "query": {
+          "@op": "Str",
+          "args": {
+            "input": "SELECT DISTINCT ?laureate ?laureateLabel ?country ?countryLabel ?bio WHERE { ?laureate wdt:P166 wd:Q38104 . ?laureate wdt:P27 ?country . OPTIONAL { ?laureate wdt:P19 ?birthPlace . ?birthPlace wdt:P17 ?country . } OPTIONAL { ?laureate rdfs:comment ?bio . FILTER(LANG(?bio) = \"en\") } SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". } FILTER(YEAR(NOW()) - YEAR(?awardYear) <= 50) } LIMIT 20"
+          }
+        }
+      }
+    },
+    "operation": {
+      "@op": "PUT",
+      "args": {
+        "url": {
+          "@op": "ResolveURI",
+          "args": {
+            "base": {
+              "@op": "URI",
+              "args": {
+                "input": "https://localhost:4443/nobel/winners/"
+              }
+            },
+            "relative": {
+              "@op": "EncodeForURI",
+              "args": {
+                "input": {
+                  "@op": "Str",
+                  "args": {
+                    "input": {
+                      "@op": "Value",
+                      "args": {
+                        "name": "laureateLabel"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "data": {
+          "@context": {
+            "foaf": "http://xmlns.com/foaf/0.1/",
+            "dct": "http://purl.org/dc/terms/",
+            "nobel": "http://example.org/nobel/",
+            "schema": "https://schema.org/"
+          },
+          "@id": {
+            "@op": "Str",
+            "args": {
+              "input": {
+                "@op": "Value",
+                "args": {
+                  "name": "laureate"
+                }
+              }
+            }
+          },
+          "@type": "schema:Person",
+          "foaf:name": {
+            "@op": "Str",
+            "args": {
+              "input": {
+                "@op": "Value",
+                "args": {
+                  "name": "laureateLabel"
+                }
+              }
+            }
+          },
+          "schema:nationality": {
+            "@op": "Str",
+            "args": {
+              "input": {
+                "@op": "Value",
+                "args": {
+                  "name": "countryLabel"
+                }
+              }
+            }
+          },
+          "dct:description": {
+            "@op": "Str",
+            "args": {
+              "input": {
+                "@op": "Value",
+                "args": {
+                  "name": "bio"
+                }
+              }
+            }
+          },
+          "nobel:award": "Nobel Prize in Physics"
+        }
+      }
+    }
+  }
+}

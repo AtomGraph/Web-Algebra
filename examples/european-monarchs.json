@@ -1,0 +1,187 @@
+[
+  {
+    "@op": "ldh-CreateContainer",
+    "args": {
+      "parent": {
+        "@op": "URI",
+        "args": {
+          "input": "https://localhost:4443/"
+        }
+      },
+      "slug": "whateverest",
+      "title": "Historical Documents",
+      "description": "Container for historical documents and biographies"
+    }
+  },
+  {
+    "@op": "ldh-CreateContainer", 
+    "args": {
+      "parent": {
+        "@op": "URI", 
+        "args": {
+          "input": "https://localhost:4443/whateverest/"
+        }
+      },
+      "slug": "monarchs",
+      "title": "European Monarchs",
+      "description": "Biographical documents of historical European monarchs"
+    }
+  },
+  {
+    "@op": "ForEach",
+    "args": {
+      "select": {
+        "@op": "SELECT",
+        "args": {
+          "endpoint": {
+            "@op": "URI",
+            "args": {
+              "input": "https://query.wikidata.org/sparql"
+            }
+          },
+          "query": "PREFIX wd: <http://www.wikidata.org/entity/> PREFIX wdt: <http://www.wikidata.org/prop/direct/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?monarch ?monarchLabel WHERE { ?monarch wdt:P31 wd:Q5 ; wdt:P39 wd:Q12097 ; rdfs:label ?monarchLabel . FILTER(lang(?monarchLabel) = 'en') } LIMIT 5"
+        }
+      },
+      "operation": [
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "monarchName",
+            "value": {
+              "@op": "Value",
+              "args": {
+                "name": "monarchLabel"
+              }
+            }
+          }
+        },
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "monarchUri", 
+            "value": {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "monarch"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "itemUrl",
+            "value": {
+              "@op": "ForEach",
+              "args": {
+                "select": {
+                  "@op": "ldh-CreateItem",
+                  "args": {
+                    "container": {
+                      "@op": "URI",
+                      "args": {
+                        "input": "https://localhost:4443/whateverest/monarchs/"
+                      }
+                    },
+                    "slug": {
+                      "@op": "Value",
+                      "args": {
+                        "name": "$monarchName"
+                      }
+                    },
+                    "title": {
+                      "@op": "Value",
+                      "args": {
+                        "name": "$monarchName"
+                      }
+                    }
+                  }
+                },
+                "operation": {"@op": "Value", "args": {"name": "url"}}
+              }
+            }
+          }
+        },
+        {
+          "@op": "POST",
+          "args": {
+            "url": {
+              "@op": "Filter",
+              "args": {
+                "input": {"@op": "Value", "args": {"name": "$itemUrl"}},
+                "expression": 1
+              }
+            },
+            "data": {
+              "@op": "Merge",
+              "args": {
+                "graphs": [
+                  {
+                    "@op": "DESCRIBE",
+                    "args": {
+                      "endpoint": {
+            "@op": "URI",
+            "args": {
+              "input": "https://query.wikidata.org/sparql"
+            }
+          },
+                      "query": {
+                        "@op": "Replace",
+                        "args": {
+                          "input": "DESCRIBE <MONARCH_URI>",
+                          "pattern": "MONARCH_URI",
+                          "replacement": {
+                            "@op": "Value",
+                            "args": {
+                              "name": "$monarchUri"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "@context": {
+                      "schema": "https://schema.org/",
+                      "dct": "http://purl.org/dc/terms/",
+                      "foaf": "http://xmlns.com/foaf/0.1/"
+                    },
+                    "@id": {
+                      "@op": "Str",
+                      "args": {
+                        "input": {
+                          "@op": "Filter",
+                          "args": {
+                            "input": {"@op": "Value", "args": {"name": "$itemUrl"}},
+                            "expression": 1
+                          }
+                        }
+                      }
+                    },
+                    "dct:title": {
+                      "@op": "Value",
+                      "args": {
+                        "name": "$monarchName"
+                      }
+                    },
+                    "foaf:primaryTopic": {
+                      "@op": "Value",
+                      "args": {
+                        "name": "$monarchUri"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+]

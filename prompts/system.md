@@ -23,35 +23,47 @@ would produce this JSON output:
 
 ```json
 {
-  "ForEach": {
+  "@op": "ForEach",
+  "args": {
     "table": {
-      "SELECT": {
+      "@op": "SELECT",
+      "args": {
         "endpoint": "https://dbpedia.org/sparql",
         "query": {
-          "SPARQLString": {
-            "question": "10 biggest cities in Denmark",
-            "endpoint": "https://dbpedia.org/sparql"
+          "@op": "SPARQLString",
+          "args": {
+            "question": "10 biggest cities in Denmark"
           }
         }
       }
     },
     "operation": {
-      "PUT": {
+      "@op": "PUT",
+      "args": {
         "url": {
-          "ResolveURI": {
+          "@op": "ResolveURI",
+          "args": {
             "base": "http://localhost/denmark/",
             "relative": {
-              "ValueOf": {
-                "var": "cityName"
+              "@op": "Value",
+              "args": {
+                "name": "cityName"
               }
             }
           }
         },
         "data": {
-          "GET": {
+          "@op": "GET",
+          "args": {
             "url": {
-              "ValueOf": {
-                "var": "city"
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "city"
+                  }
+                }
               }
             }
           }
@@ -148,7 +160,7 @@ Fetch RDF data from a given URL and return it as a Python dict of JSON-LD.
 
 ---
 
-## POST(url: URL, data: Graph) → bool
+## POST(url: URL, data: Graph) → Dict
 
 Appends RDF data to a document at the specified URL, using **JSON-LD** to represent the graph.
 
@@ -157,7 +169,7 @@ Appends RDF data to a document at the specified URL, using **JSON-LD** to repres
 {
   "@op": "POST",
   "args": {
-    "url": "http://dbpedia.org/resource/Copenhagen",
+    "url": "https://localhost:4443/resource/Copenhagen",
     "data": {
       "@context": {
         "schema": "http://schema.org/",
@@ -171,12 +183,20 @@ Appends RDF data to a document at the specified URL, using **JSON-LD** to repres
 ```
 #### Result
 ```json
-true
+{
+  "head": {"vars": ["status", "url"]},
+  "results": {
+    "bindings": [{
+      "status": {"type": "literal", "value": "200", "datatype": "http://www.w3.org/2001/XMLSchema#integer"},
+      "url": {"type": "uri", "value": "https://localhost:4443/resource/Copenhagen"}
+    }]
+  }
+}
 ```
 
 ---
 
-## PUT(url: URL, data: Graph) → bool
+## PUT(url: URL, data: Graph) → Dict
 
 Creates or replaces a document with RDF content, represented as JSON-LD.
 
@@ -185,13 +205,13 @@ Creates or replaces a document with RDF content, represented as JSON-LD.
 {
   "@op": "PUT",
   "args": {
-    "url": "http://dbpedia.org/page/Copenhagen",
+    "url": "https://localhost:4443/page/Copenhagen",
     "data": {
       "@context": {
         "foaf": "http://xmlns.com/foaf/0.1/",
         "dbr": "http://dbpedia.org/resource/"
       },
-      "@id": "http://dbpedia.org/page/Copenhagen",
+      "@id": "https://localhost:4443/page/Copenhagen",
       "@type": ["foaf:Document"],
       "foaf:primaryTopic": "dbr:Copenhagen"
     }
@@ -200,7 +220,15 @@ Creates or replaces a document with RDF content, represented as JSON-LD.
 ```
 #### Result
 ```json
-true
+{
+  "head": {"vars": ["status", "url"]},
+  "results": {
+    "bindings": [{
+      "status": {"type": "literal", "value": "200", "datatype": "http://www.w3.org/2001/XMLSchema#integer"},
+      "url": {"type": "uri", "value": "https://localhost:4443/page/Copenhagen"}
+    }]
+  }
+}
 ```
 
 ---
@@ -228,9 +256,9 @@ Result:
 "DESCRIBE <http://dbpedia.org/resource/Copenhagen>"
 ```
 
-## SELECT(endpoint: URL, query: Select) -> List[Dict[str, Any]]
+## SELECT(endpoint: URL, query: Select) -> Dict
 
-This function queries the provided SPARQL endpoint using the provided `Select` query string. It returns a tabular SPARQL result as a list of dictionaries in JSON form, where every dictionary represents a table row. The dictionary keys correspond to variables projected by the query.
+This function queries the provided SPARQL endpoint using the provided `Select` query string. It returns a SPARQL results object with the structure `{"results": {"bindings": [...]}}` where each binding is a dictionary representing a table row. The dictionary keys correspond to variables projected by the query.
 Key values are also dictionaries, with `type` field indicating the type of the value (`uri`, `bnode`, or `literal`) and `value` providing the actual value.
 In case of language-tagged literals there is also an `xml:lang` key indicating the language code, and in case of typed literals there is a "datatype" key indicating the datatype URI.
 
@@ -249,16 +277,20 @@ In case of language-tagged literals there is also an `xml:lang` key indicating t
 Result (truncated for brevity):
 
 ```json
-[
-  {
-    "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" },
-    "cityName": { "type": "literal", "value": "City of Copenhagen", "xml:lang": "en" }
-  },
-  {
-    "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" },
-    "cityName": { "type": "literal", "value": "København", "xml:lang": "da" }
+{
+  "results": {
+    "bindings": [
+      {
+        "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" },
+        "cityName": { "type": "literal", "value": "City of Copenhagen", "xml:lang": "en" }
+      },
+      {
+        "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" },
+        "cityName": { "type": "literal", "value": "København", "xml:lang": "da" }
+      }
+    ]
   }
-]
+}
 ```
 
 ## DESCRIBE(endpoint: URL, query: Describe) -> Graph
@@ -398,7 +430,7 @@ Current context row:
 
 ```json
 {
-  "@op": "Var",
+  "@op": "Value",
   "args": {
     "name": "cityName"
   }
@@ -438,9 +470,9 @@ Result:
 "Copenhagen"
 ```
 
-## ForEach(table: List[Dict[str, Any]], operation: Union[Callable, List[Callable]])
+## ForEach(table: Dict, operation: Union[Callable, List[Callable]])
 
-Executes one or more operations for each row in a table.
+Executes one or more operations for each row in a SPARQL results table. The table should have the structure `{"results": {"bindings": [...]}}` as returned by SELECT operations.
 
 - If a **single operation** is provided, it is applied to each row.  
 - If a **list of operations** is provided, they are executed sequentially for each row.
@@ -457,10 +489,14 @@ This example performs an HTTP **GET** request for each city in the table.
 {
   "@op": "ForEach",
   "args": {
-    "table": [
-      { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" } },
-      { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Aarhus" } }
-    ],
+    "table": {
+      "results": {
+        "bindings": [
+          { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" } },
+          { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Aarhus" } }
+        ]
+      }
+    },
     "operation": {
       "@op": "GET",
       "args": {
@@ -468,7 +504,7 @@ This example performs an HTTP **GET** request for each city in the table.
           "@op": "Str",
           "args": {
             "input": {
-              "@op": "Var",
+              "@op": "Value",
               "args": {
                 "name": "city"
               }
@@ -499,10 +535,14 @@ This example performs both a **GET** request and a **POST** request for each cit
 {
   "@op": "ForEach",
   "args": {
-    "table": [
-      { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" } },
-      { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Aarhus" } }
-    ],
+    "table": {
+      "results": {
+        "bindings": [
+          { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" } },
+          { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Aarhus" } }
+        ]
+      }
+    },
     "operation": [
       {
         "@op": "GET",
@@ -511,7 +551,7 @@ This example performs both a **GET** request and a **POST** request for each cit
             "@op": "Str",
             "args": {
               "input": {
-                "@op": "Var",
+                "@op": "Value",
                 "args": {
                   "name": "city"
                 }
@@ -525,7 +565,7 @@ This example performs both a **GET** request and a **POST** request for each cit
         "args": {
           "url": "https://example.com/store",
           "data": {
-            "@op": "Var",
+            "@op": "Value",
             "args": {
               "name": "city"
             }
@@ -628,9 +668,9 @@ Returns a list of children documents for the given LinkedDataHub URL. Requires e
 
 Result: Returns a SPARQL results table with children documents.
 
-## ldh-CreateContainer(url: str, title: str, description?: str) -> bool
+## ldh-CreateContainer(parent: str, title: str, slug?: str, description?: str) -> Dict
 
-Creates a LinkedDataHub Container document with proper structure. Includes important constraints about URI hierarchy requirements.
+Creates a LinkedDataHub Container document with proper structure. Uses parent URL + slug instead of full URL. If slug is not provided, uses title as default. Slugs are automatically URL-encoded (no need for EncodeForURI).
 
 ### Example JSON
 
@@ -638,7 +678,8 @@ Creates a LinkedDataHub Container document with proper structure. Includes impor
 {
   "@op": "ldh-CreateContainer",
   "args": {
-    "url": "http://localhost:4443/containers/cities/",
+    "parent": "https://localhost:4443/containers/",
+    "slug": "European Cities",
     "title": "Cities Container",
     "description": "Container for city data"
   }
@@ -647,12 +688,20 @@ Creates a LinkedDataHub Container document with proper structure. Includes impor
 
 Result:
 ```json
-true
+{
+  "head": {"vars": ["status", "url"]},
+  "results": {
+    "bindings": [{
+      "status": {"type": "literal", "value": "200", "datatype": "http://www.w3.org/2001/XMLSchema#integer"},
+      "url": {"type": "uri", "value": "https://localhost:4443/containers/European%20Cities/"}
+    }]
+  }
+}
 ```
 
-## ldh-CreateItem(url: str, title: str, description?: str) -> bool
+## ldh-CreateItem(container: str, title: str, slug?: str, description?: str) -> Dict
 
-Creates a LinkedDataHub Item document with proper structure. Includes important constraints about URI hierarchy requirements.
+Creates a LinkedDataHub Item document with proper structure. Uses container URL + slug instead of full URL. If slug is not provided, uses title as default. Slugs are automatically URL-encoded (no need for EncodeForURI).
 
 ### Example JSON
 
@@ -660,7 +709,8 @@ Creates a LinkedDataHub Item document with proper structure. Includes important 
 {
   "@op": "ldh-CreateItem",
   "args": {
-    "url": "http://localhost:4443/items/copenhagen",
+    "container": "https://localhost:4443/items/",
+    "slug": "Copenhagen City",
     "title": "Copenhagen",
     "description": "Capital city of Denmark"
   }
@@ -669,7 +719,107 @@ Creates a LinkedDataHub Item document with proper structure. Includes important 
 
 Result:
 ```json
-true
+{
+  "head": {"vars": ["status", "url"]},
+  "results": {
+    "bindings": [{
+      "status": {"type": "literal", "value": "200", "datatype": "http://www.w3.org/2001/XMLSchema#integer"},
+      "url": {"type": "uri", "value": "https://localhost:4443/items/Copenhagen%20City/"}
+    }]
+  }
+}
+```
+
+## Value(name: str) -> any
+
+Retrieves values from either the variable stack (using $ prefix) or ForEach context bindings (no prefix). 
+
+- **$variableName**: Accesses variables set by Variable operations
+- **bindingName**: Accesses ForEach context bindings, extracting the `.value` field from SPARQL-style binding objects
+
+### Example JSON
+
+ForEach context binding access:
+```json
+{
+  "@op": "Value",
+  "args": {
+    "name": "monarchLabel"
+  }
+}
+```
+
+Variable access:
+```json
+{
+  "@op": "Value",
+  "args": {
+    "name": "$monarchName"
+  }
+}
+```
+
+Result (extracts .value from binding or returns variable value):
+```json
+"Ambiorix"
+```
+
+## Variable(name: str, select: any) -> None
+
+Sets a variable in the current scope, similar to XSLT's `<xsl:variable>`. The variable value is computed once and stored for later access by Value operations. Variables follow lexical scoping rules.
+
+### Example JSON
+
+```json
+{
+  "@op": "Variable",
+  "args": {
+    "name": "monarchName",
+    "value": {
+      "@op": "Str",
+      "args": {
+        "input": {
+          "@op": "Value",
+          "args": {
+            "name": "monarchLabel"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Later access the variable:
+```json
+{
+  "@op": "Value",
+  "args": {
+    "name": "$monarchName"
+  }
+}
+```
+
+Result: Variable is stored in scope (no return value), accessed later with $ prefix
+
+## Current() -> dict
+
+Returns the current ForEach binding context, similar to XSLT's `current()` function or `select="."`. This captures the current row bindings to use after context changes from nested ForEach operations.
+
+### Example JSON
+
+```json
+{
+  "@op": "Current"
+}
+```
+
+Result (example):
+```json
+{
+  "monarch": {"type": "uri", "value": "http://www.wikidata.org/entity/Q12847"},
+  "monarchLabel": {"xml:lang": "en", "type": "literal", "value": "Ambiorix"}
+}
 ```
 
 ## ExtractClasses(endpoint: str) -> Graph
@@ -741,13 +891,17 @@ Current context row:
 Operation:
 ```json
 {
-    "Substitute": {
-        "query": "PREFIX dbo: <http://dbpedia.org/ontology/> CONSTRUCT WHERE { ?city dbo:populationTotal ?population }",
-        "var": "city",
-        "binding": {
-            "Var": { "name": "city" }
-        }
+  "@op": "Substitute",
+  "args": {
+    "query": "PREFIX dbo: <http://dbpedia.org/ontology/> CONSTRUCT WHERE { ?city dbo:populationTotal ?population }",
+    "var": "city",
+    "binding": {
+      "@op": "Value",
+      "args": {
+        "name": "city"
+      }
     }
+  }
 }
 ```
 

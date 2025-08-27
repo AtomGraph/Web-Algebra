@@ -1,13 +1,14 @@
 import logging
 from urllib.parse import quote
 from typing import Any
-from mcp.server.fastmcp.server import Context
-from mcp.server.session import ServerSessionT
-from mcp.shared.context import LifespanContextT
+from rdflib import Literal
+from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 
-class EncodeForURI(Operation):
+
+class EncodeForURI(Operation, MCPTool):
     """
     URL-encodes a string to make it safe for use in URIs, following SPARQL's `ENCODE_FOR_URI` behavior.
     """
@@ -15,7 +16,7 @@ class EncodeForURI(Operation):
     @classmethod
     def description(cls) -> str:
         return "Encodes a string to be URI-safe, following SPARQL's `ENCODE_FOR_URI` behavior. It encodes characters that are not allowed in URIs, such as spaces, slashes, and colons."
-    
+
     @classmethod
     def inputSchema(cls) -> dict:
         return {
@@ -23,38 +24,41 @@ class EncodeForURI(Operation):
             "properties": {
                 "input": {
                     "type": "string",
-                    "description": "The string to encode for use in a URI."
+                    "description": "The string to encode for use in a URI.",
                 }
             },
-            "required": ["input"]
+            "required": ["input"],
         }
-    
-    def execute(self, arguments: dict[str, Any]) -> str:
-        """        Executes the EncodeForURI operation.
-        :param arguments: A dictionary containing the input string to encode.
-            - `input`: The string to encode for use in a URI. This can be a nested operation producing a string.
-        :return: A string with the encoded URI string."""
-        input: Any = Operation.execute_json(self.settings, arguments["input"], self.context)
-        logging.info("Resolving input for EncodeForURI: %s", input)
 
-        if isinstance(input, dict):
-            if "value" not in input:
-                raise ValueError(f"EncodeForURI expected a 'value' key, found: {input}")
-            input = input["value"]  # Extract the string
+    def execute(self, input_str: Literal) -> Literal:
+        """Pure function: encode string for URI with RDFLib terms"""
+        if not isinstance(input_str, Literal):
+            raise TypeError(
+                f"EncodeForURI.execute expects input_str to be Literal, got {type(input_str)}"
+            )
 
-        # ✅ Ensure we now have a string
-        if not isinstance(input, str):
-            raise ValueError(f"EncodeForURI operation requires 'input' to be a string, found: {input}")
+        input_value = str(input_str)
+        logging.info("Encoding input for URI: %s", input_value)
 
-        # ✅ Encode using XPath encode-for-uri() behavior (encode slashes, colons, etc.)
-        encoded_value = quote(input, safe="")  # 🔥 No safe characters
+        # Encode using XPath encode-for-uri() behavior (encode slashes, colons, etc.)
+        encoded_value = quote(input_value, safe="")  # No safe characters
 
         logging.info("Encoded URI: %s", encoded_value)
-        return encoded_value
+        return Literal(encoded_value, datatype=XSD.string)
 
-    def run(
-        self,
-        arguments: dict[str, Any],
-        context: Context[ServerSessionT, LifespanContextT] | None = None,
-    ) -> Any:
-        return [types.TextContent(type="text", text=self.execute(arguments))]
+    def execute_json(self, arguments: dict, variable_stack: list = []) -> Literal:
+        """JSON execution: process arguments and call pure function"""
+        input_data = Operation.process_json(
+            self.settings, arguments["input"], self.context, variable_stack
+        )
+        # Allow implicit string conversion
+        input_literal = self.to_string_literal(input_data)
+
+        return self.execute(input_literal)
+
+    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
+        """MCP execution: plain args → plain results"""
+        input_str = Literal(arguments["input"], datatype=XSD.string)
+
+        result = self.execute(input_str)
+        return [types.TextContent(type="text", text=str(result))]
