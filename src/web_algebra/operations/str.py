@@ -61,7 +61,7 @@ class Str(Operation):
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
         # Convert plain input to RDFLib term
-        rdflib_term = self.plain_to_rdflib(arguments["input"])
+        rdflib_term = Operation.plain_to_rdflib(arguments["input"])
 
         # Call pure function
         result = self.execute(rdflib_term)

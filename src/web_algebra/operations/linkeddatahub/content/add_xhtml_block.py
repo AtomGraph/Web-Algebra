@@ -2,6 +2,7 @@ from typing import Any
 import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD, RDF
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.post import POST
 from web_algebra.operations.linked_data.get import GET
@@ -87,7 +88,7 @@ class AddXHTMLBlock(POST):
             # Ensure it's an XML literal
             value_literal = Literal(str(value_data), datatype=RDF.XMLLiteral)
         else:
-            value_str = Operation.to_string_literal(value_data)
+            value_str = self.to_string_literal(value_data)
             value_literal = Literal(str(value_str), datatype=RDF.XMLLiteral)
 
         # Process optional arguments
@@ -96,21 +97,21 @@ class AddXHTMLBlock(POST):
             title_data = Operation.process_json(
                 self.settings, arguments["title"], self.context, variable_stack
             )
-            title_literal = Operation.to_string_literal(title_data)
+            title_literal = self.to_string_literal(title_data)
 
         description_literal = None
         if "description" in arguments:
             description_data = Operation.process_json(
                 self.settings, arguments["description"], self.context, variable_stack
             )
-            description_literal = Operation.to_string_literal(description_data)
+            description_literal = self.to_string_literal(description_data)
 
         fragment_literal = None
         if "fragment" in arguments:
             fragment_data = Operation.process_json(
                 self.settings, arguments["fragment"], self.context, variable_stack
             )
-            fragment_literal = Operation.to_string_literal(fragment_data)
+            fragment_literal = self.to_string_literal(fragment_data)
             
         return self.execute(
             url_data, value_literal, title_literal, description_literal,

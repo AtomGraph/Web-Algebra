@@ -3,11 +3,12 @@ import logging
 from rdflib import Graph, URIRef
 from typing import Any
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.client import LinkedDataClient
 
 
-class GET(Operation):
+class GET(Operation, MCPTool):
     """
     Retrieves RDF data from a named graph using HTTP GET.
     The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.

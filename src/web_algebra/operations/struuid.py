@@ -5,9 +5,10 @@ from rdflib import Literal
 from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.operation import Operation
+from web_algebra.mcp_tool import MCPTool
 
 
-class STRUUID(Operation):
+class STRUUID(Operation, MCPTool):
     """
     Generates a fresh UUID (Universally Unique Identifier) as a string, following SPARQL's STRUUID() behavior.
     """

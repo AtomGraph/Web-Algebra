@@ -15,7 +15,7 @@ test_data = {
         "schema": "https://schema.org/"
     },
     "@id": {
-        "@op": "Uri",
+        "@op": "URI",
         "args": {
             "input": "https://example.org/test"
         }

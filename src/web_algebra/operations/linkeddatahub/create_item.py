@@ -5,6 +5,7 @@ import rdflib
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.put import PUT
 from rdflib.query import Result
@@ -105,7 +106,7 @@ class CreateItem(PUT):
         container_data = Operation.process_json(
             self.settings, arguments["container"], self.context, variable_stack
         )
-        container_uri = self.json_to_rdflib(container_data)
+        container_uri = Operation.json_to_rdflib(container_data)
         if not isinstance(container_uri, URIRef):
             raise TypeError(
                 f"ldh-CreateItem operation expects 'container' to be URIRef, got {type(container_uri)}"
@@ -115,7 +116,7 @@ class CreateItem(PUT):
         title_data = Operation.process_json(
             self.settings, arguments["title"], self.context, variable_stack
         )
-        title = self.json_to_rdflib(title_data)
+        title = Operation.json_to_rdflib(title_data)
         if not isinstance(title, Literal):
             raise TypeError(
                 f"ldh-CreateItem operation expects 'title' to be Literal, got {type(title)}"
@@ -127,7 +128,7 @@ class CreateItem(PUT):
             slug_data = Operation.process_json(
                 self.settings, arguments["slug"], self.context, variable_stack
             )
-            slug = self.json_to_rdflib(slug_data)
+            slug = Operation.json_to_rdflib(slug_data)
             if not isinstance(slug, Literal):
                 raise TypeError(
                     f"ldh-CreateItem operation expects 'slug' to be Literal, got {type(slug)}"

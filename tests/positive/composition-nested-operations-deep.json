@@ -1,0 +1,33 @@
+{
+  "name": "Deep nested operations",
+  "operation": {
+    "@op": "Str",
+    "args": {
+      "input": {
+        "@op": "Replace",
+        "args": {
+          "input": {
+            "@op": "EncodeForURI",
+            "args": {
+              "input": {
+                "@op": "Str",
+                "args": {
+                  "input": {
+                    "@op": "URI",
+                    "args": {
+                      "input": "http://example.org/test with spaces"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "pattern": "%20",
+          "replacement": "_"
+        }
+      }
+    }
+  },
+  "comment": "This operation should succeed and produce the expected output",
+  "expected": "http%3A%2F%2Fexample.org%2Ftest_with_spaces"
+}

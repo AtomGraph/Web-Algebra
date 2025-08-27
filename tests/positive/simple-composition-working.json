@@ -1,0 +1,23 @@
+{
+  "name": "Simple operation composition",
+  "operation": {
+    "@op": "Str",
+    "args": {
+      "input": {
+        "@op": "Replace",
+        "args": {
+          "input": {
+            "@op": "EncodeForURI",
+            "args": {
+              "input": "hello world with spaces"
+            }
+          },
+          "pattern": "%20",
+          "replacement": "_"
+        }
+      }
+    }
+  },
+  "comment": "This operation should succeed and produce the expected output",
+  "expected": "hello_world_with_spaces"
+}

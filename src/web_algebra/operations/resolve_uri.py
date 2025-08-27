@@ -3,10 +3,11 @@ from urllib.parse import urljoin
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 
 
-class ResolveURI(Operation):
+class ResolveURI(Operation, MCPTool):
     """
     Resolves a relative URI against a base URI.
     """
@@ -56,7 +57,7 @@ class ResolveURI(Operation):
         base_data = Operation.process_json(
             self.settings, arguments["base"], self.context, variable_stack
         )
-        base = self.json_to_rdflib(base_data)
+        base = Operation.json_to_rdflib(base_data)
         if not isinstance(base, URIRef):
             raise TypeError(
                 f"ResolveURI operation expects 'base' to be URIRef, got {type(base)}"
@@ -66,7 +67,7 @@ class ResolveURI(Operation):
         relative_data = Operation.process_json(
             self.settings, arguments["relative"], self.context, variable_stack
         )
-        relative = self.json_to_rdflib(relative_data)
+        relative = Operation.json_to_rdflib(relative_data)
         if not isinstance(relative, Literal):
             raise TypeError(
                 f"ResolveURI operation expects 'relative' to be Literal, got {type(relative)}"

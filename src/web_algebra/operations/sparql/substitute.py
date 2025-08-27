@@ -5,13 +5,14 @@ from rdflib.plugins.sparql import prepareQuery
 from rdflib.namespace import XSD
 from mcp import types
 import re
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 
 
-class Substitute(Operation):
+class Substitute(Operation, MCPTool):
     """
     Replaces variable placeholders in a SPARQL query with actual values from a given set of bindings.
-    For example, Replace("DESCRIBE ?x", "x", Uri("new_value")) produces "DESCRIBE <new_value>".
+    For example, Replace("DESCRIBE ?x", "x", URI("new_value")) produces "DESCRIBE <new_value>".
     """
 
     """
@@ -21,7 +22,7 @@ class Substitute(Operation):
     @classmethod
     def description(cls) -> str:
         return """Replaces variable placeholders in a SPARQL query with actual values from a given set of bindings. This operation allows for dynamic query construction by substituting variables with specific values, enabling flexible SPARQL query execution.
-        For example, Replace("DESCRIBE ?x", "x", Uri("new_value")) produces "DESCRIBE <new_value>"."""
+        For example, Replace("DESCRIBE ?x", "x", URI("new_value")) produces "DESCRIBE <new_value>"."""
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -91,7 +92,7 @@ class Substitute(Operation):
         query_data = Operation.process_json(
             self.settings, arguments["query"], self.context, variable_stack
         )
-        query = self.json_to_rdflib(query_data)
+        query = Operation.json_to_rdflib(query_data)
         if not isinstance(query, Literal):
             raise TypeError(
                 f"Substitute operation expects 'query' to be Literal, got {type(query)}"
@@ -101,7 +102,7 @@ class Substitute(Operation):
         var_data = Operation.process_json(
             self.settings, arguments["var"], self.context, variable_stack
         )
-        var = self.json_to_rdflib(var_data)
+        var = Operation.json_to_rdflib(var_data)
         if not isinstance(var, Literal):
             raise TypeError(
                 f"Substitute operation expects 'var' to be Literal, got {type(var)}"
@@ -111,7 +112,7 @@ class Substitute(Operation):
         binding_data = Operation.process_json(
             self.settings, arguments["binding"], self.context, variable_stack
         )
-        binding_value = self.json_to_rdflib(binding_data)
+        binding_value = Operation.json_to_rdflib(binding_data)
 
         return self.execute(query, var, binding_value)
 

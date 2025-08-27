@@ -11,10 +11,11 @@ from rdflib.query import Result
 
 class Operation(ABC, BaseModel):
     """
-    Abstract base class for all operations with triple execution paths:
+    Abstract base class for all operations with dual execution paths:
     1. execute() - Pure RDFLib function
     2. execute_json() - JSON argument processing
-    3. mcp_run() - MCP interface
+    
+    Operations can optionally implement MCPTool interface for MCP client access.
     """
 
     registry: ClassVar[Dict[str, Type["Operation"]]] = {}
@@ -49,10 +50,6 @@ class Operation(ABC, BaseModel):
         """JSON execution: processes JSON args, returns RDFLib objects"""
         pass
 
-    @abstractmethod
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        pass
 
 
     @classmethod

@@ -1,0 +1,23 @@
+{
+  "name": "Complex Replace operation",
+  "operation": {
+    "@op": "Replace",
+    "args": {
+      "input": {
+        "@op": "Str",
+        "args": {
+          "input": "Hello World"
+        }
+      },
+      "pattern": "World",
+      "replacement": {
+        "@op": "Str",
+        "args": {
+          "input": "Universe"
+        }
+      }
+    }
+  },
+  "comment": "This operation should succeed and produce the expected output",
+  "expected": "Hello Universe"
+}

@@ -5,11 +5,12 @@ import rdflib
 from rdflib import URIRef, Literal, Graph
 from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.client import SPARQLClient
 
 
-class DESCRIBE(Operation):
+class DESCRIBE(Operation, MCPTool):
     """
     Executes a SPARQL DESCRIBE query against a specified endpoint and returns a JSON-LD response.
     """

@@ -5,12 +5,13 @@ import rdflib
 from rdflib import URIRef, Graph, Literal
 from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from rdflib.query import Result
 from web_algebra.client import LinkedDataClient
 
 
-class POST(Operation):
+class POST(Operation, MCPTool):
     """
     Creates or appends RDF data to a named graph using HTTP POST.
     The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.

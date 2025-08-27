@@ -132,7 +132,7 @@ class JSONResult(Result):
         for var in self.vars:
             col_widths[var] = max(
                 len(var),
-                max(len(str(binding.get(var, ""))) for binding in self.bindings),
+                max(len(str(binding.get(var, "NULL"))) for binding in self.bindings),
             )
 
         # Build table
@@ -156,7 +156,7 @@ class JSONResult(Result):
             row = (
                 "| "
                 + " | ".join(
-                    str(binding.get(var, "")).ljust(col_widths[var])
+                    str(binding.get(var, "NULL")).ljust(col_widths[var])
                     for var in self.vars
                 )
                 + " |"

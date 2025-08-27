@@ -2,6 +2,7 @@ from typing import Any
 import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.post import POST
 
@@ -94,7 +95,7 @@ class AddView(POST):
         title_data = Operation.process_json(
             self.settings, arguments["title"], self.context, variable_stack
         )
-        title_literal = Operation.to_string_literal(title_data)
+        title_literal = self.to_string_literal(title_data)
 
         # Process optional arguments
         description_literal = None
@@ -102,14 +103,14 @@ class AddView(POST):
             description_data = Operation.process_json(
                 self.settings, arguments["description"], self.context, variable_stack
             )
-            description_literal = Operation.to_string_literal(description_data)
+            description_literal = self.to_string_literal(description_data)
 
         fragment_literal = None
         if "fragment" in arguments:
             fragment_data = Operation.process_json(
                 self.settings, arguments["fragment"], self.context, variable_stack
             )
-            fragment_literal = Operation.to_string_literal(fragment_data)
+            fragment_literal = self.to_string_literal(fragment_data)
 
         mode_uri = None
         if "mode" in arguments:

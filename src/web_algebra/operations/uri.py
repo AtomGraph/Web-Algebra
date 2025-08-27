@@ -5,7 +5,7 @@ from mcp import types
 from web_algebra.operation import Operation
 
 
-class Uri(Operation):
+class URI(Operation):
     """
     Converts any RDF term to a URI reference (like SPARQL's URI() function)
     """
@@ -28,7 +28,7 @@ class Uri(Operation):
         """Pure function: RDFLib term → URI reference"""
         if not isinstance(term, rdflib.term.Node):
             raise TypeError(
-                f"Uri operation expects input to be RDFLib term, got {type(term)}"
+                f"URI operation expects input to be RDFLib term, got {type(term)}"
             )
 
         return URIRef(str(term))
@@ -43,7 +43,7 @@ class Uri(Operation):
         # Expect RDFLib term directly
         if not isinstance(input_data, rdflib.term.Node):
             raise TypeError(
-                f"Uri operation expects input to be RDFLib term, got {type(input_data)}"
+                f"URI operation expects input to be RDFLib term, got {type(input_data)}"
             )
 
         # Call pure function
@@ -52,7 +52,7 @@ class Uri(Operation):
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
         # Convert plain input to RDFLib term
-        rdflib_term = self.plain_to_rdflib(arguments["input"])
+        rdflib_term = Operation.plain_to_rdflib(arguments["input"])
 
         # Call pure function
         result = self.execute(rdflib_term)

@@ -5,12 +5,13 @@ import rdflib
 from rdflib import URIRef, Graph, Literal
 from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from rdflib.query import Result
 from web_algebra.client import LinkedDataClient
 
 
-class PUT(Operation):
+class PUT(Operation, MCPTool):
     """
     Replaces RDF data in a named graph using HTTP PUT.
     The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.

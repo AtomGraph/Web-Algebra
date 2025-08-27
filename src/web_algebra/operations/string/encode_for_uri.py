@@ -4,10 +4,11 @@ from typing import Any
 from rdflib import Literal
 from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 
 
-class EncodeForURI(Operation):
+class EncodeForURI(Operation, MCPTool):
     """
     URL-encodes a string to make it safe for use in URIs, following SPARQL's `ENCODE_FOR_URI` behavior.
     """
@@ -51,7 +52,7 @@ class EncodeForURI(Operation):
             self.settings, arguments["input"], self.context, variable_stack
         )
         # Allow implicit string conversion
-        input_literal = Operation.to_string_literal(input_data)
+        input_literal = self.to_string_literal(input_data)
 
         return self.execute(input_literal)
 

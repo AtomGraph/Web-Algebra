@@ -3,16 +3,19 @@ import logging
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from rdflib.query import Result
 from web_algebra.client import LinkedDataClient
 
 
-class PATCH(Operation):
+class PATCH(Operation, MCPTool):
     """
     Updates RDF data in a named graph using HTTP PATCH with SPARQL Update.
     The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
     Updates the RDF graph at that URL using the SPARQL update payload provided in the `update` argument.
+    Only INSERT/WHERE and DELETE WHERE forms of SPARQL Update are supported by PATCH! Only a single update operation is allowed.
+
     Returns True if the operation was successful, False otherwise.
     Note: This operation does not return the updated graph, it only confirms the success of the operation.
     """
@@ -30,6 +33,8 @@ class PATCH(Operation):
         Updates RDF data in a named graph using HTTP PATCH with SPARQL Update.
         The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
         Updates the RDF graph at that URL using the SPARQL update payload provided in the `update` argument.
+        Only INSERT/WHERE and DELETE WHERE forms of SPARQL Update are supported by PATCH! Only a single update operation is allowed.
+
         Returns True if the operation was successful, False otherwise.
         Note: This operation does not return the updated graph, it only confirms the success of the operation.
         """
@@ -90,7 +95,7 @@ class PATCH(Operation):
         url_data = Operation.process_json(
             self.settings, arguments["url"], self.context, variable_stack
         )
-        url = self.json_to_rdflib(url_data)
+        url = Operation.json_to_rdflib(url_data)
         if not isinstance(url, URIRef):
             raise TypeError(
                 f"PATCH operation expects 'url' to be URIRef, got {type(url)}"
@@ -100,7 +105,7 @@ class PATCH(Operation):
         update_data = Operation.process_json(
             self.settings, arguments["update"], self.context, variable_stack
         )
-        update = self.json_to_rdflib(update_data)
+        update = Operation.json_to_rdflib(update_data)
         if not isinstance(update, Literal):
             raise TypeError(
                 f"PATCH operation expects 'update' to be Literal, got {type(update)}"

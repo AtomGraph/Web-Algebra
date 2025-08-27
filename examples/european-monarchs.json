@@ -3,7 +3,7 @@
     "@op": "ldh-CreateContainer",
     "args": {
       "parent": {
-        "@op": "Uri",
+        "@op": "URI",
         "args": {
           "input": "https://localhost:4443/"
         }
@@ -17,7 +17,7 @@
     "@op": "ldh-CreateContainer", 
     "args": {
       "parent": {
-        "@op": "Uri", 
+        "@op": "URI", 
         "args": {
           "input": "https://localhost:4443/whateverest/"
         }
@@ -34,7 +34,7 @@
         "@op": "SELECT",
         "args": {
           "endpoint": {
-            "@op": "Uri",
+            "@op": "URI",
             "args": {
               "input": "https://query.wikidata.org/sparql"
             }
@@ -83,7 +83,7 @@
                   "@op": "ldh-CreateItem",
                   "args": {
                     "container": {
-                      "@op": "Uri",
+                      "@op": "URI",
                       "args": {
                         "input": "https://localhost:4443/whateverest/monarchs/"
                       }
@@ -125,7 +125,7 @@
                     "@op": "DESCRIBE",
                     "args": {
                       "endpoint": {
-            "@op": "Uri",
+            "@op": "URI",
             "args": {
               "input": "https://query.wikidata.org/sparql"
             }

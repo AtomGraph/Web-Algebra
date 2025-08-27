@@ -2,6 +2,7 @@ from typing import Any
 import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.post import POST
 
@@ -80,7 +81,7 @@ class AddGenericService(POST):
         title_data = Operation.process_json(
             self.settings, arguments["title"], self.context, variable_stack
         )
-        title_literal = Operation.to_string_literal(title_data)
+        title_literal = self.to_string_literal(title_data)
         
         # Process optional arguments
         description_literal = None
@@ -88,14 +89,14 @@ class AddGenericService(POST):
             description_data = Operation.process_json(
                 self.settings, arguments["description"], self.context, variable_stack
             )
-            description_literal = Operation.to_string_literal(description_data)
+            description_literal = self.to_string_literal(description_data)
             
         fragment_literal = None
         if "fragment" in arguments:
             fragment_data = Operation.process_json(
                 self.settings, arguments["fragment"], self.context, variable_stack
             )
-            fragment_literal = Operation.to_string_literal(fragment_data)
+            fragment_literal = self.to_string_literal(fragment_data)
             
         graph_store_uri = None
         if "graph_store" in arguments:
@@ -111,14 +112,14 @@ class AddGenericService(POST):
             auth_user_data = Operation.process_json(
                 self.settings, arguments["auth_user"], self.context, variable_stack
             )
-            auth_user_literal = Operation.to_string_literal(auth_user_data)
+            auth_user_literal = self.to_string_literal(auth_user_data)
             
         auth_pwd_literal = None
         if "auth_pwd" in arguments:
             auth_pwd_data = Operation.process_json(
                 self.settings, arguments["auth_pwd"], self.context, variable_stack
             )
-            auth_pwd_literal = Operation.to_string_literal(auth_pwd_data)
+            auth_pwd_literal = self.to_string_literal(auth_pwd_data)
             
         return self.execute(
             url_data, endpoint_data, title_literal, description_literal,

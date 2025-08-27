@@ -4,10 +4,11 @@ from rdflib import Literal
 from rdflib.namespace import XSD
 from mcp import types
 from openai import OpenAI
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 
 
-class SPARQLString(Operation):
+class SPARQLString(Operation, MCPTool):
     """
     Converts a natural language question into a SPARQL query using OpenAI API.
     """
@@ -72,7 +73,7 @@ class SPARQLString(Operation):
             self.settings, arguments["question"], self.context, variable_stack
         )
         # Allow implicit string conversion
-        question_literal = Operation.to_string_literal(question_data)
+        question_literal = self.to_string_literal(question_data)
 
         return self.execute(question_literal)
 

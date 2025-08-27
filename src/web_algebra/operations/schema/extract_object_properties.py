@@ -2,6 +2,7 @@ from typing import Any
 import rdflib
 from rdflib import URIRef, Literal
 from web_algebra.operations.sparql.construct import CONSTRUCT
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 
 

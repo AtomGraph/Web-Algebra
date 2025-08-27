@@ -6,7 +6,7 @@
                 "@op": "SELECT",
                 "args": {
                     "endpoint": {
-                        "@op": "Uri",
+                        "@op": "URI",
                         "args": {
                             "input": "https://dbpedia.org/sparql"
                         }
@@ -18,7 +18,7 @@
                 "@op": "PUT",
                 "args": {
                     "url": {
-                        "@op": "Uri",
+                        "@op": "URI",
                         "args": {
                             "input": {
                                 "@op": "Replace",
@@ -48,7 +48,7 @@
                                     "@op": "GET",
                                     "args": {
                                         "url": {
-                                            "@op": "Uri",
+                                            "@op": "URI",
                                             "args": {
                                                 "input": {
                                                     "@op": "Value",
@@ -65,7 +65,7 @@
                                         "schema": "https://schema.org/"
                                     },
                                     "@id": {
-                                        "@op": "Uri",
+                                        "@op": "URI",
                                         "args": {
                                             "input": {
                                                 "@op": "Replace",

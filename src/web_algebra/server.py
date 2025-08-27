@@ -8,6 +8,7 @@ from pydantic import AnyUrl
 from web_algebra.main import LinkedDataHubSettings, list_operation_subclasses
 import web_algebra.operations
 from web_algebra.operation import Operation
+from web_algebra.mcp_tool import MCPTool
 import web_algebra.operations.sparql.select
 from starlette.applications import Starlette
 from starlette.routing import Mount
@@ -40,13 +41,15 @@ async def list_tools() -> list[Tool]:
     tools = []
 
     for tool_class in Operation.list_operations():
-        tools.append(
-            Tool(
-                name=tool_class.name(),
-                description=tool_class.description(),
-                inputSchema=tool_class.inputSchema(),
+        # Only expose operations that implement MCPTool interface
+        if issubclass(tool_class, MCPTool):
+            tools.append(
+                Tool(
+                    name=tool_class.name(),
+                    description=tool_class.description(),
+                    inputSchema=tool_class.inputSchema(),
+                )
             )
-        )
 
     return tools
 
@@ -57,6 +60,11 @@ async def call_tool(
 ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
     tool_class = Operation.get(name)
     tool = tool_class(settings=settings)
+    
+    # Ensure the operation implements MCPTool interface
+    if not isinstance(tool, MCPTool):
+        raise ValueError(f"Operation {name} does not implement MCPTool interface")
+    
     return tool.mcp_run(arguments)
 
 

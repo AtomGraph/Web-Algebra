@@ -65,14 +65,19 @@ class Filter(Operation):
             self.settings, arguments["input"], self.context, variable_stack
         )
 
-        # Process expression
-        expression_data = Operation.process_json(
-            self.settings, arguments["expression"], self.context, variable_stack
-        )
-        if not isinstance(expression_data, int):
-            raise TypeError(
-                f"Filter operation expects 'expression' to be int, got {type(expression_data)}"
+        # Process expression - keep as plain value if it's already an int
+        expression_arg = arguments["expression"]
+        if isinstance(expression_arg, int):
+            expression_data = expression_arg
+        else:
+            # If it's an operation, process it
+            expression_data = Operation.process_json(
+                self.settings, expression_arg, self.context, variable_stack
             )
+            if not isinstance(expression_data, int):
+                raise TypeError(
+                    f"Filter operation expects 'expression' to be int, got {type(expression_data)}"
+                )
 
         return self.execute(input_data, expression_data)
 

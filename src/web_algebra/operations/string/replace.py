@@ -5,10 +5,11 @@ import rdflib
 from rdflib import Literal
 from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 
 
-class Replace(Operation):
+class Replace(Operation, MCPTool):
     """
     Replaces occurrences of a specified pattern in an input string with a given replacement.
     Aligns with SPARQL's REPLACE() function.
@@ -97,19 +98,19 @@ class Replace(Operation):
         input_data = Operation.process_json(
             self.settings, arguments["input"], self.context, variable_stack
         )
-        input_literal = Operation.to_string_literal(input_data)
+        input_literal = self.to_string_literal(input_data)
 
         # Process pattern - allow implicit string conversion
         pattern_data = Operation.process_json(
             self.settings, arguments["pattern"], self.context, variable_stack
         )
-        pattern_literal = Operation.to_string_literal(pattern_data)
+        pattern_literal = self.to_string_literal(pattern_data)
 
         # Process replacement - allow implicit string conversion
         replacement_data = Operation.process_json(
             self.settings, arguments["replacement"], self.context, variable_stack
         )
-        replacement_literal = Operation.to_string_literal(replacement_data)
+        replacement_literal = self.to_string_literal(replacement_data)
 
         return self.execute(input_literal, pattern_literal, replacement_literal)
 

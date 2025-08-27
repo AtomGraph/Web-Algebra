@@ -2,7 +2,7 @@
   "@op": "PUT",
   "args": {
     "url": {
-      "@op": "Uri",
+      "@op": "URI",
       "args": {
         "input": "https://localhost:4443/test/nested-jsonld/"
       }
@@ -13,7 +13,7 @@
         "foaf": "http://xmlns.com/foaf/0.1/"
       },
       "@id": {
-        "@op": "Uri",
+        "@op": "URI",
         "args": {
           "input": "https://localhost:4443/test/nested-jsonld/"
         }
@@ -29,7 +29,7 @@
         "@op": "ResolveURI",
         "args": {
           "base": {
-            "@op": "Uri",
+            "@op": "URI",
             "args": {
               "input": "https://example.org/"
             }

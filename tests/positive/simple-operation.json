@@ -1,0 +1,16 @@
+{
+  "name": "URI to String conversion",
+  "operation": {
+    "@op": "Str",
+    "args": {
+      "input": {
+        "@op": "URI",
+        "args": {
+          "input": "https://example.org/test"
+        }
+      }
+    }
+  },
+  "comment": "This operation should succeed and produce the expected output",
+  "expected": "https://example.org/test"
+}

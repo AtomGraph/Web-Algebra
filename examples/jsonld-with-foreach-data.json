@@ -5,7 +5,7 @@
       "@op": "SELECT",
       "args": {
         "endpoint": {
-          "@op": "Uri",
+          "@op": "URI",
           "args": {
             "input": "https://dbpedia.org/sparql"
           }
@@ -20,7 +20,7 @@
           "@op": "ResolveURI",
           "args": {
             "base": {
-              "@op": "Uri",
+              "@op": "URI",
               "args": {
                 "input": "https://localhost:4443/people/"
               }
@@ -58,7 +58,7 @@
             }
           },
           "dct:source": {
-            "@op": "Uri",
+            "@op": "URI",
             "args": {
               "input": "https://dbpedia.org/"
             }
@@ -73,7 +73,7 @@
             "@op": "ResolveURI",
             "args": {
               "base": {
-                "@op": "Uri",
+                "@op": "URI",
                 "args": {
                   "input": "https://example.org/people/"
                 }

@@ -4,12 +4,13 @@ import json
 from mcp import types
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.operations.sparql.substitute import Substitute
 from web_algebra.operations.sparql.select import SELECT
 
 
-class LDHList(Operation):
+class LDHList(Operation, MCPTool):
     # same query as ldh:SelectChildren in ldh.ttl
     query: str = """
         PREFIX  dct:  <http://purl.org/dc/terms/>
@@ -119,7 +120,7 @@ class LDHList(Operation):
             base_data = Operation.process_json(
                 self.settings, arguments["base"], self.context, variable_stack
             )
-            base_literal = Operation.to_string_literal(base_data)
+            base_literal = self.to_string_literal(base_data)
             base_str = str(base_literal)
             if not base_str.endswith("/"):
                 base_str += "/"

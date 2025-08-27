@@ -2,6 +2,7 @@ from typing import Any
 import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.post import POST
 
@@ -104,7 +105,7 @@ class AddResultSetChart(POST):
         title_data = Operation.process_json(
             self.settings, arguments["title"], self.context, variable_stack
         )
-        title_literal = Operation.to_string_literal(title_data)
+        title_literal = self.to_string_literal(title_data)
 
         chart_type_data = Operation.process_json(
             self.settings, arguments["chart_type"], self.context, variable_stack
@@ -115,12 +116,12 @@ class AddResultSetChart(POST):
         category_var_name_data = Operation.process_json(
             self.settings, arguments["category_var_name"], self.context, variable_stack
         )
-        category_var_name_literal = Operation.to_string_literal(category_var_name_data)
+        category_var_name_literal = self.to_string_literal(category_var_name_data)
 
         series_var_name_data = Operation.process_json(
             self.settings, arguments["series_var_name"], self.context, variable_stack
         )
-        series_var_name_literal = Operation.to_string_literal(series_var_name_data)
+        series_var_name_literal = self.to_string_literal(series_var_name_data)
 
         # Process optional arguments
         description_literal = None
@@ -128,14 +129,14 @@ class AddResultSetChart(POST):
             description_data = Operation.process_json(
                 self.settings, arguments["description"], self.context, variable_stack
             )
-            description_literal = Operation.to_string_literal(description_data)
+            description_literal = self.to_string_literal(description_data)
 
         fragment_literal = None
         if "fragment" in arguments:
             fragment_data = Operation.process_json(
                 self.settings, arguments["fragment"], self.context, variable_stack
             )
-            fragment_literal = Operation.to_string_literal(fragment_data)
+            fragment_literal = self.to_string_literal(fragment_data)
             
         return self.execute(
             url_data, query_data, title_literal, chart_type_data,

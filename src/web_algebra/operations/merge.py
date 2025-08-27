@@ -4,10 +4,11 @@ from typing import Any, List
 import rdflib
 from rdflib import Graph
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 
 
-class Merge(Operation):
+class Merge(Operation, MCPTool):
     """
     Merges a list of RDF graphs as JSON-LD into a single RDF graph as JSON-LD.
     """

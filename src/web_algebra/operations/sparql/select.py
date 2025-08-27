@@ -4,12 +4,13 @@ import rdflib
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from rdflib.query import Result
 from web_algebra.client import SPARQLClient
 
 
-class SELECT(Operation):
+class SELECT(Operation, MCPTool):
     """
     Executes SPARQL SELECT queries against endpoints
     """

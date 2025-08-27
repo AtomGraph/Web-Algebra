@@ -5,7 +5,7 @@
       "@op": "SELECT",
       "args": {
         "endpoint": {
-          "@op": "Uri",
+          "@op": "URI",
           "args": {
             "input": "https://query.wikidata.org/sparql"
           }
@@ -27,7 +27,7 @@
             "@op": "DESCRIBE",
             "args": {
               "endpoint": {
-                "@op": "Uri",
+                "@op": "URI",
                 "args": {
                   "input": "https://query.wikidata.org/sparql"
                 }
@@ -70,7 +70,7 @@
             "@op": "SELECT",
             "args": {
               "endpoint": {
-                "@op": "Uri",
+                "@op": "URI",
                 "args": {
                   "input": "https://query.wikidata.org/sparql"
                 }
@@ -112,7 +112,7 @@
             "@op": "ResolveURI",
             "args": {
               "base": {
-                "@op": "Uri",
+                "@op": "URI",
                 "args": {
                   "input": "https://localhost:4443/science/discoveries/"
                 }

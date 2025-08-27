@@ -5,6 +5,7 @@ import rdflib
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
+from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.put import PUT
 from rdflib.query import Result
@@ -122,7 +123,7 @@ class CreateContainer(PUT):
         parent_data = Operation.process_json(
             self.settings, arguments["parent"], self.context, variable_stack
         )
-        parent_uri = self.json_to_rdflib(parent_data)
+        parent_uri = Operation.json_to_rdflib(parent_data)
         if not isinstance(parent_uri, URIRef):
             raise TypeError(
                 f"ldh-CreateContainer operation expects 'parent' to be URIRef, got {type(parent_uri)}"
@@ -132,7 +133,7 @@ class CreateContainer(PUT):
         title_data = Operation.process_json(
             self.settings, arguments["title"], self.context, variable_stack
         )
-        title = self.json_to_rdflib(title_data)
+        title = Operation.json_to_rdflib(title_data)
         if not isinstance(title, Literal):
             raise TypeError(
                 f"ldh-CreateContainer operation expects 'title' to be Literal, got {type(title)}"
@@ -144,7 +145,7 @@ class CreateContainer(PUT):
             slug_data = Operation.process_json(
                 self.settings, arguments["slug"], self.context, variable_stack
             )
-            slug = self.json_to_rdflib(slug_data)
+            slug = Operation.json_to_rdflib(slug_data)
             if not isinstance(slug, Literal):
                 raise TypeError(
                     f"ldh-CreateContainer operation expects 'slug' to be Literal, got {type(slug)}"
@@ -156,7 +157,7 @@ class CreateContainer(PUT):
             desc_data = Operation.process_json(
                 self.settings, arguments["description"], self.context, variable_stack
             )
-            description = self.json_to_rdflib(desc_data)
+            description = Operation.json_to_rdflib(desc_data)
             if not isinstance(description, Literal):
                 raise TypeError(
                     f"ldh-CreateContainer operation expects 'description' to be Literal, got {type(description)}"
