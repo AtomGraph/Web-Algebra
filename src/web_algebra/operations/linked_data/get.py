@@ -1,4 +1,3 @@
-import json
 import logging
 from rdflib import Graph, URIRef
 from typing import Any

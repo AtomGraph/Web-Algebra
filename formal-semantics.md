@@ -82,6 +82,12 @@ Abstract: Operation → Any
 Python:   def execute(self, operation: Any) -> Any
 ```
 
+**URI** - Convert term to URI reference
+```
+Abstract: Term → URI
+Python:   def execute(self, term: rdflib.term.Node) -> rdflib.URIRef
+```
+
 **ForEach** - Map operation over sequence (sequence → sequence semantics)
 ```
 Abstract: Sequence α × Operation → Sequence β
@@ -169,19 +175,19 @@ Python:   def execute(self, url: rdflib.URIRef) -> Graph
 **POST** - Submit RDF data via HTTP POST
 ```
 Abstract: URI × Graph → Result
-Python:   def execute(self, url: rdflib.URIRef, data: rdflib.Graph) -> rdflib.query.Result
+Python:   def execute(self, url: rdflib.URIRef, data: rdflib.Graph) -> Result
 ```
 
 **PUT** - Replace RDF data via HTTP PUT
 ```
 Abstract: URI × Graph → Result
-Python:   def execute(self, url: rdflib.URIRef, data: rdflib.Graph) -> rdflib.query.Result
+Python:   def execute(self, url: rdflib.URIRef, data: rdflib.Graph) -> Result
 ```
 
 **PATCH** - Update RDF data via HTTP PATCH with SPARQL Update
 ```
 Abstract: URI × Literal → Result
-Python:   def execute(self, url: URIRef, update: Literal) -> rdflib.query.Result
+Python:   def execute(self, url: URIRef, update: Literal) -> Result
 ```
 
 ### LinkedDataHub Operations
@@ -189,81 +195,81 @@ Python:   def execute(self, url: URIRef, update: Literal) -> rdflib.query.Result
 **ldh-CreateContainer** - Create LinkedDataHub container document
 ```
 Abstract: URI × Literal × Maybe Literal × Maybe Literal → Result
-Python:   def execute(self, parent_uri: rdflib.URIRef, title: rdflib.Literal, slug: rdflib.Literal = None, description: rdflib.Literal = None) -> rdflib.query.Result
+Python:   def execute(self, parent_uri: rdflib.URIRef, title: rdflib.Literal, slug: rdflib.Literal = None, description: rdflib.Literal = None) -> Result
 ```
 
 **ldh-CreateItem** - Create LinkedDataHub item document  
 ```
 Abstract: URI × Literal × Maybe Literal → Result
-Python:   def execute(self, container_uri: rdflib.URIRef, title: rdflib.Literal, slug: Optional[rdflib.Literal] = None) -> rdflib.query.Result
+Python:   def execute(self, container_uri: rdflib.URIRef, title: rdflib.Literal, slug: Optional[rdflib.Literal] = None) -> Result
 ```
 
 **ldh-List** - List LinkedDataHub resources
 ```
-Abstract: URI × URI → Result
-Python:   def execute(self, arguments: dict[str, Any], variable_stack: list = []) -> dict
+Abstract: URI × URI → List[Dict]
+Python:   def execute(self, url: URIRef, endpoint: URIRef) -> list[dict]
 ```
 
 **ldh-AddView** - Add view to LinkedDataHub document
 ```
-Abstract: URI × Literal × Literal → Result  
-Python:   def execute(self, arguments: dict[str, Any], variable_stack: list = []) -> dict
+Abstract: URI × URI × Literal × Maybe Literal × Maybe Literal × Maybe URI → Any  
+Python:   def execute(self, url: URIRef, query: URIRef, title: Literal, description: Literal = None, fragment: Literal = None, mode: URIRef = None) -> Any
 ```
 
 **ldh-AddResultSetChart** - Add result set chart to LinkedDataHub document
 ```
-Abstract: URI × Literal × Literal → Result
-Python:   def execute(self, arguments: dict[str, Any], variable_stack: list = []) -> dict
+Abstract: URI × URI × Literal × URI × Literal × Literal × Maybe Literal × Maybe Literal → Any
+Python:   def execute(self, url: URIRef, query: URIRef, title: Literal, chart_type: URIRef, category_var_name: Literal, series_var_name: Literal, description: Literal = None, fragment: Literal = None) -> Any
 ```
 
 **ldh-AddSelect** - Add SPARQL SELECT service to LinkedDataHub
 ```
-Abstract: URI × Literal × Literal × Maybe Literal × Maybe Literal × Maybe URI → Result
-Python:   def execute(self, arguments: dict[str, Any], variable_stack: list = []) -> dict
+Abstract: URI × Literal × Literal × Maybe Literal × Maybe Literal × Maybe URI → Any
+Python:   def execute(self, url: URIRef, query: Literal, title: Literal, description: Literal = None, fragment: Literal = None, service: URIRef = None) -> Any
 ```
 
 **ldh-AddGenericService** - Add generic SPARQL service to LinkedDataHub
 ```
-Abstract: URI × URI × Literal × Maybe Literal × Maybe Literal × Maybe URI × Maybe Literal × Maybe Literal → Result
-Python:   def execute(self, arguments: dict[str, Any], variable_stack: list = []) -> dict
+Abstract: URI × URI × Literal × Maybe Literal × Maybe Literal × Maybe URI × Maybe Literal × Maybe Literal → Any
+Python:   def execute(self, url: URIRef, endpoint: URIRef, title: Literal, description: Literal = None, fragment: Literal = None, graph_store: URIRef = None, auth_user: Literal = None, auth_pwd: Literal = None) -> Any
 ```
 
 **ldh-AddObjectBlock** - Add object content block to LinkedDataHub document
 ```
-Abstract: URI × Literal → Result
-Python:   def execute(self, arguments: dict[str, Any], variable_stack: list = []) -> dict
+Abstract: URI × URI × Maybe Literal × Maybe Literal × Maybe Literal × Maybe URI → Any
+Python:   def execute(self, url: URIRef, value: URIRef, title: Literal = None, description: Literal = None, fragment: Literal = None, mode: URIRef = None) -> Any
 ```
 
 **ldh-AddXHTMLBlock** - Add XHTML content block to LinkedDataHub document  
 ```
-Abstract: URI × Literal → Result
-Python:   def execute(self, arguments: dict[str, Any], variable_stack: list = []) -> dict
+Abstract: URI × Literal × Maybe Literal × Maybe Literal × Maybe Literal → Any
+Python:   def execute(self, url: URIRef, value: Literal, title: Literal = None, description: Literal = None, fragment: Literal = None) -> Any
 ```
 
 **ldh-RemoveBlock** - Remove content block from LinkedDataHub document
 ```
-Abstract: URI → Result  
-Python:   def execute(self, arguments: dict[str, Any], variable_stack: list = []) -> dict
+Abstract: URI × Maybe URI → Any  
+Python:   def execute(self, url: URIRef, block: URIRef = None) -> Any
 ```
 
 ### Schema Operations
 
 **ExtractClasses** - Extract RDF classes from graph
 ```
-Abstract: Graph → Result
-Python:   def execute(self, arguments: dict[str, Any], variable_stack: list = []) -> dict
+Abstract: URI → Graph
+Python:   def execute(self, endpoint: URIRef) -> rdflib.Graph
 ```
 
 **ExtractDatatypeProperties** - Extract datatype properties from graph
 ```
-Abstract: Graph → Result  
-Python:   def execute(self, arguments: dict[str, Any], variable_stack: list = []) -> dict
+Abstract: URI → Graph  
+Python:   def execute(self, endpoint: URIRef) -> rdflib.Graph
 ```
 
 **ExtractObjectProperties** - Extract object properties from graph
 ```
-Abstract: Graph → Result
-Python:   def execute(self, arguments: dict[str, Any], variable_stack: list = []) -> dict
+Abstract: URI → Graph
+Python:   def execute(self, endpoint: URIRef) -> rdflib.Graph
 ```
 
 ### Utility Operations
@@ -310,3 +316,9 @@ Python:   def execute(self, base: URIRef, relative: Literal) -> URIRef
 - **ForEach Context**: Current sequence item (ResultRow for SPARQL results)
 - **Current Operation**: Returns the current context item unchanged
 - **Value Operation**: Accesses both context values and variables from stack
+
+### URI Resolution
+- **JSON-LD Parsing**: All operations that parse JSON-LD use `base` parameter to resolve relative URIs
+- **Fragment URIs**: Fragment identifiers like `#service` resolve against target document URI
+- **Base URI**: Set to the target document URI for correct resolution of relative references
+- **Implementation**: Uses `rdflib.Graph.parse(data=json_data, format="json-ld", base=target_url)`

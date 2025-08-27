@@ -1,5 +1,19 @@
 [
     {
+        "@op": "ldh-CreateContainer",
+        "args": {
+            "parent": {
+                "@op": "URI",
+                "args": {
+                    "input": "https://localhost:4443/"
+                }
+            },
+            "title": "United Kingdom Cities",
+            "slug": "united-kingdom",
+            "description": "Container for UK cities data"
+        }
+    },
+    {
         "@op": "ForEach",
         "args": {
             "select": {
@@ -14,91 +28,77 @@
                     "query": "PREFIX dbo: <http://dbpedia.org/ontology/>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?city ?cityName WHERE {\n  ?city a dbo:City ;\n        dbo:country <http://dbpedia.org/resource/United_Kingdom> ;\n        dbo:populationTotal ?pop ;\n        rdfs:label ?cityName .\n  FILTER(lang(?cityName) = 'en')\n} ORDER BY RAND() LIMIT 2"
                 }
             },
-            "operation": {
-                "@op": "PUT",
-                "args": {
-                    "url": {
-                        "@op": "URI",
-                        "args": {
-                            "input": {
-                                "@op": "Replace",
-                                "args": {
-                                    "input": "https://localhost:4443/united-kingdom/${cityName}/",
-                                    "pattern": "\\$\\{cityName\\}",
-                                    "replacement": {
-                                        "@op": "EncodeForURI",
-                                        "args": {
-                                            "input": {
+            "operation": [
+                {
+                    "@op": "ldh-CreateItem",
+                    "args": {
+                        "container": {
+                            "@op": "URI",
+                            "args": {
+                                "input": "https://localhost:4443/united-kingdom/"
+                            }
+                        },
+                        "title": {
+                            "@op": "Value",
+                            "args": {
+                                "name": "cityName"
+                            }
+                        },
+                        "slug": {
+                            "@op": "Value",
+                            "args": {
+                                "name": "cityName"
+                            }
+                        }
+                    }
+                },
+                {
+                    "@op": "POST",
+                    "args": {
+                        "url": {
+                            "@op": "ResolveURI",
+                            "args": {
+                                "base": {
+                                    "@op": "URI", 
+                                    "args": {
+                                        "input": "https://localhost:4443/united-kingdom/"
+                                    }
+                                },
+                                "relative": {
+                                    "@op": "Concat",
+                                    "args": {
+                                        "inputs": [
+                                            {
                                                 "@op": "Value",
                                                 "args": {
                                                     "name": "cityName"
                                                 }
+                                            },
+                                            "/"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "data": {
+                            "@op": "GET",
+                            "args": {
+                                "url": {
+                                    "@op": "URI",
+                                    "args": {
+                                        "input": {
+                                            "@op": "Value",
+                                            "args": {
+                                                "name": "city"
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                    },
-                    "data": {
-                        "@op": "Merge",
-                        "args": {
-                            "graphs": [
-                                {
-                                    "@op": "GET",
-                                    "args": {
-                                        "url": {
-                                            "@op": "URI",
-                                            "args": {
-                                                "input": {
-                                                    "@op": "Value",
-                                                    "args": {
-                                                        "name": "city"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                },
-                                {
-                                    "@context": {
-                                        "schema": "https://schema.org/"
-                                    },
-                                    "@id": {
-                                        "@op": "URI",
-                                        "args": {
-                                            "input": {
-                                                "@op": "Replace",
-                                                "args": {
-                                                    "input": "https://localhost:4443/united-kingdom/${cityName}/",
-                                                    "pattern": "\\$\\{cityName\\}",
-                                                    "replacement": {
-                                                        "@op": "EncodeForURI",
-                                                        "args": {
-                                                            "input": {
-                                                                "@op": "Value",
-                                                                "args": {
-                                                                    "name": "cityName"
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    },
-                                    "schema:name": {
-                                        "@op": "Value",
-                                        "args": {
-                                            "name": "cityName"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
                     }
                 }
-            }
+            ]
         }
     }
 ]

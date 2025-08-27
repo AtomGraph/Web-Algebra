@@ -2,7 +2,6 @@ from typing import Any
 import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
-from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.post import POST
 
@@ -230,4 +229,5 @@ class AddSelect(POST):
         result = self.execute(url, query, title, description, fragment, service)
 
         # Return status for MCP response
-        return [types.TextContent(type="text", text=f"SELECT query added successfully")]
+        status_binding = result.bindings[0]["status"]
+        return [types.TextContent(type="text", text=f"SELECT query added - status: {status_binding}")]

@@ -57,7 +57,11 @@ class ResolveURI(Operation, MCPTool):
         base_data = Operation.process_json(
             self.settings, arguments["base"], self.context, variable_stack
         )
-        base = Operation.json_to_rdflib(base_data)
+        # If already a URIRef (from nested operation), keep it
+        if isinstance(base_data, URIRef):
+            base = base_data
+        else:
+            base = Operation.json_to_rdflib(base_data)
         if not isinstance(base, URIRef):
             raise TypeError(
                 f"ResolveURI operation expects 'base' to be URIRef, got {type(base)}"

@@ -3,7 +3,6 @@ import logging
 from mcp import types
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
-from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.patch import PATCH
 

@@ -5,7 +5,6 @@ import rdflib
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
-from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.put import PUT
 from rdflib.query import Result
