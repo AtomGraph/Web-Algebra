@@ -85,7 +85,7 @@ class DESCRIBE(Operation, MCPTool):
                 f"DESCRIBE operation expects 'query' to be string Literal, got {type(query_data)}"
             )
 
-        # Return Graph directly (same as execute) - serialization only at boundaries  
+        # Return Graph directly (same as execute) - serialization only at boundaries
         return self.execute(endpoint_data, query_data)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:

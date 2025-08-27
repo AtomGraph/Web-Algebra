@@ -67,7 +67,7 @@ def main(settings: BaseSettings, json_data: Optional[str]):
 
         # Execute the JSON input
         result = Operation.process_json(settings, json_input)
-        
+
         # Serialize final result for output
         if isinstance(result, rdflib.Graph):
             # Serialize Graph to JSON-LD for final output

@@ -14,7 +14,7 @@ class Operation(ABC, BaseModel):
     Abstract base class for all operations with dual execution paths:
     1. execute() - Pure RDFLib function
     2. execute_json() - JSON argument processing
-    
+
     Operations can optionally implement MCPTool interface for MCP client access.
     """
 
@@ -49,8 +49,6 @@ class Operation(ABC, BaseModel):
     ) -> Union[rdflib.term.Node, Result, rdflib.Graph]:
         """JSON execution: processes JSON args, returns RDFLib objects"""
         pass
-
-
 
     @classmethod
     def register(cls, operation_cls: Type["Operation"]) -> None:
@@ -156,7 +154,7 @@ class Operation(ABC, BaseModel):
             # SPARQL binding object - values may have been processed to RDFLib terms
             type_str = str(data["type"])  # Convert potential Literal to string
             value_str = str(data["value"])  # Convert potential Literal to string
-            
+
             if type_str == "uri":
                 return URIRef(value_str)
             elif type_str == "literal":
@@ -215,17 +213,23 @@ class Operation(ABC, BaseModel):
             # Both xsd:string and rdf:langString are string-compatible in SPARQL
             if term.datatype == XSD.string:
                 return term  # Already xsd:string, return as-is
-            elif hasattr(term, 'lang') and term.lang is not None:
+            elif hasattr(term, "lang") and term.lang is not None:
                 return term  # rdf:langString (datatype=None, lang=xx), return as-is (compatible with string operations)
-            elif term.datatype is None and (not hasattr(term, 'lang') or term.lang is None):
+            elif term.datatype is None and (
+                not hasattr(term, "lang") or term.lang is None
+            ):
                 # Plain literal without datatype or language - treat as string
                 return term
             else:
                 # Other literal datatypes need explicit conversion
-                raise TypeError(f"Cannot implicitly convert {term.datatype} to string. Use Str() operation for explicit casting.")
+                raise TypeError(
+                    f"Cannot implicitly convert {term.datatype} to string. Use Str() operation for explicit casting."
+                )
         else:
             # URIRef, BNode, etc. require explicit casting
-            raise TypeError(f"Cannot implicitly convert {type(term).__name__} to string. Use Str() operation for explicit casting.")
+            raise TypeError(
+                f"Cannot implicitly convert {type(term).__name__} to string. Use Str() operation for explicit casting."
+            )
 
     @staticmethod
     def rdflib_to_plain(term: rdflib.term.Node) -> Any:

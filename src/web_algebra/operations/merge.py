@@ -77,6 +77,7 @@ class Merge(Operation, MCPTool):
             elif isinstance(item, dict):
                 # Processed JSON-LD - convert to Graph
                 import json
+
                 json_str = json.dumps(item)
                 graph = Graph()
                 graph.parse(data=json_str, format="json-ld")

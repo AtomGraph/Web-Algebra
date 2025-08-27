@@ -53,14 +53,22 @@ class Replace(Operation, MCPTool):
         replacement: rdflib.Literal,
     ) -> rdflib.Literal:
         """Pure function: replace pattern in string with RDFLib terms"""
+
         # Following SPARQL semantics: accept both xsd:string and rdf:langString (language-tagged literals)
         def is_string_compatible(lit):
             return isinstance(lit, Literal) and (
-                lit.datatype == XSD.string or  # xsd:string
-                (lit.datatype is None and hasattr(lit, 'lang') and lit.lang is not None) or  # rdf:langString
-                (lit.datatype is None and (not hasattr(lit, 'lang') or lit.lang is None))  # plain literal
+                lit.datatype == XSD.string  # xsd:string
+                or (
+                    lit.datatype is None
+                    and hasattr(lit, "lang")
+                    and lit.lang is not None
+                )  # rdf:langString
+                or (
+                    lit.datatype is None
+                    and (not hasattr(lit, "lang") or lit.lang is None)
+                )  # plain literal
             )
-        
+
         if not is_string_compatible(input_str):
             raise TypeError(
                 f"Replace operation expects input to be string-compatible Literal, got {type(input_str)} with datatype {getattr(input_str, 'datatype', None)}"

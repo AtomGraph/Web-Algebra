@@ -94,8 +94,9 @@ class CreateItem(PUT):
 
         # Create graph and call parent PUT operation
         import json
+
         graph = rdflib.Graph()
-        graph.parse(data=json.dumps(data), format="json-ld", publicID=url)
+        graph.parse(data=json.dumps(data), format="json-ld", base=url)
 
         # Call parent PUT execute method
         return super().execute(URIRef(url), graph)
@@ -150,4 +151,8 @@ class CreateItem(PUT):
 
         # Extract URL from PUT result
         url_binding = result.bindings[0]["url"]
-        return [types.TextContent(type="text", text=f"Item created successfully at: {url_binding}")]
+        return [
+            types.TextContent(
+                type="text", text=f"Item created successfully at: {url_binding}"
+            )
+        ]

@@ -84,13 +84,17 @@ class AddView(POST):
             self.settings, arguments["url"], self.context, variable_stack
         )
         if not isinstance(url_data, URIRef):
-            raise TypeError(f"AddView operation expects 'url' to be URIRef, got {type(url_data)}")
+            raise TypeError(
+                f"AddView operation expects 'url' to be URIRef, got {type(url_data)}"
+            )
 
         query_data = Operation.process_json(
             self.settings, arguments["query"], self.context, variable_stack
         )
         if not isinstance(query_data, URIRef):
-            raise TypeError(f"AddView operation expects 'query' to be URIRef, got {type(query_data)}")
+            raise TypeError(
+                f"AddView operation expects 'query' to be URIRef, got {type(query_data)}"
+            )
 
         title_data = Operation.process_json(
             self.settings, arguments["title"], self.context, variable_stack
@@ -118,12 +122,18 @@ class AddView(POST):
                 self.settings, arguments["mode"], self.context, variable_stack
             )
             if not isinstance(mode_data, URIRef):
-                raise TypeError(f"AddView operation expects 'mode' to be URIRef, got {type(mode_data)}")
+                raise TypeError(
+                    f"AddView operation expects 'mode' to be URIRef, got {type(mode_data)}"
+                )
             mode_uri = mode_data
-            
+
         return self.execute(
-            url_data, query_data, title_literal, description_literal,
-            fragment_literal, mode_uri
+            url_data,
+            query_data,
+            title_literal,
+            description_literal,
+            fragment_literal,
+            mode_uri,
         )
 
     def execute(
@@ -137,17 +147,33 @@ class AddView(POST):
     ) -> Any:
         """Pure function: create SPARQL result set view with RDFLib terms"""
         if not isinstance(url, URIRef):
-            raise TypeError(f"AddView.execute expects url to be URIRef, got {type(url)}")
+            raise TypeError(
+                f"AddView.execute expects url to be URIRef, got {type(url)}"
+            )
         if not isinstance(query, URIRef):
-            raise TypeError(f"AddView.execute expects query to be URIRef, got {type(query)}")
+            raise TypeError(
+                f"AddView.execute expects query to be URIRef, got {type(query)}"
+            )
         if not isinstance(title, Literal) or title.datatype != XSD.string:
-            raise TypeError(f"AddView.execute expects title to be string Literal, got {type(title)}")
-        if description is not None and (not isinstance(description, Literal) or description.datatype != XSD.string):
-            raise TypeError(f"AddView.execute expects description to be string Literal, got {type(description)}")
-        if fragment is not None and (not isinstance(fragment, Literal) or fragment.datatype != XSD.string):
-            raise TypeError(f"AddView.execute expects fragment to be string Literal, got {type(fragment)}")
+            raise TypeError(
+                f"AddView.execute expects title to be string Literal, got {type(title)}"
+            )
+        if description is not None and (
+            not isinstance(description, Literal) or description.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddView.execute expects description to be string Literal, got {type(description)}"
+            )
+        if fragment is not None and (
+            not isinstance(fragment, Literal) or fragment.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddView.execute expects fragment to be string Literal, got {type(fragment)}"
+            )
         if mode is not None and not isinstance(mode, URIRef):
-            raise TypeError(f"AddView.execute expects mode to be URIRef, got {type(mode)}")
+            raise TypeError(
+                f"AddView.execute expects mode to be URIRef, got {type(mode)}"
+            )
 
         url_str = str(url)
         query_str = str(query)
@@ -157,7 +183,9 @@ class AddView(POST):
         mode_str = str(mode) if mode else None
 
         logging.info(
-            "Creating View for document <%s> with sp:Select resource <%s>", url_str, query_str
+            "Creating View for document <%s> with sp:Select resource <%s>",
+            url_str,
+            query_str,
         )
 
         # Create subject URI (fragment or blank node) - matching shell script logic
@@ -194,27 +222,28 @@ class AddView(POST):
         # Convert JSON-LD dict to Graph
         import json
         from rdflib import Graph
+
         graph = Graph()
-        graph.parse(data=json.dumps(data), format="json-ld")
+        graph.parse(data=json.dumps(data), format="json-ld", base=url_str)
         return super().execute(url, graph)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
         from mcp import types
-        
+
         # Convert plain arguments to RDFLib terms
         url = URIRef(arguments["url"])
         query = URIRef(arguments["query"])
         title = Literal(arguments["title"], datatype=XSD.string)
-        
+
         description = None
         if "description" in arguments:
             description = Literal(arguments["description"], datatype=XSD.string)
-            
+
         fragment = None
         if "fragment" in arguments:
             fragment = Literal(arguments["fragment"], datatype=XSD.string)
-            
+
         mode = None
         if "mode" in arguments:
             mode = URIRef(arguments["mode"])

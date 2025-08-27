@@ -60,11 +60,11 @@ async def call_tool(
 ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
     tool_class = Operation.get(name)
     tool = tool_class(settings=settings)
-    
+
     # Ensure the operation implements MCPTool interface
     if not isinstance(tool, MCPTool):
         raise ValueError(f"Operation {name} does not implement MCPTool interface")
-    
+
     return tool.mcp_run(arguments)
 
 

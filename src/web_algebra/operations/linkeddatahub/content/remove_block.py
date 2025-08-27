@@ -48,7 +48,9 @@ class RemoveBlock(PATCH):
             self.settings, arguments["url"], self.context, variable_stack
         )
         if not isinstance(url_data, URIRef):
-            raise TypeError(f"RemoveBlock operation expects 'url' to be URIRef, got {type(url_data)}")
+            raise TypeError(
+                f"RemoveBlock operation expects 'url' to be URIRef, got {type(url_data)}"
+            )
 
         # Process optional arguments
         block_uri = None
@@ -57,9 +59,11 @@ class RemoveBlock(PATCH):
                 self.settings, arguments["block"], self.context, variable_stack
             )
             if not isinstance(block_data, URIRef):
-                raise TypeError(f"RemoveBlock operation expects 'block' to be URIRef, got {type(block_data)}")
+                raise TypeError(
+                    f"RemoveBlock operation expects 'block' to be URIRef, got {type(block_data)}"
+                )
             block_uri = block_data
-            
+
         return self.execute(url_data, block_uri)
 
     def execute(
@@ -69,9 +73,13 @@ class RemoveBlock(PATCH):
     ) -> Any:
         """Pure function: remove content block with RDFLib terms"""
         if not isinstance(url, URIRef):
-            raise TypeError(f"RemoveBlock.execute expects url to be URIRef, got {type(url)}")
+            raise TypeError(
+                f"RemoveBlock.execute expects url to be URIRef, got {type(url)}"
+            )
         if block is not None and not isinstance(block, URIRef):
-            raise TypeError(f"RemoveBlock.execute expects block to be URIRef, got {type(block)}")
+            raise TypeError(
+                f"RemoveBlock.execute expects block to be URIRef, got {type(block)}"
+            )
 
         url_str = str(url)
         block_str = str(block) if block else None
@@ -116,15 +124,13 @@ WHERE
         block = None
         if "block" in arguments and arguments["block"]:
             block = URIRef(arguments["block"])
-        
+
         self.execute(url, block)
-        
+
         block_text = (
-            f"Block: {block}"
-            if block
-            else "Any blocks found via sequence properties"
+            f"Block: {block}" if block else "Any blocks found via sequence properties"
         )
-        
+
         return [
             types.TextContent(
                 type="text",

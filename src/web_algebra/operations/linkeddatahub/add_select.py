@@ -67,7 +67,9 @@ class AddSelect(POST):
             self.settings, arguments["url"], self.context, variable_stack
         )
         if not isinstance(url_data, URIRef):
-            raise TypeError(f"AddSelect operation expects 'url' to be URIRef, got {type(url_data)}")
+            raise TypeError(
+                f"AddSelect operation expects 'url' to be URIRef, got {type(url_data)}"
+            )
 
         query_data = Operation.process_json(
             self.settings, arguments["query"], self.context, variable_stack
@@ -100,12 +102,18 @@ class AddSelect(POST):
                 self.settings, arguments["service"], self.context, variable_stack
             )
             if not isinstance(service_data, URIRef):
-                raise TypeError(f"AddSelect operation expects 'service' to be URIRef, got {type(service_data)}")
+                raise TypeError(
+                    f"AddSelect operation expects 'service' to be URIRef, got {type(service_data)}"
+                )
             service_uri = service_data
-            
+
         return self.execute(
-            url_data, query_literal, title_literal, description_literal,
-            fragment_literal, service_uri
+            url_data,
+            query_literal,
+            title_literal,
+            description_literal,
+            fragment_literal,
+            service_uri,
         )
 
     def execute(
@@ -119,17 +127,33 @@ class AddSelect(POST):
     ) -> Any:
         """Pure function: create SPARQL SELECT query with RDFLib terms"""
         if not isinstance(url, URIRef):
-            raise TypeError(f"AddSelect.execute expects url to be URIRef, got {type(url)}")
+            raise TypeError(
+                f"AddSelect.execute expects url to be URIRef, got {type(url)}"
+            )
         if not isinstance(query, Literal) or query.datatype != XSD.string:
-            raise TypeError(f"AddSelect.execute expects query to be string Literal, got {type(query)}")
+            raise TypeError(
+                f"AddSelect.execute expects query to be string Literal, got {type(query)}"
+            )
         if not isinstance(title, Literal) or title.datatype != XSD.string:
-            raise TypeError(f"AddSelect.execute expects title to be string Literal, got {type(title)}")
-        if description is not None and (not isinstance(description, Literal) or description.datatype != XSD.string):
-            raise TypeError(f"AddSelect.execute expects description to be string Literal, got {type(description)}")
-        if fragment is not None and (not isinstance(fragment, Literal) or fragment.datatype != XSD.string):
-            raise TypeError(f"AddSelect.execute expects fragment to be string Literal, got {type(fragment)}")
+            raise TypeError(
+                f"AddSelect.execute expects title to be string Literal, got {type(title)}"
+            )
+        if description is not None and (
+            not isinstance(description, Literal) or description.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddSelect.execute expects description to be string Literal, got {type(description)}"
+            )
+        if fragment is not None and (
+            not isinstance(fragment, Literal) or fragment.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddSelect.execute expects fragment to be string Literal, got {type(fragment)}"
+            )
         if service is not None and not isinstance(service, URIRef):
-            raise TypeError(f"AddSelect.execute expects service to be URIRef, got {type(service)}")
+            raise TypeError(
+                f"AddSelect.execute expects service to be URIRef, got {type(service)}"
+            )
 
         url_str = str(url)
         query_str = str(query)
@@ -139,7 +163,9 @@ class AddSelect(POST):
         service_str = str(service) if service else None
 
         logging.info(
-            "Creating SELECT query for document <%s> with title '%s'", url_str, title_str
+            "Creating SELECT query for document <%s> with title '%s'",
+            url_str,
+            title_str,
         )
 
         # Create subject URI (fragment or blank node) - matching shell script logic
@@ -174,27 +200,28 @@ class AddSelect(POST):
         # Convert JSON-LD dict to Graph
         import json
         from rdflib import Graph
+
         graph = Graph()
-        graph.parse(data=json.dumps(data), format="json-ld")
+        graph.parse(data=json.dumps(data), format="json-ld", base=url_str)
         return super().execute(url, graph)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
         from mcp import types
-        
+
         # Convert plain arguments to RDFLib terms
         url = URIRef(arguments["url"])
         query = Literal(arguments["query"], datatype=XSD.string)
         title = Literal(arguments["title"], datatype=XSD.string)
-        
+
         description = None
         if "description" in arguments:
             description = Literal(arguments["description"], datatype=XSD.string)
-            
+
         fragment = None
         if "fragment" in arguments:
             fragment = Literal(arguments["fragment"], datatype=XSD.string)
-            
+
         service = None
         if "service" in arguments:
             service = URIRef(arguments["service"])

@@ -58,10 +58,13 @@ class LinkedDataClient:
             urllib.request.HTTPSHandler(context=self.ssl_context),
             HTTPRedirectHandler308(),
         )
-        
+
         # Add proper User-Agent header for external services like Wikidata
         self.opener.addheaders = [
-            ('User-Agent', 'Web-Algebra/1.0 (LinkedData Processing System; https://github.com/atomgraph/Web-Algebra)')
+            (
+                "User-Agent",
+                "Web-Algebra/1.0 (LinkedData Processing System; https://github.com/atomgraph/Web-Algebra)",
+            )
         ]
 
     def get(self, url: str) -> Graph:
@@ -90,7 +93,7 @@ class LinkedDataClient:
 
         # Parse the RDF data into an RDFLib Graph
         g = Graph()
-        g.parse(data=data, format=rdf_format, publicID=url)
+        g.parse(data=data, format=rdf_format, base=url)
         return g
 
     def post(self, url: str, graph: Graph) -> HTTPResponse:
@@ -194,10 +197,13 @@ class SPARQLClient:
         self.opener = urllib.request.build_opener(
             urllib.request.HTTPSHandler(context=self.ssl_context)
         )
-        
+
         # Add proper User-Agent header for external services like Wikidata
         self.opener.addheaders = [
-            ('User-Agent', 'Web-Algebra/1.0 (LinkedData Processing System; https://github.com/atomgraph/Web-Algebra)')
+            (
+                "User-Agent",
+                "Web-Algebra/1.0 (LinkedData Processing System; https://github.com/atomgraph/Web-Algebra)",
+            )
         ]
 
     def query(self, endpoint_url: str, query_string: str) -> dict:

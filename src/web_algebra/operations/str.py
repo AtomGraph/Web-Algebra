@@ -31,9 +31,11 @@ class Str(Operation):
         if isinstance(term, Literal):
             if term.datatype == XSD.string:
                 return term  # Already xsd:string, return as-is
-            elif hasattr(term, 'lang') and term.lang is not None:
+            elif hasattr(term, "lang") and term.lang is not None:
                 return term  # rdf:langString (datatype=None, lang=xx), return as-is (compatible)
-            elif term.datatype is None and (not hasattr(term, 'lang') or term.lang is None):
+            elif term.datatype is None and (
+                not hasattr(term, "lang") or term.lang is None
+            ):
                 # Plain literal without datatype or language - treat as string
                 return term
 

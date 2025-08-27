@@ -76,7 +76,9 @@ class AddXHTMLBlock(POST):
             self.settings, arguments["url"], self.context, variable_stack
         )
         if not isinstance(url_data, URIRef):
-            raise TypeError(f"AddXHTMLBlock operation expects 'url' to be URIRef, got {type(url_data)}")
+            raise TypeError(
+                f"AddXHTMLBlock operation expects 'url' to be URIRef, got {type(url_data)}"
+            )
 
         value_data = Operation.process_json(
             self.settings, arguments["value"], self.context, variable_stack
@@ -112,10 +114,13 @@ class AddXHTMLBlock(POST):
                 self.settings, arguments["fragment"], self.context, variable_stack
             )
             fragment_literal = self.to_string_literal(fragment_data)
-            
+
         return self.execute(
-            url_data, value_literal, title_literal, description_literal,
-            fragment_literal
+            url_data,
+            value_literal,
+            title_literal,
+            description_literal,
+            fragment_literal,
         )
 
     def execute(
@@ -128,15 +133,31 @@ class AddXHTMLBlock(POST):
     ) -> Any:
         """Pure function: create XHTML block with RDFLib terms"""
         if not isinstance(url, URIRef):
-            raise TypeError(f"AddXHTMLBlock.execute expects url to be URIRef, got {type(url)}")
+            raise TypeError(
+                f"AddXHTMLBlock.execute expects url to be URIRef, got {type(url)}"
+            )
         if not isinstance(value, Literal) or value.datatype != RDF.XMLLiteral:
-            raise TypeError(f"AddXHTMLBlock.execute expects value to be XMLLiteral, got {type(value)}")
-        if title is not None and (not isinstance(title, Literal) or title.datatype != XSD.string):
-            raise TypeError(f"AddXHTMLBlock.execute expects title to be string Literal, got {type(title)}")
-        if description is not None and (not isinstance(description, Literal) or description.datatype != XSD.string):
-            raise TypeError(f"AddXHTMLBlock.execute expects description to be string Literal, got {type(description)}")
-        if fragment is not None and (not isinstance(fragment, Literal) or fragment.datatype != XSD.string):
-            raise TypeError(f"AddXHTMLBlock.execute expects fragment to be string Literal, got {type(fragment)}")
+            raise TypeError(
+                f"AddXHTMLBlock.execute expects value to be XMLLiteral, got {type(value)}"
+            )
+        if title is not None and (
+            not isinstance(title, Literal) or title.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddXHTMLBlock.execute expects title to be string Literal, got {type(title)}"
+            )
+        if description is not None and (
+            not isinstance(description, Literal) or description.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddXHTMLBlock.execute expects description to be string Literal, got {type(description)}"
+            )
+        if fragment is not None and (
+            not isinstance(fragment, Literal) or fragment.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddXHTMLBlock.execute expects fragment to be string Literal, got {type(fragment)}"
+            )
 
         url_str = str(url)
         value_str = str(value)
@@ -149,9 +170,10 @@ class AddXHTMLBlock(POST):
         # Step 1: Get current document to find next sequence number
         get_op = GET(settings=self.settings, context=self.context)
         graph = get_op.execute(url)
-        
+
         # Convert Graph to JSON-LD for processing
         import json
+
         jsonld_str = graph.serialize(format="json-ld")
         doc = json.loads(jsonld_str)
 
@@ -220,29 +242,30 @@ class AddXHTMLBlock(POST):
 
         logging.info(f"Posting XHTML block with JSON-LD data: {data}")
 
-        # Step 6: POST the JSON-LD content to the target URI  
+        # Step 6: POST the JSON-LD content to the target URI
         # Convert JSON-LD dict to Graph
         from rdflib import Graph
+
         graph = Graph()
-        graph.parse(data=json.dumps(data), format="json-ld")
+        graph.parse(data=json.dumps(data), format="json-ld", base=url_str)
         return super().execute(url, graph)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
         from mcp import types
-        
+
         # Convert plain arguments to RDFLib terms
         url = URIRef(arguments["url"])
         value = Literal(arguments["value"], datatype=RDF.XMLLiteral)
-        
+
         title = None
         if "title" in arguments:
             title = Literal(arguments["title"], datatype=XSD.string)
-            
+
         description = None
         if "description" in arguments:
             description = Literal(arguments["description"], datatype=XSD.string)
-            
+
         fragment = None
         if "fragment" in arguments:
             fragment = Literal(arguments["fragment"], datatype=XSD.string)

@@ -85,13 +85,17 @@ class AddObjectBlock(POST):
             self.settings, arguments["url"], self.context, variable_stack
         )
         if not isinstance(url_data, URIRef):
-            raise TypeError(f"AddObjectBlock operation expects 'url' to be URIRef, got {type(url_data)}")
+            raise TypeError(
+                f"AddObjectBlock operation expects 'url' to be URIRef, got {type(url_data)}"
+            )
 
         value_data = Operation.process_json(
             self.settings, arguments["value"], self.context, variable_stack
         )
         if not isinstance(value_data, URIRef):
-            raise TypeError(f"AddObjectBlock operation expects 'value' to be URIRef, got {type(value_data)}")
+            raise TypeError(
+                f"AddObjectBlock operation expects 'value' to be URIRef, got {type(value_data)}"
+            )
 
         # Process optional arguments
         title_literal = None
@@ -121,12 +125,18 @@ class AddObjectBlock(POST):
                 self.settings, arguments["mode"], self.context, variable_stack
             )
             if not isinstance(mode_data, URIRef):
-                raise TypeError(f"AddObjectBlock operation expects 'mode' to be URIRef, got {type(mode_data)}")
+                raise TypeError(
+                    f"AddObjectBlock operation expects 'mode' to be URIRef, got {type(mode_data)}"
+                )
             mode_uri = mode_data
-            
+
         return self.execute(
-            url_data, value_data, title_literal, description_literal,
-            fragment_literal, mode_uri
+            url_data,
+            value_data,
+            title_literal,
+            description_literal,
+            fragment_literal,
+            mode_uri,
         )
 
     def execute(
@@ -140,17 +150,35 @@ class AddObjectBlock(POST):
     ) -> Any:
         """Pure function: create object block with RDFLib terms"""
         if not isinstance(url, URIRef):
-            raise TypeError(f"AddObjectBlock.execute expects url to be URIRef, got {type(url)}")
+            raise TypeError(
+                f"AddObjectBlock.execute expects url to be URIRef, got {type(url)}"
+            )
         if not isinstance(value, URIRef):
-            raise TypeError(f"AddObjectBlock.execute expects value to be URIRef, got {type(value)}")
-        if title is not None and (not isinstance(title, Literal) or title.datatype != XSD.string):
-            raise TypeError(f"AddObjectBlock.execute expects title to be string Literal, got {type(title)}")
-        if description is not None and (not isinstance(description, Literal) or description.datatype != XSD.string):
-            raise TypeError(f"AddObjectBlock.execute expects description to be string Literal, got {type(description)}")
-        if fragment is not None and (not isinstance(fragment, Literal) or fragment.datatype != XSD.string):
-            raise TypeError(f"AddObjectBlock.execute expects fragment to be string Literal, got {type(fragment)}")
+            raise TypeError(
+                f"AddObjectBlock.execute expects value to be URIRef, got {type(value)}"
+            )
+        if title is not None and (
+            not isinstance(title, Literal) or title.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddObjectBlock.execute expects title to be string Literal, got {type(title)}"
+            )
+        if description is not None and (
+            not isinstance(description, Literal) or description.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddObjectBlock.execute expects description to be string Literal, got {type(description)}"
+            )
+        if fragment is not None and (
+            not isinstance(fragment, Literal) or fragment.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddObjectBlock.execute expects fragment to be string Literal, got {type(fragment)}"
+            )
         if mode is not None and not isinstance(mode, URIRef):
-            raise TypeError(f"AddObjectBlock.execute expects mode to be URIRef, got {type(mode)}")
+            raise TypeError(
+                f"AddObjectBlock.execute expects mode to be URIRef, got {type(mode)}"
+            )
 
         url_str = str(url)
         value_str = str(value)
@@ -160,15 +188,18 @@ class AddObjectBlock(POST):
         mode_str = str(mode) if mode else None
 
         logging.info(
-            "Creating object block for document <%s> with value <%s>", url_str, value_str
+            "Creating object block for document <%s> with value <%s>",
+            url_str,
+            value_str,
         )
 
         # Step 1: Get current document to find next sequence number
         get_op = GET(settings=self.settings, context=self.context)
         graph = get_op.execute(url)
-        
+
         # Convert Graph to JSON-LD for processing
         import json
+
         jsonld_str = graph.serialize(format="json-ld")
         doc = json.loads(jsonld_str)
 
@@ -220,7 +251,11 @@ class AddObjectBlock(POST):
         }
 
         # Add the object block resource
-        block = {"@id": block_id, "@type": "ldh:Object", "rdf:value": {"@id": value_str}}
+        block = {
+            "@id": block_id,
+            "@type": "ldh:Object",
+            "rdf:value": {"@id": value_str},
+        }
 
         # Add optional properties to object block
         if title_str:
@@ -240,30 +275,31 @@ class AddObjectBlock(POST):
         # Step 6: POST the JSON-LD content to the target URI
         # Convert JSON-LD dict to Graph
         from rdflib import Graph
+
         graph = Graph()
-        graph.parse(data=json.dumps(data), format="json-ld")
+        graph.parse(data=json.dumps(data), format="json-ld", base=url_str)
         return super().execute(url, graph)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
         from mcp import types
-        
+
         # Convert plain arguments to RDFLib terms
         url = URIRef(arguments["url"])
         value = URIRef(arguments["value"])
-        
+
         title = None
         if "title" in arguments:
             title = Literal(arguments["title"], datatype=XSD.string)
-            
+
         description = None
         if "description" in arguments:
             description = Literal(arguments["description"], datatype=XSD.string)
-            
+
         fragment = None
         if "fragment" in arguments:
             fragment = Literal(arguments["fragment"], datatype=XSD.string)
-            
+
         mode = None
         if "mode" in arguments:
             mode = URIRef(arguments["mode"])

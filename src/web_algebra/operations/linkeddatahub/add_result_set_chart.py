@@ -94,13 +94,17 @@ class AddResultSetChart(POST):
             self.settings, arguments["url"], self.context, variable_stack
         )
         if not isinstance(url_data, URIRef):
-            raise TypeError(f"AddResultSetChart operation expects 'url' to be URIRef, got {type(url_data)}")
+            raise TypeError(
+                f"AddResultSetChart operation expects 'url' to be URIRef, got {type(url_data)}"
+            )
 
         query_data = Operation.process_json(
             self.settings, arguments["query"], self.context, variable_stack
         )
         if not isinstance(query_data, URIRef):
-            raise TypeError(f"AddResultSetChart operation expects 'query' to be URIRef, got {type(query_data)}")
+            raise TypeError(
+                f"AddResultSetChart operation expects 'query' to be URIRef, got {type(query_data)}"
+            )
 
         title_data = Operation.process_json(
             self.settings, arguments["title"], self.context, variable_stack
@@ -111,7 +115,9 @@ class AddResultSetChart(POST):
             self.settings, arguments["chart_type"], self.context, variable_stack
         )
         if not isinstance(chart_type_data, URIRef):
-            raise TypeError(f"AddResultSetChart operation expects 'chart_type' to be URIRef, got {type(chart_type_data)}")
+            raise TypeError(
+                f"AddResultSetChart operation expects 'chart_type' to be URIRef, got {type(chart_type_data)}"
+            )
 
         category_var_name_data = Operation.process_json(
             self.settings, arguments["category_var_name"], self.context, variable_stack
@@ -137,11 +143,16 @@ class AddResultSetChart(POST):
                 self.settings, arguments["fragment"], self.context, variable_stack
             )
             fragment_literal = self.to_string_literal(fragment_data)
-            
+
         return self.execute(
-            url_data, query_data, title_literal, chart_type_data,
-            category_var_name_literal, series_var_name_literal,
-            description_literal, fragment_literal
+            url_data,
+            query_data,
+            title_literal,
+            chart_type_data,
+            category_var_name_literal,
+            series_var_name_literal,
+            description_literal,
+            fragment_literal,
         )
 
     def execute(
@@ -157,21 +168,47 @@ class AddResultSetChart(POST):
     ) -> Any:
         """Pure function: create SPARQL result set chart with RDFLib terms"""
         if not isinstance(url, URIRef):
-            raise TypeError(f"AddResultSetChart.execute expects url to be URIRef, got {type(url)}")
+            raise TypeError(
+                f"AddResultSetChart.execute expects url to be URIRef, got {type(url)}"
+            )
         if not isinstance(query, URIRef):
-            raise TypeError(f"AddResultSetChart.execute expects query to be URIRef, got {type(query)}")
+            raise TypeError(
+                f"AddResultSetChart.execute expects query to be URIRef, got {type(query)}"
+            )
         if not isinstance(title, Literal) or title.datatype != XSD.string:
-            raise TypeError(f"AddResultSetChart.execute expects title to be string Literal, got {type(title)}")
+            raise TypeError(
+                f"AddResultSetChart.execute expects title to be string Literal, got {type(title)}"
+            )
         if not isinstance(chart_type, URIRef):
-            raise TypeError(f"AddResultSetChart.execute expects chart_type to be URIRef, got {type(chart_type)}")
-        if not isinstance(category_var_name, Literal) or category_var_name.datatype != XSD.string:
-            raise TypeError(f"AddResultSetChart.execute expects category_var_name to be string Literal, got {type(category_var_name)}")
-        if not isinstance(series_var_name, Literal) or series_var_name.datatype != XSD.string:
-            raise TypeError(f"AddResultSetChart.execute expects series_var_name to be string Literal, got {type(series_var_name)}")
-        if description is not None and (not isinstance(description, Literal) or description.datatype != XSD.string):
-            raise TypeError(f"AddResultSetChart.execute expects description to be string Literal, got {type(description)}")
-        if fragment is not None and (not isinstance(fragment, Literal) or fragment.datatype != XSD.string):
-            raise TypeError(f"AddResultSetChart.execute expects fragment to be string Literal, got {type(fragment)}")
+            raise TypeError(
+                f"AddResultSetChart.execute expects chart_type to be URIRef, got {type(chart_type)}"
+            )
+        if (
+            not isinstance(category_var_name, Literal)
+            or category_var_name.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddResultSetChart.execute expects category_var_name to be string Literal, got {type(category_var_name)}"
+            )
+        if (
+            not isinstance(series_var_name, Literal)
+            or series_var_name.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddResultSetChart.execute expects series_var_name to be string Literal, got {type(series_var_name)}"
+            )
+        if description is not None and (
+            not isinstance(description, Literal) or description.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddResultSetChart.execute expects description to be string Literal, got {type(description)}"
+            )
+        if fragment is not None and (
+            not isinstance(fragment, Literal) or fragment.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddResultSetChart.execute expects fragment to be string Literal, got {type(fragment)}"
+            )
 
         url_str = str(url)
         query_str = str(query)
@@ -220,14 +257,15 @@ class AddResultSetChart(POST):
         # Convert JSON-LD dict to Graph
         import json
         from rdflib import Graph
+
         graph = Graph()
-        graph.parse(data=json.dumps(data), format="json-ld")
+        graph.parse(data=json.dumps(data), format="json-ld", base=url_str)
         return super().execute(url, graph)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
         from mcp import types
-        
+
         # Convert plain arguments to RDFLib terms
         url = URIRef(arguments["url"])
         query = URIRef(arguments["query"])
@@ -235,18 +273,28 @@ class AddResultSetChart(POST):
         chart_type = URIRef(arguments["chart_type"])
         category_var_name = Literal(arguments["category_var_name"], datatype=XSD.string)
         series_var_name = Literal(arguments["series_var_name"], datatype=XSD.string)
-        
+
         description = None
         if "description" in arguments:
             description = Literal(arguments["description"], datatype=XSD.string)
-            
+
         fragment = None
         if "fragment" in arguments:
             fragment = Literal(arguments["fragment"], datatype=XSD.string)
 
         # Call pure function
-        result = self.execute(url, query, title, chart_type, category_var_name, 
-                            series_var_name, description, fragment)
+        result = self.execute(
+            url,
+            query,
+            title,
+            chart_type,
+            category_var_name,
+            series_var_name,
+            description,
+            fragment,
+        )
 
         # Return status for MCP response
-        return [types.TextContent(type="text", text=f"Result set chart added successfully")]
+        return [
+            types.TextContent(type="text", text=f"Result set chart added successfully")
+        ]

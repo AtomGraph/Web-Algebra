@@ -70,28 +70,34 @@ class LDHList(Operation, MCPTool):
     ) -> list[dict]:
         """Pure function: list LinkedDataHub children with RDFLib terms"""
         if not isinstance(url, URIRef):
-            raise TypeError(f"LDHList.execute expects url to be URIRef, got {type(url)}")
+            raise TypeError(
+                f"LDHList.execute expects url to be URIRef, got {type(url)}"
+            )
         if not isinstance(endpoint, URIRef):
-            raise TypeError(f"LDHList.execute expects endpoint to be URIRef, got {type(endpoint)}")
+            raise TypeError(
+                f"LDHList.execute expects endpoint to be URIRef, got {type(endpoint)}"
+            )
 
         url_str = str(url)
         endpoint_str = str(endpoint)
 
-        logging.info("Executing ldh:List on <%s> (SPARQL endpoint: %s)", url_str, endpoint_str)
+        logging.info(
+            "Executing ldh:List on <%s> (SPARQL endpoint: %s)", url_str, endpoint_str
+        )
 
         substitute = Substitute(settings=self.settings, context=self.context)
         # Direct call with RDFLib terms
         query_literal = Literal(self.query, datatype=XSD.string)
-        var_literal = Literal("this", datatype=XSD.string) 
+        var_literal = Literal("this", datatype=XSD.string)
         binding_uriref = url  # Already a URIRef
         query = substitute.execute(query_literal, var_literal, binding_uriref)
 
         select = SELECT(settings=self.settings, context=self.context)
-        # Direct call with RDFLib terms  
+        # Direct call with RDFLib terms
         result = select.execute(endpoint, query)
-        
+
         # Convert JSONResult to dict if needed
-        if hasattr(result, 'to_json') and callable(result.to_json):
+        if hasattr(result, "to_json") and callable(result.to_json):
             return result.to_json()
         else:
             return result
@@ -105,7 +111,9 @@ class LDHList(Operation, MCPTool):
             self.settings, arguments["url"], self.context, variable_stack
         )
         if not isinstance(url_data, URIRef):
-            raise TypeError(f"LDHList operation expects 'url' to be URIRef, got {type(url_data)}")
+            raise TypeError(
+                f"LDHList operation expects 'url' to be URIRef, got {type(url_data)}"
+            )
 
         # Process endpoint or base argument
         endpoint_uri = None
@@ -114,7 +122,9 @@ class LDHList(Operation, MCPTool):
                 self.settings, arguments["endpoint"], self.context, variable_stack
             )
             if not isinstance(endpoint_data, URIRef):
-                raise TypeError(f"LDHList operation expects 'endpoint' to be URIRef, got {type(endpoint_data)}")
+                raise TypeError(
+                    f"LDHList operation expects 'endpoint' to be URIRef, got {type(endpoint_data)}"
+                )
             endpoint_uri = endpoint_data
         elif "base" in arguments:
             base_data = Operation.process_json(
@@ -129,7 +139,7 @@ class LDHList(Operation, MCPTool):
             raise ValueError(
                 "LDHList operation requires either 'endpoint' or 'base' to be provided."
             )
-            
+
         return self.execute(url_data, endpoint_uri)
 
     def mcp_run(

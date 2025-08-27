@@ -70,19 +70,23 @@ class AddGenericService(POST):
             self.settings, arguments["url"], self.context, variable_stack
         )
         if not isinstance(url_data, URIRef):
-            raise TypeError(f"AddGenericService operation expects 'url' to be URIRef, got {type(url_data)}")
-        
+            raise TypeError(
+                f"AddGenericService operation expects 'url' to be URIRef, got {type(url_data)}"
+            )
+
         endpoint_data = Operation.process_json(
             self.settings, arguments["endpoint"], self.context, variable_stack
         )
         if not isinstance(endpoint_data, URIRef):
-            raise TypeError(f"AddGenericService operation expects 'endpoint' to be URIRef, got {type(endpoint_data)}")
-        
+            raise TypeError(
+                f"AddGenericService operation expects 'endpoint' to be URIRef, got {type(endpoint_data)}"
+            )
+
         title_data = Operation.process_json(
             self.settings, arguments["title"], self.context, variable_stack
         )
         title_literal = self.to_string_literal(title_data)
-        
+
         # Process optional arguments
         description_literal = None
         if "description" in arguments:
@@ -90,46 +94,54 @@ class AddGenericService(POST):
                 self.settings, arguments["description"], self.context, variable_stack
             )
             description_literal = self.to_string_literal(description_data)
-            
+
         fragment_literal = None
         if "fragment" in arguments:
             fragment_data = Operation.process_json(
                 self.settings, arguments["fragment"], self.context, variable_stack
             )
             fragment_literal = self.to_string_literal(fragment_data)
-            
+
         graph_store_uri = None
         if "graph_store" in arguments:
             graph_store_data = Operation.process_json(
                 self.settings, arguments["graph_store"], self.context, variable_stack
             )
             if not isinstance(graph_store_data, URIRef):
-                raise TypeError(f"AddGenericService operation expects 'graph_store' to be URIRef, got {type(graph_store_data)}")
+                raise TypeError(
+                    f"AddGenericService operation expects 'graph_store' to be URIRef, got {type(graph_store_data)}"
+                )
             graph_store_uri = graph_store_data
-            
+
         auth_user_literal = None
         if "auth_user" in arguments:
             auth_user_data = Operation.process_json(
                 self.settings, arguments["auth_user"], self.context, variable_stack
             )
             auth_user_literal = self.to_string_literal(auth_user_data)
-            
+
         auth_pwd_literal = None
         if "auth_pwd" in arguments:
             auth_pwd_data = Operation.process_json(
                 self.settings, arguments["auth_pwd"], self.context, variable_stack
             )
             auth_pwd_literal = self.to_string_literal(auth_pwd_data)
-            
+
         return self.execute(
-            url_data, endpoint_data, title_literal, description_literal,
-            fragment_literal, graph_store_uri, auth_user_literal, auth_pwd_literal
+            url_data,
+            endpoint_data,
+            title_literal,
+            description_literal,
+            fragment_literal,
+            graph_store_uri,
+            auth_user_literal,
+            auth_pwd_literal,
         )
 
     def execute(
         self,
         url: URIRef,
-        endpoint: URIRef, 
+        endpoint: URIRef,
         title: Literal,
         description: Literal = None,
         fragment: Literal = None,
@@ -139,21 +151,45 @@ class AddGenericService(POST):
     ) -> Any:
         """Pure function: create SPARQL service description with RDFLib terms"""
         if not isinstance(url, URIRef):
-            raise TypeError(f"AddGenericService.execute expects url to be URIRef, got {type(url)}")
+            raise TypeError(
+                f"AddGenericService.execute expects url to be URIRef, got {type(url)}"
+            )
         if not isinstance(endpoint, URIRef):
-            raise TypeError(f"AddGenericService.execute expects endpoint to be URIRef, got {type(endpoint)}")
+            raise TypeError(
+                f"AddGenericService.execute expects endpoint to be URIRef, got {type(endpoint)}"
+            )
         if not isinstance(title, Literal) or title.datatype != XSD.string:
-            raise TypeError(f"AddGenericService.execute expects title to be string Literal, got {type(title)}")
-        if description is not None and (not isinstance(description, Literal) or description.datatype != XSD.string):
-            raise TypeError(f"AddGenericService.execute expects description to be string Literal, got {type(description)}")
-        if fragment is not None and (not isinstance(fragment, Literal) or fragment.datatype != XSD.string):
-            raise TypeError(f"AddGenericService.execute expects fragment to be string Literal, got {type(fragment)}")
+            raise TypeError(
+                f"AddGenericService.execute expects title to be string Literal, got {type(title)}"
+            )
+        if description is not None and (
+            not isinstance(description, Literal) or description.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddGenericService.execute expects description to be string Literal, got {type(description)}"
+            )
+        if fragment is not None and (
+            not isinstance(fragment, Literal) or fragment.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddGenericService.execute expects fragment to be string Literal, got {type(fragment)}"
+            )
         if graph_store is not None and not isinstance(graph_store, URIRef):
-            raise TypeError(f"AddGenericService.execute expects graph_store to be URIRef, got {type(graph_store)}")
-        if auth_user is not None and (not isinstance(auth_user, Literal) or auth_user.datatype != XSD.string):
-            raise TypeError(f"AddGenericService.execute expects auth_user to be string Literal, got {type(auth_user)}")
-        if auth_pwd is not None and (not isinstance(auth_pwd, Literal) or auth_pwd.datatype != XSD.string):
-            raise TypeError(f"AddGenericService.execute expects auth_pwd to be string Literal, got {type(auth_pwd)}")
+            raise TypeError(
+                f"AddGenericService.execute expects graph_store to be URIRef, got {type(graph_store)}"
+            )
+        if auth_user is not None and (
+            not isinstance(auth_user, Literal) or auth_user.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddGenericService.execute expects auth_user to be string Literal, got {type(auth_user)}"
+            )
+        if auth_pwd is not None and (
+            not isinstance(auth_pwd, Literal) or auth_pwd.datatype != XSD.string
+        ):
+            raise TypeError(
+                f"AddGenericService.execute expects auth_pwd to be string Literal, got {type(auth_pwd)}"
+            )
 
         url_str = str(url)
         endpoint_str = str(endpoint)
@@ -215,42 +251,53 @@ class AddGenericService(POST):
         # Convert JSON-LD dict to Graph
         import json
         from rdflib import Graph
+
         graph = Graph()
-        graph.parse(data=json.dumps(data), format="json-ld")
+        graph.parse(data=json.dumps(data), format="json-ld", base=url_str)
         return super().execute(url, graph)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
         from mcp import types
-        
+
         # Convert plain arguments to RDFLib terms
         url = URIRef(arguments["url"])
         endpoint = URIRef(arguments["endpoint"])
         title = Literal(arguments["title"], datatype=XSD.string)
-        
+
         description = None
         if "description" in arguments:
             description = Literal(arguments["description"], datatype=XSD.string)
-            
+
         fragment = None
         if "fragment" in arguments:
             fragment = Literal(arguments["fragment"], datatype=XSD.string)
-            
+
         graph_store = None
         if "graph_store" in arguments:
             graph_store = URIRef(arguments["graph_store"])
-            
+
         auth_user = None
         if "auth_user" in arguments:
             auth_user = Literal(arguments["auth_user"], datatype=XSD.string)
-            
+
         auth_pwd = None
         if "auth_pwd" in arguments:
             auth_pwd = Literal(arguments["auth_pwd"], datatype=XSD.string)
 
         # Call pure function
-        result = self.execute(url, endpoint, title, description, fragment, 
-                            graph_store, auth_user, auth_pwd)
+        result = self.execute(
+            url,
+            endpoint,
+            title,
+            description,
+            fragment,
+            graph_store,
+            auth_user,
+            auth_pwd,
+        )
 
         # Return status for MCP response
-        return [types.TextContent(type="text", text=f"Generic service added successfully")]
+        return [
+            types.TextContent(type="text", text=f"Generic service added successfully")
+        ]
