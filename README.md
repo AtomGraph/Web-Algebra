@@ -1,4 +1,4 @@
-# WebAlgebra
+# Web-Algebra
 
 A composable RDF operations system that translates natural language instructions into JSON-formatted domain-specific language operations for loading, querying, and writing RDF Linked Data.
 
@@ -8,6 +8,8 @@ This system implements generic operations for RDF Linked Data and SPARQL managem
 
 1. **Executable JSON format**: Operations are composed into JSON structures and executed by the provided execution engine
 2. **Model Context Protocol (MCP)**: Operations are exposed as tools for AI agents to use interactively
+
+Instead of agents executing semantic workflows step-by-step through individual MCP tool calls, Web-Algebra enables agents to compile entire workflows into optimized JSON "bytecode" that executes atomically - enabling complex multi-operation compositions.
 
 ## Demo
 
@@ -20,19 +22,22 @@ This system implements generic operations for RDF Linked Data and SPARQL managem
 The system is built around the `Operation` abstract base class that provides:
 - **Registry System**: Auto-discovery of operations from `src/web_algebra/operations/`
 - **JSON DSL**: Operations use `@op` key with `args` for parameters, supporting nested operation calls
+- **RDFLib Type System**: Uses `URIRef`, `Literal`, `Graph`, and `Result` types internally for proper RDF handling
 - **Execution Engine**: Both standalone execution and MCP server integration
-- **Context System**: ForEach operations set row context for inner operations
+- **Context System**: ForEach operations set row context for inner operations to access via `Value`
+- **URI Resolution**: Proper semantic URI construction with `ResolveURI` operation
 
 ### Key Components
 
 - **[System Prompt](prompts/system.md)**: Complete operation definitions and JSON format specification
+- **[Formal Semantics](formal-semantics.md)**: Complete type system and operation catalog
 - **[Operation Interface](src/web_algebra/operation.py)**: Base class and JSON interpreter
 - **[Operation Implementations](src/web_algebra/operations/)**: Directory containing all available operations
 - **[JSON Examples](examples/)**: Sample operation compositions
 
 ### Operations
 
-The operations cover read-write Linked Data, SPARQL queries, and LinkedDataHub-specific resource creation. Non-exhaustive list:
+The operations cover read-write Linked Data, SPARQL queries, URI manipulation, and LinkedDataHub-specific resource creation. Non-exhaustive list:
 
 - Linked Data
   - `GET`
@@ -43,14 +48,29 @@ The operations cover read-write Linked Data, SPARQL queries, and LinkedDataHub-s
   - `CONSTRUCT`
   - `DESCRIBE`
   - `SELECT`
+  - `Substitute`
+- URI & String Operations
+  - `ResolveURI`
+  - `EncodeForURI`
+  - `Concat`
+  - `Replace`
+  - `Str`
+  - `URI`
+- Control Flow & Variables
+  - `Value`
+  - `Variable`
+  - `ForEach`
 - LinkedDataHub-specific
-  - `CreateContainer`
-  - `CreateItem`
-  - `List`
-  - `AddGenericService`
-  - `AddResultSetChart`
-  - `AddSelect`
-  - `AddView`
+  - `ldh-CreateContainer`
+  - `ldh-CreateItem`
+  - `ldh-List`
+  - `ldh-AddGenericService`
+  - `ldh-AddResultSetChart`
+  - `ldh-AddSelect`
+  - `ldh-AddView`
+  - `ldh-AddObjectBlock`
+  - `ldh-AddXHTMLBlock`
+  - `ldh-RemoveBlock`
 
 ## Usage
 
@@ -80,7 +100,7 @@ _Currently requires OpenAI API access. `OPENAI_API_KEY` env value has to be set.
 #### Execute JSON
 
 ```bash
-uv run python src/web_algebra/main.py --from-json ./examples/substitute-test.json
+uv run python src/web_algebra/main.py --from-json ./examples/united-kingdom-cities.json
 ```
 
 See [JSON examples](examples).
