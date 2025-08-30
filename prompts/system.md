@@ -25,7 +25,7 @@ would produce this JSON output:
 {
   "@op": "ForEach",
   "args": {
-    "table": {
+    "select": {
       "@op": "SELECT",
       "args": {
         "endpoint": "https://dbpedia.org/sparql",
@@ -87,7 +87,7 @@ would produce this JSON output:
    - **ForEach sets the context**—inner operations automatically use the current row.
 
 4. **Use `ForEach` when processing multiple results**  
-   - The `table` argument must reference a `SELECT` or similar operation returning multiple rows (`table: List[Dict[str, Any]]`).  
+   - The `select` argument must reference a `SELECT` or similar operation returning multiple rows or a sequence of items.  
    - The `operation` argument applies to each row dynamically.  
    - **If `operation` is a list, the operations execute sequentially for each row** before moving to the next row.
 
@@ -103,7 +103,7 @@ would produce this JSON output:
    - Queries must handle **unknown result sizes dynamically**.
 
 8. **Make sure to use variable names consistently**  
-   - If you generated a query with a `?cityName` variable, then make sure to use the same variable in `{ "Var": { "name": "cityName" } }` if you need to retrieve its value.
+   - If you generated a query with a `?cityName` variable, then make sure to use the same variable in `{ "@op": "Value", "args": { "name": "cityName" } }` if you need to retrieve its value.
 
 9. **Where RDF data is expected or returned**  
    - **Use an internal `rdflib.Graph`.**  
@@ -414,20 +414,16 @@ Result (truncated)
 }
 ```
 
-## Var(name: str) -> Dict
+## Value(name: str) -> any
 
-Retrieves a value from the execution context based on a given variable name and returns it as an RDF term dict. This operation is useful for accessing previously stored values in the context, similar to SPARQL's `?var` syntax.
+Retrieves values from either the variable stack (using $ prefix) or ForEach context bindings (no prefix).
+
+- **$variableName**: Accesses variables set by Variable operations
+- **bindingName**: Accesses ForEach context bindings, extracting the `.value` field from SPARQL-style binding objects
 
 ### Example JSON
 
-Current context row:
-```json
-{
-  "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" },
-  "cityName": { "type": "literal", "value": "Copenhagen", "xml:lang": "en" }
-}
-```
-
+ForEach context binding access:
 ```json
 {
   "@op": "Value",
@@ -437,13 +433,19 @@ Current context row:
 }
 ```
 
-Result:
+Variable access:
 ```json
 {
-  "type": "literal",
-  "value": "Copenhagen",
-  "xml:lang": "en"
+  "@op": "Value",
+  "args": {
+    "name": "$cityName"
+  }
 }
+```
+
+Result (extracts .value from binding or returns variable value):
+```json
+"Copenhagen"
 ```
 
 ## Str(input: str) -> str
@@ -470,9 +472,9 @@ Result:
 "Copenhagen"
 ```
 
-## ForEach(table: Dict, operation: Union[Callable, List[Callable]])
+## ForEach(select: Dict, operation: Union[Callable, List[Callable]])
 
-Executes one or more operations for each row in a SPARQL results table. The table should have the structure `{"results": {"bindings": [...]}}` as returned by SELECT operations.
+Executes one or more operations for each row in a SPARQL results or any sequence. The select argument should be a SELECT operation result or sequence of items.
 
 - If a **single operation** is provided, it is applied to each row.  
 - If a **list of operations** is provided, they are executed sequentially for each row.
@@ -481,7 +483,7 @@ Executes one or more operations for each row in a SPARQL results table. The tabl
 
 ## Example: Single Operation
 
-This example performs an HTTP **GET** request for each city in the table.
+This example performs an HTTP **GET** request for each city in the result set.
 
 ### Example JSON
 
@@ -489,12 +491,11 @@ This example performs an HTTP **GET** request for each city in the table.
 {
   "@op": "ForEach",
   "args": {
-    "table": {
-      "results": {
-        "bindings": [
-          { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" } },
-          { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Aarhus" } }
-        ]
+    "select": {
+      "@op": "SELECT",
+      "args": {
+        "endpoint": "https://dbpedia.org/sparql",
+        "query": "SELECT ?city WHERE { ?city a <http://dbpedia.org/ontology/City> }"
       }
     },
     "operation": {
@@ -527,7 +528,7 @@ GET("http://dbpedia.org/resource/Aarhus")
 
 ## Example: Multiple Operations
 
-This example performs both a **GET** request and a **POST** request for each city in the table.
+This example performs both a **GET** request and a **POST** request for each city in the result set.
 
 ### Example JSON
 
@@ -535,12 +536,11 @@ This example performs both a **GET** request and a **POST** request for each cit
 {
   "@op": "ForEach",
   "args": {
-    "table": {
-      "results": {
-        "bindings": [
-          { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Copenhagen" } },
-          { "city": { "type": "uri", "value": "http://dbpedia.org/resource/Aarhus" } }
-        ]
+    "select": {
+      "@op": "SELECT",
+      "args": {
+        "endpoint": "https://dbpedia.org/sparql",
+        "query": "SELECT ?city WHERE { ?city a <http://dbpedia.org/ontology/City> }"
       }
     },
     "operation": [
@@ -911,4 +911,54 @@ PREFIX dbo: <http://dbpedia.org/ontology/>
 CONSTRUCT WHERE {
     <http://dbpedia.org/resource/Copenhagen> dbo:populationTotal ?population
 }
+```
+
+## Concat(inputs: List[str]) -> str
+
+Concatenates a list of string inputs into a single string. Useful for building URIs from multiple parts.
+
+### Example JSON
+
+```json
+{
+  "@op": "Concat",
+  "args": {
+    "inputs": [
+      {
+        "@op": "EncodeForURI",
+        "args": {
+          "input": {
+            "@op": "Value",
+            "args": {
+              "name": "cityName"
+            }
+          }
+        }
+      },
+      "/"
+    ]
+  }
+}
+```
+
+Result:
+```json
+"Copenhagen/"
+```
+
+## STRUUID() -> str
+
+Generates a random UUID string.
+
+### Example JSON
+
+```json
+{
+  "@op": "STRUUID"
+}
+```
+
+Result:
+```json
+"550e8400-e29b-41d4-a716-446655440000"
 ```
