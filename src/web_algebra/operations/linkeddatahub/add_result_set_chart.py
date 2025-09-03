@@ -258,7 +258,7 @@ class AddResultSetChart(POST):
         from rdflib import Graph
 
         graph = Graph()
-        graph.parse(data=json.dumps(data), format="json-ld", base=url_str)
+        graph.parse(data=json.dumps(data), format="json-ld", publicID=url_str)
         return super().execute(url, graph)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:

@@ -93,7 +93,7 @@ class LinkedDataClient:
 
         # Parse the RDF data into an RDFLib Graph
         g = Graph()
-        g.parse(data=data, format=rdf_format, base=url)
+        g.parse(data=data, format=rdf_format, publicID=url)
         return g
 
     def post(self, url: str, graph: Graph) -> HTTPResponse:

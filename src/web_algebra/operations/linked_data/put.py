@@ -107,7 +107,7 @@ class PUT(Operation, MCPTool):
 
             json_str = json.dumps(data_result)
             graph = Graph()
-            graph.parse(data=json_str, format="json-ld", base=str(url_data))
+            graph.parse(data=json_str, format="json-ld", publicID=str(url_data))
             graph_data = graph
         else:
             raise TypeError(
@@ -124,7 +124,7 @@ class PUT(Operation, MCPTool):
         data_dict = arguments["data"]
         json_str = json.dumps(data_dict)
         graph = Graph()
-        graph.parse(data=json_str, format="json-ld", base=str(url))
+        graph.parse(data=json_str, format="json-ld", publicID=str(url))
 
         result = self.execute(url, graph)
 
