@@ -4,7 +4,7 @@ A composable RDF operations system that translates natural language instructions
 
 ## Overview
 
-This system implements generic operations for RDF Linked Data and SPARQL management, as well as some LinkedDataHub-specific operations. Operations can be consumed in two ways:
+This system implements generic operations for RDF Linked Data and SPARQL management, as well as some [LinkedDataHub](https://atomgraph.github.io/LinkedDataHub/)-specific operations. Operations can be consumed in two ways:
 
 1. **Executable JSON format**: Operations are composed into JSON structures and executed by the provided execution engine
 2. **Model Context Protocol (MCP)**: Operations are exposed as tools for AI agents to use interactively
