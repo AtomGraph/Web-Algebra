@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/atomgraph-web-algebra-badge.png)](https://mseep.ai/app/atomgraph-web-algebra)
+
 # Web-Algebra
 
 A composable RDF operations system that translates natural language instructions into JSON-formatted domain-specific language operations for loading, querying, and writing RDF Linked Data.
