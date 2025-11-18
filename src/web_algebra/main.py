@@ -72,7 +72,7 @@ def main(settings: BaseSettings, json_data: Optional[str]):
         if isinstance(result, rdflib.Graph):
             # Serialize Graph to JSON-LD for final output
             jsonld_str = result.serialize(format="json-ld")
-            print(json.loads(jsonld_str))
+            print(jsonld_str)
         else:
             print(result)
     else:

@@ -1,5 +1,6 @@
 import rdflib
 from rdflib import URIRef, Literal
+from rdflib.namespace import XSD
 from web_algebra.operations.sparql.construct import CONSTRUCT
 from web_algebra.operation import Operation
 
@@ -31,32 +32,34 @@ CONSTRUCT {
 }
 WHERE {
   {
-    ?subject ?property ?literal .
-    FILTER(?property != rdf:type)
-    FILTER(isLiteral(?literal))
-    
-    OPTIONAL { 
-      { ?subject a ?domain }
-      UNION 
-      { GRAPH ?subjG { ?subject a ?domain } }
-    }
-    BIND(datatype(?literal) as ?datatype)
-  } UNION {
-    GRAPH ?g {
-      ?subject ?property ?literal .
-      FILTER(?property != rdf:type)
-      FILTER(isLiteral(?literal))
-      
-      OPTIONAL { 
-        { ?subject a ?domain }
-        UNION 
-        { GRAPH ?subjG { ?subject a ?domain } }
+    SELECT ?property ?datatype (SAMPLE(?d) AS ?domain)
+    WHERE {
+      {
+        ?subject ?property ?literal .
+        FILTER(?property != rdf:type)
+        FILTER(isLiteral(?literal))
+        BIND(datatype(?literal) as ?datatype)
+      } UNION {
+        GRAPH ?g {
+          ?subject ?property ?literal .
+          FILTER(?property != rdf:type)
+          FILTER(isLiteral(?literal))
+          BIND(datatype(?literal) as ?datatype)
+        }
       }
-      BIND(datatype(?literal) as ?datatype)
+
+      OPTIONAL {
+        { ?subject a ?d }
+        UNION
+        { GRAPH ?subjG { ?subject a ?d } }
+        FILTER(!isBlank(?d))
+      }
     }
+    GROUP BY ?property ?datatype
+    HAVING(COUNT(DISTINCT ?d) <= 1)
   }
 }
-""")
+""", datatype=XSD.string)
         return super().execute(endpoint, query)
 
     def execute_json(self, arguments: dict, variable_stack: list = []) -> rdflib.Graph:
