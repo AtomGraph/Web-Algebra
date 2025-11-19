@@ -33,62 +33,74 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 CONSTRUCT {
+  # Basic property metadata - constructed for ALL properties
   ?property a owl:DatatypeProperty ;
            rdfs:domain ?domain ;
            rdfs:range ?datatype .
 
-  # Domain class is subclass of restriction with max cardinality
-  # When maxC = 1, this makes the property functional for this domain
-  ?domain rdfs:subClassOf [
-    a owl:Restriction ;
-    owl:onProperty ?property ;
-    owl:maxQualifiedCardinality ?maxCardinality ;
-    owl:onDataRange ?datatype
-  ] .
+  # Restriction triples - only constructed when ?restriction and ?maxCardinality are bound
+  # This happens only for functional properties (maxC = 1)
+  ?domain rdfs:subClassOf ?restriction .
+
+  ?restriction a owl:Restriction ;
+               owl:onProperty ?property ;
+               owl:maxQualifiedCardinality ?maxCardinality ;
+               owl:onDataRange ?datatype .
 }
 WHERE {
-  # Outermost SELECT: Only expose maxCardinality when it equals 1 (functional properties)
-  # This filters the restriction to only apply to proven functional properties
-  SELECT ?domain ?property ?datatype (IF(?maxC = 1, ?maxC, ?UNDEF) AS ?maxCardinality)
-  WHERE {
-    {
-      # Outer SELECT: Aggregate to single domain per property-datatype pair
-      # Filter to properties with unambiguous domain (COUNT DISTINCT <= 1)
-      # Calculate max cardinality across all subjects
-      SELECT ?property ?datatype (SAMPLE(?d) AS ?domain) (MAX(?c) AS ?maxC)
-      WHERE {
-        {
-          # Inner SELECT: Count literals per subject-property-datatype triple
-          # This gives us cardinality for each individual subject
-          SELECT ?subject ?property ?datatype (COUNT(?literal) AS ?c)
-          WHERE {
-            {
-              ?subject ?property ?literal .
-              FILTER(?property != rdf:type)
-              FILTER(isLiteral(?literal))
-              BIND(datatype(?literal) as ?datatype)
-            } UNION {
-              GRAPH ?g {
+  {
+    # Outermost SELECT: Conditionally bind maxCardinality only when maxC = 1
+    # The IF expression makes ?maxCardinality unbound for non-functional properties
+    SELECT ?domain ?property ?datatype (IF(?maxC = 1, ?maxC, ?UNDEF) AS ?maxCardinality)
+    WHERE {
+      {
+        # Outer SELECT: Aggregate to single domain per property-datatype pair
+        # Filter to properties with unambiguous domain (COUNT DISTINCT <= 1)
+        # Calculate max cardinality across all subjects
+        SELECT ?property ?datatype (SAMPLE(?d) AS ?domain) (MAX(?c) AS ?maxC)
+        WHERE {
+          {
+            # Inner SELECT: Count literals per subject-property-datatype triple
+            # This gives us cardinality for each individual subject
+            SELECT ?subject ?property ?datatype (COUNT(?literal) AS ?c)
+            WHERE {
+              {
                 ?subject ?property ?literal .
                 FILTER(?property != rdf:type)
                 FILTER(isLiteral(?literal))
-                BIND(datatype(?literal) as ?datatype)
+                BIND(datatype(?literal) AS ?datatype)
+              } UNION {
+                GRAPH ?g {
+                  ?subject ?property ?literal .
+                  FILTER(?property != rdf:type)
+                  FILTER(isLiteral(?literal))
+                  BIND(datatype(?literal) AS ?datatype)
+                }
               }
             }
+            GROUP BY ?subject ?property ?datatype
           }
-          GROUP BY ?subject ?property ?datatype
-        }
 
-        OPTIONAL {
-          { ?subject a ?d }
-          UNION
-          { GRAPH ?subjG { ?subject a ?d } }
-          FILTER(!isBlank(?d))
+          OPTIONAL {
+            { ?subject a ?d }
+            UNION
+            { GRAPH ?subjG { ?subject a ?d } }
+            FILTER(!isBlank(?d))
+          }
         }
+        GROUP BY ?property ?datatype
+        HAVING(COUNT(DISTINCT ?d) <= 1)
       }
-      GROUP BY ?property ?datatype
-      HAVING(COUNT(DISTINCT ?d) <= 1)
     }
+  }
+
+  # Create blank node for restriction ONLY when ?maxCardinality is bound (functional properties)
+  # This OPTIONAL block does NOT filter out rows - all properties are still returned
+  # For functional properties: ?restriction is bound, and restriction triples are constructed
+  # For non-functional properties: ?restriction is unbound, no restriction triples created
+  OPTIONAL {
+    FILTER(BOUND(?maxCardinality))
+    BIND(BNODE() AS ?restriction)
   }
 }
 """, datatype=XSD.string)
