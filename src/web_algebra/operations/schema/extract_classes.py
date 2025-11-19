@@ -1,5 +1,6 @@
 import rdflib
 from rdflib import URIRef, Literal
+from rdflib.namespace import XSD
 from web_algebra.operations.sparql.construct import CONSTRUCT
 from web_algebra.operation import Operation
 
@@ -23,8 +24,8 @@ class ExtractClasses(CONSTRUCT):
 PREFIX  owl:  <http://www.w3.org/2002/07/owl#>
 PREFIX  rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-CONSTRUCT 
-  { 
+CONSTRUCT
+  {
     ?class a owl:Class .
   }
 WHERE
@@ -38,7 +39,7 @@ WHERE
           }
       }
   }
-""")
+""", datatype=XSD.string)
         return super().execute(endpoint, query)
 
     def execute_json(self, arguments: dict, variable_stack: list = []) -> rdflib.Graph:
