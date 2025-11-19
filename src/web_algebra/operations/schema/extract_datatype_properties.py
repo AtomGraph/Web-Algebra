@@ -19,7 +19,14 @@ class ExtractDatatypeProperties(CONSTRUCT):
         }
 
     def execute(self, endpoint: URIRef) -> rdflib.Graph:
-        """Pure function: extract OWL datatype properties with RDFLib terms"""
+        """Pure function: extract OWL datatype properties with RDFLib terms
+
+        Infers functional properties using closed world assumption:
+        - Counts max cardinality by examining all subjects in the dataset
+        - Creates OWL restriction with maxQualifiedCardinality
+        - When maxC = 1, property is inferred to be functional in this dataset
+        - Note: Inference based solely on present data, not formal ontology definitions
+        """
         query = Literal("""
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -29,34 +36,59 @@ CONSTRUCT {
   ?property a owl:DatatypeProperty ;
            rdfs:domain ?domain ;
            rdfs:range ?datatype .
+
+  # Domain class is subclass of restriction with max cardinality
+  # When maxC = 1, this makes the property functional for this domain
+  ?domain rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty ?property ;
+    owl:maxQualifiedCardinality ?maxCardinality ;
+    owl:onDataRange ?datatype
+  ] .
 }
 WHERE {
-  {
-    SELECT ?property ?datatype (SAMPLE(?d) AS ?domain)
-    WHERE {
-      {
-        ?subject ?property ?literal .
-        FILTER(?property != rdf:type)
-        FILTER(isLiteral(?literal))
-        BIND(datatype(?literal) as ?datatype)
-      } UNION {
-        GRAPH ?g {
-          ?subject ?property ?literal .
-          FILTER(?property != rdf:type)
-          FILTER(isLiteral(?literal))
-          BIND(datatype(?literal) as ?datatype)
+  # Outermost SELECT: Only expose maxCardinality when it equals 1 (functional properties)
+  # This filters the restriction to only apply to proven functional properties
+  SELECT ?domain ?property ?datatype (IF(?maxC = 1, ?maxC, ?UNDEF) AS ?maxCardinality)
+  WHERE {
+    {
+      # Outer SELECT: Aggregate to single domain per property-datatype pair
+      # Filter to properties with unambiguous domain (COUNT DISTINCT <= 1)
+      # Calculate max cardinality across all subjects
+      SELECT ?property ?datatype (SAMPLE(?d) AS ?domain) (MAX(?c) AS ?maxC)
+      WHERE {
+        {
+          # Inner SELECT: Count literals per subject-property-datatype triple
+          # This gives us cardinality for each individual subject
+          SELECT ?subject ?property ?datatype (COUNT(?literal) AS ?c)
+          WHERE {
+            {
+              ?subject ?property ?literal .
+              FILTER(?property != rdf:type)
+              FILTER(isLiteral(?literal))
+              BIND(datatype(?literal) as ?datatype)
+            } UNION {
+              GRAPH ?g {
+                ?subject ?property ?literal .
+                FILTER(?property != rdf:type)
+                FILTER(isLiteral(?literal))
+                BIND(datatype(?literal) as ?datatype)
+              }
+            }
+          }
+          GROUP BY ?subject ?property ?datatype
+        }
+
+        OPTIONAL {
+          { ?subject a ?d }
+          UNION
+          { GRAPH ?subjG { ?subject a ?d } }
+          FILTER(!isBlank(?d))
         }
       }
-
-      OPTIONAL {
-        { ?subject a ?d }
-        UNION
-        { GRAPH ?subjG { ?subject a ?d } }
-        FILTER(!isBlank(?d))
-      }
+      GROUP BY ?property ?datatype
+      HAVING(COUNT(DISTINCT ?d) <= 1)
     }
-    GROUP BY ?property ?datatype
-    HAVING(COUNT(DISTINCT ?d) <= 1)
   }
 }
 """, datatype=XSD.string)
