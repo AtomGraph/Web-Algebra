@@ -1,0 +1,23 @@
+{
+  "@op": "GeneratePortal",
+  "args": {
+    "endpoint": {
+      "@op": "URI",
+      "args": {
+        "input": "https://linkeddatahub.com/demo/skos/sparql"
+      }
+    },
+    "ontology_namespace": {
+      "@op": "URI",
+      "args": {
+        "input": "https://admin.localhost:4443/ontologies/namespace/"
+      }
+    },
+    "parent_container": {
+      "@op": "URI",
+      "args": {
+        "input": "https://localhost:4443/"
+      }
+    }
+  }
+}

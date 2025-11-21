@@ -1,0 +1,11 @@
+{
+  "@op": "ExtractOntology",
+  "args": {
+    "endpoint": {
+      "@op": "URI",
+      "args": {
+        "input": "https://linkeddatahub.com/demo/skos/sparql"
+      }
+    }
+  }
+}
