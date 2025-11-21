@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
@@ -142,11 +142,11 @@ class AddGenericService(POST):
         url: URIRef,
         endpoint: URIRef,
         title: Literal,
-        description: Literal = None,
-        fragment: Literal = None,
-        graph_store: URIRef = None,
-        auth_user: Literal = None,
-        auth_pwd: Literal = None,
+        description: Optional[Literal] = None,
+        fragment: Optional[Literal] = None,
+        graph_store: Optional[URIRef] = None,
+        auth_user: Optional[Literal] = None,
+        auth_pwd: Optional[Literal] = None,
     ) -> Any:
         """Pure function: create SPARQL service description with RDFLib terms"""
         if not isinstance(url, URIRef):

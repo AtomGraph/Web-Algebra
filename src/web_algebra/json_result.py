@@ -1,5 +1,5 @@
 from typing import List, Dict, Iterator
-import rdflib
+from rdflib.term import Node
 from rdflib import URIRef, Literal, BNode
 from rdflib.query import Result, ResultRow
 
@@ -10,7 +10,7 @@ class JSONResult(Result):
     can be constructed from SPARQL JSON format and works with RDFLib objects internally.
     """
 
-    def __init__(self, vars: List[str], bindings: List[Dict[str, rdflib.term.Node]]):
+    def __init__(self, vars: List[str], bindings: List[Dict[str, Node]]):
         super().__init__("SELECT")  # Always SELECT type for our use case
         self.head = {"vars": vars}
         self.bindings = bindings
@@ -32,7 +32,7 @@ class JSONResult(Result):
         return cls(vars, bindings)
 
     @staticmethod
-    def _parse_binding(binding_dict: dict) -> rdflib.term.Node:
+    def _parse_binding(binding_dict: dict) -> Node:
         """Convert SPARQL JSON binding to RDFLib object"""
         if binding_dict["type"] == "uri":
             return URIRef(binding_dict["value"])
@@ -51,7 +51,7 @@ class JSONResult(Result):
             raise ValueError(f"Unknown binding type: {binding_dict['type']}")
 
     @staticmethod
-    def _serialize_binding(term: rdflib.term.Node) -> dict:
+    def _serialize_binding(term: Node) -> dict:
         """Convert RDFLib object to SPARQL JSON binding"""
         if isinstance(term, URIRef):
             return {"type": "uri", "value": str(term)}
@@ -88,7 +88,7 @@ class JSONResult(Result):
         """Number of bindings"""
         return len(self.bindings)
 
-    def __getitem__(self, index: int) -> Dict[str, rdflib.term.Node]:
+    def __getitem__(self, index: int) -> Dict[str, Node]:
         """Access binding by index"""
         return self.bindings[index]
 

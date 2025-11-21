@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 import logging
 from mcp import types
 from rdflib import Literal, URIRef
@@ -68,7 +68,7 @@ class RemoveBlock(PATCH):
     def execute(
         self,
         url: URIRef,
-        block: URIRef = None,
+        block: Optional[URIRef] = None,
     ) -> Any:
         """Pure function: remove content block with RDFLib terms"""
         if not isinstance(url, URIRef):

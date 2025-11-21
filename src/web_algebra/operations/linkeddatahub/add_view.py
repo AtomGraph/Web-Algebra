@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
@@ -140,9 +140,9 @@ class AddView(POST):
         url: URIRef,
         query: URIRef,
         title: Literal,
-        description: Literal = None,
-        fragment: Literal = None,
-        mode: URIRef = None,
+        description: Optional[Literal] = None,
+        fragment: Optional[Literal] = None,
+        mode: Optional[URIRef] = None,
     ) -> Any:
         """Pure function: create SPARQL result set view with RDFLib terms"""
         if not isinstance(url, URIRef):

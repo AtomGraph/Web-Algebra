@@ -1,7 +1,6 @@
 from typing import Any
 import logging
 import re
-import rdflib
 from rdflib import Literal
 from rdflib.namespace import XSD
 from mcp import types
@@ -48,10 +47,10 @@ class Replace(Operation, MCPTool):
 
     def execute(
         self,
-        input_str: rdflib.Literal,
-        pattern: rdflib.Literal,
-        replacement: rdflib.Literal,
-    ) -> rdflib.Literal:
+        input_str: Literal,
+        pattern: Literal,
+        replacement: Literal,
+    ) -> Literal:
         """Pure function: replace pattern in string with RDFLib terms"""
 
         # Following SPARQL semantics: accept both xsd:string and rdf:langString (language-tagged literals)
@@ -60,12 +59,11 @@ class Replace(Operation, MCPTool):
                 lit.datatype == XSD.string  # xsd:string
                 or (
                     lit.datatype is None
-                    and hasattr(lit, "lang")
-                    and lit.lang is not None
+                    and lit.language is not None
                 )  # rdf:langString
                 or (
                     lit.datatype is None
-                    and (not hasattr(lit, "lang") or lit.lang is None)
+                    and lit.language is None
                 )  # plain literal
             )
 
@@ -100,7 +98,7 @@ class Replace(Operation, MCPTool):
 
     def execute_json(
         self, arguments: dict, variable_stack: list = []
-    ) -> rdflib.Literal:
+    ) -> Literal:
         """JSON execution: process arguments with strict type checking"""
         # Process input - allow implicit string conversion
         input_data = Operation.process_json(

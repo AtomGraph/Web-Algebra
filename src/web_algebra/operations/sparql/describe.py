@@ -1,7 +1,6 @@
 import logging
 from typing import Any
 import json
-import rdflib
 from rdflib import URIRef, Literal, Graph
 from rdflib.namespace import XSD
 from mcp import types
@@ -37,7 +36,7 @@ class DESCRIBE(Operation, MCPTool):
             "required": ["endpoint", "query"],
         }
 
-    def execute(self, endpoint: rdflib.URIRef, query: rdflib.Literal) -> rdflib.Graph:
+    def execute(self, endpoint: URIRef, query: Literal) -> Graph:
         """Pure function: execute SPARQL DESCRIBE query"""
         if not isinstance(endpoint, URIRef):
             raise TypeError(
@@ -65,8 +64,8 @@ class DESCRIBE(Operation, MCPTool):
 
         return graph
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> rdflib.Graph:
-        """JSON execution: process arguments and return rdflib.Graph (same as execute)"""
+    def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
+        """JSON execution: process arguments and return Graph (same as execute)"""
         # Process endpoint
         endpoint_data = Operation.process_json(
             self.settings, arguments["endpoint"], self.context, variable_stack

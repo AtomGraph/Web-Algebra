@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD, RDF
@@ -126,9 +126,9 @@ class AddXHTMLBlock(POST):
         self,
         url: URIRef,
         value: Literal,
-        title: Literal = None,
-        description: Literal = None,
-        fragment: Literal = None,
+        title: Optional[Literal] = None,
+        description: Optional[Literal] = None,
+        fragment: Optional[Literal] = None,
     ) -> Any:
         """Pure function: create XHTML block with RDFLib terms"""
         if not isinstance(url, URIRef):

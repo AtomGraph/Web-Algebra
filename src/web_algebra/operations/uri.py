@@ -1,6 +1,6 @@
 from typing import Any
-import rdflib
 from rdflib import URIRef
+from rdflib.term import Node
 from mcp import types
 from web_algebra.operation import Operation
 
@@ -24,16 +24,16 @@ class URI(Operation):
             "required": ["input"],
         }
 
-    def execute(self, term: rdflib.term.Node) -> rdflib.URIRef:
+    def execute(self, term: Node) -> URIRef:
         """Pure function: RDFLib term → URI reference"""
-        if not isinstance(term, rdflib.term.Node):
+        if not isinstance(term, Node):
             raise TypeError(
                 f"URI operation expects input to be RDFLib term, got {type(term)}"
             )
 
         return URIRef(str(term))
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> rdflib.URIRef:
+    def execute_json(self, arguments: dict, variable_stack: list = []) -> URIRef:
         """JSON execution: processes JSON args, returns RDFLib URI reference"""
         # Process the input argument through the JSON system
         input_data = Operation.process_json(
@@ -41,7 +41,7 @@ class URI(Operation):
         )
 
         # Expect RDFLib term directly
-        if not isinstance(input_data, rdflib.term.Node):
+        if not isinstance(input_data, Node):
             raise TypeError(
                 f"URI operation expects input to be RDFLib term, got {type(input_data)}"
             )

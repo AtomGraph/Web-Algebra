@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
@@ -120,9 +120,9 @@ class AddSelect(POST):
         url: URIRef,
         query: Literal,
         title: Literal,
-        description: Literal = None,
-        fragment: Literal = None,
-        service: URIRef = None,
+        description: Optional[Literal] = None,
+        fragment: Optional[Literal] = None,
+        service: Optional[URIRef] = None,
     ) -> Any:
         """Pure function: create SPARQL SELECT query with RDFLib terms"""
         if not isinstance(url, URIRef):

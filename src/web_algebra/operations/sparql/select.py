@@ -1,12 +1,11 @@
 from typing import Any
 import logging
-import rdflib
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
+from rdflib.query import Result
 from mcp import types
 from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
-from rdflib.query import Result
 from web_algebra.client import SPARQLClient
 
 
@@ -37,7 +36,7 @@ class SELECT(Operation, MCPTool):
             "required": ["endpoint", "query"],
         }
 
-    def execute(self, endpoint: rdflib.URIRef, query: rdflib.Literal) -> Result:
+    def execute(self, endpoint: URIRef, query: Literal) -> Result:
         """Pure function: execute SPARQL query"""
         endpoint_url = str(endpoint)
         query_str = str(query)

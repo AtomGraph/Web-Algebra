@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
@@ -162,8 +162,8 @@ class AddResultSetChart(POST):
         chart_type: URIRef,
         category_var_name: Literal,
         series_var_name: Literal,
-        description: Literal = None,
-        fragment: Literal = None,
+        description: Optional[Literal] = None,
+        fragment: Optional[Literal] = None,
     ) -> Any:
         """Pure function: create SPARQL result set chart with RDFLib terms"""
         if not isinstance(url, URIRef):

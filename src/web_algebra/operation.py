@@ -3,8 +3,8 @@ import logging
 from typing import Type, Dict, Optional, Any, List, ClassVar, Union
 from pydantic import BaseModel, Field, ConfigDict
 from pydantic_settings import BaseSettings
-import rdflib
-from rdflib import URIRef, Literal, BNode
+from rdflib.term import Node
+from rdflib import URIRef, Literal, BNode, Graph
 from rdflib.namespace import XSD
 from rdflib.query import Result
 
@@ -39,14 +39,14 @@ class Operation(ABC, BaseModel):
         pass
 
     @abstractmethod
-    def execute(self, *args) -> Union[rdflib.term.Node, Result, rdflib.Graph]:
+    def execute(self, *args) -> Union[Node, Result, Graph]:
         """Pure function: RDFLib terms → RDFLib terms/Results/Graphs"""
         pass
 
     @abstractmethod
     def execute_json(
         self, arguments: dict, variable_stack: list = []
-    ) -> Union[rdflib.term.Node, Result, rdflib.Graph]:
+    ) -> Union[Node, Result, Graph]:
         """JSON execution: processes JSON args, returns RDFLib objects"""
         pass
 
@@ -117,7 +117,7 @@ class Operation(ABC, BaseModel):
             return str(obj)  # Convert RDFLib terms to strings for JSON-LD
         elif hasattr(obj, "to_json") and callable(obj.to_json):
             return obj.to_json()  # Convert Result to SPARQL JSON format
-        elif isinstance(obj, rdflib.Graph):
+        elif isinstance(obj, Graph):
             # Keep graphs as-is for now - they'll be serialized by HTTP operations
             return obj
         else:
@@ -148,7 +148,7 @@ class Operation(ABC, BaseModel):
 
     # Conversion helpers between different formats
     @staticmethod
-    def json_to_rdflib(data) -> rdflib.term.Node:
+    def json_to_rdflib(data) -> Node:
         """Convert JSON/binding objects to RDFLib terms"""
         if isinstance(data, dict) and "type" in data and "value" in data:
             # SPARQL binding object - values may have been processed to RDFLib terms
@@ -192,7 +192,7 @@ class Operation(ABC, BaseModel):
             return Literal(str(data), datatype=XSD.string)
 
     @staticmethod
-    def plain_to_rdflib(value: Any) -> rdflib.term.Node:
+    def plain_to_rdflib(value: Any) -> Node:
         """Convert plain Python values to RDFLib terms for MCP interface"""
         if isinstance(value, str):
             # Plain string → always convert to string literal
@@ -207,17 +207,15 @@ class Operation(ABC, BaseModel):
             return Literal(str(value), datatype=XSD.string)
 
     @staticmethod
-    def to_string_literal(term: rdflib.term.Node) -> Literal:
+    def to_string_literal(term: Node) -> Literal:
         """Convert Literal terms to string-compatible literals, following SPARQL semantics"""
         if isinstance(term, Literal):
             # Both xsd:string and rdf:langString are string-compatible in SPARQL
             if term.datatype == XSD.string:
                 return term  # Already xsd:string, return as-is
-            elif hasattr(term, "lang") and term.lang is not None:
+            elif term.language is not None:
                 return term  # rdf:langString (datatype=None, lang=xx), return as-is (compatible with string operations)
-            elif term.datatype is None and (
-                not hasattr(term, "lang") or term.lang is None
-            ):
+            elif term.datatype is None and term.language is None:
                 # Plain literal without datatype or language - treat as string
                 return term
             else:
@@ -232,7 +230,7 @@ class Operation(ABC, BaseModel):
             )
 
     @staticmethod
-    def rdflib_to_plain(term: rdflib.term.Node) -> Any:
+    def rdflib_to_plain(term: Node) -> Any:
         """Convert RDFLib terms to plain Python values for MCP interface"""
         if isinstance(term, URIRef):
             return str(term)

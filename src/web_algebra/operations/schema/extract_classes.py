@@ -1,5 +1,4 @@
-import rdflib
-from rdflib import URIRef, Literal
+from rdflib import URIRef, Literal, Graph
 from rdflib.namespace import XSD
 from web_algebra.operations.sparql.construct import CONSTRUCT
 from web_algebra.operation import Operation
@@ -18,7 +17,7 @@ class ExtractClasses(CONSTRUCT):
             "required": ["endpoint"],
         }
 
-    def execute(self, endpoint: URIRef) -> rdflib.Graph:
+    def execute(self, endpoint: URIRef) -> Graph:
         """Pure function: extract OWL classes with RDFLib terms"""
         query = Literal("""
 PREFIX  owl:  <http://www.w3.org/2002/07/owl#>
@@ -42,7 +41,7 @@ WHERE
 """, datatype=XSD.string)
         return super().execute(endpoint, query)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> rdflib.Graph:
+    def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
         """JSON execution: process arguments with strict type checking"""
         # Process endpoint
         endpoint_data = Operation.process_json(

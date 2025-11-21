@@ -1,7 +1,6 @@
 from typing import Any
 import json
 import logging
-import rdflib
 from rdflib import URIRef, Graph, Literal
 from rdflib.namespace import XSD
 from mcp import types
@@ -55,7 +54,7 @@ class PUT(Operation, MCPTool):
             "required": ["url", "data"],
         }
 
-    def execute(self, url: rdflib.URIRef, data: rdflib.Graph) -> Result:
+    def execute(self, url: URIRef, data: Graph) -> Result:
         """Pure function: PUT RDF graph to URL with RDFLib terms"""
         if not isinstance(url, URIRef):
             raise TypeError(f"PUT operation expects url to be URIRef, got {type(url)}")

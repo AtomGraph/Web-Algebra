@@ -1,8 +1,7 @@
 from typing import Any, Optional
 import logging
 import urllib.parse
-import rdflib
-from rdflib import URIRef, Literal
+from rdflib import URIRef, Literal, Graph
 from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.operation import Operation
@@ -47,9 +46,9 @@ class CreateItem(PUT):
 
     def execute(
         self,
-        container_uri: rdflib.URIRef,
-        title: rdflib.Literal,
-        slug: Optional[rdflib.Literal] = None,
+        container_uri: URIRef,
+        title: Literal,
+        slug: Optional[Literal] = None,
     ) -> Result:
         """Pure function: create item with RDFLib terms"""
         if not isinstance(container_uri, URIRef):
@@ -94,7 +93,7 @@ class CreateItem(PUT):
         # Create graph and call parent PUT operation
         import json
 
-        graph = rdflib.Graph()
+        graph = Graph()
         graph.parse(data=json.dumps(data), format="json-ld", publicID=url)
 
         # Call parent PUT execute method

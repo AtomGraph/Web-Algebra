@@ -1,7 +1,6 @@
 import json
 import logging
 from typing import Any, List
-import rdflib
 from rdflib import Graph
 from mcp import types
 from web_algebra.mcp_tool import MCPTool
@@ -34,7 +33,7 @@ class Merge(Operation, MCPTool):
             "required": ["graphs"],
         }
 
-    def execute(self, graphs: List[rdflib.Graph]) -> rdflib.Graph:
+    def execute(self, graphs: List[Graph]) -> Graph:
         """Pure function: merge list of RDF graphs"""
         if not isinstance(graphs, list):
             raise TypeError(

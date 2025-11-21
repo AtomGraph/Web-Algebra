@@ -1,5 +1,5 @@
 from typing import Any
-import rdflib
+from rdflib.term import Node
 from rdflib import Literal
 from rdflib.namespace import XSD
 from mcp import types
@@ -25,17 +25,15 @@ class Str(Operation):
             "required": ["input"],
         }
 
-    def execute(self, term: rdflib.term.Node) -> rdflib.Literal:
+    def execute(self, term: Node) -> Literal:
         """Pure function: RDFLib term → string literal"""
         # Check if already string-compatible
         if isinstance(term, Literal):
             if term.datatype == XSD.string:
                 return term  # Already xsd:string, return as-is
-            elif hasattr(term, "lang") and term.lang is not None:
-                return term  # rdf:langString (datatype=None, lang=xx), return as-is (compatible)
-            elif term.datatype is None and (
-                not hasattr(term, "lang") or term.lang is None
-            ):
+            elif term.language is not None:
+                return term  # rdf:langString (datatype=None, language=xx), return as-is (compatible)
+            elif term.datatype is None and term.language is None:
                 # Plain literal without datatype or language - treat as string
                 return term
 
@@ -44,7 +42,7 @@ class Str(Operation):
 
     def execute_json(
         self, arguments: dict, variable_stack: list = []
-    ) -> rdflib.Literal:
+    ) -> Literal:
         """JSON execution: processes JSON args, returns RDFLib string literal"""
         # Process the input argument through the JSON system
         input_data = Operation.process_json(
@@ -52,7 +50,7 @@ class Str(Operation):
         )
 
         # Expect RDFLib term directly
-        if not isinstance(input_data, rdflib.term.Node):
+        if not isinstance(input_data, Node):
             raise TypeError(
                 f"Str operation expects input to be RDFLib term, got {type(input_data)}"
             )
