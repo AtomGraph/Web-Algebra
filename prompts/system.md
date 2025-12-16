@@ -357,6 +357,35 @@ Result (truncated)
 }
 ```
 
+## Update(endpoint: URL, update: str) -> Dict
+
+This function executes a SPARQL UPDATE operation against a SPARQL endpoint. Returns HTTP status code.
+
+### Example JSON
+
+```json
+{
+  "@op": "Update",
+  "args": {
+    "endpoint": "https://localhost:4443/update",
+    "update": "WITH <https://localhost:4443/document1/> DELETE { ?s ?p ?o } INSERT { ?s ?p ?o } WHERE { ?s ?p ?o }"
+  }
+}
+```
+
+Result:
+```json
+{
+  "head": {"vars": ["status", "url"]},
+  "results": {
+    "bindings": [{
+      "status": {"type": "literal", "value": "204", "datatype": "http://www.w3.org/2001/XMLSchema#integer"},
+      "url": {"type": "uri", "value": "https://localhost:4443/update"}
+    }]
+  }
+}
+```
+
 ## Merge(graphs: List[Dict]) -> Dict
 
 This function merges a list of RDF graphs (represented as JSON-LD dicts) into one, returning the merged graph as a JSON-LD dict.
@@ -632,6 +661,8 @@ Result:
 
 This operation executes a (potentially nested) operation from its JSON representation. The operation is expected to be an instance of the Operation class.
 
+**Note:** All available operations and their JSON expression formats are documented in this system prompt under the **# Operations** section.
+
 ### Example JSON
 
 ```json
@@ -725,6 +756,46 @@ Result:
     "bindings": [{
       "status": {"type": "literal", "value": "200", "datatype": "http://www.w3.org/2001/XMLSchema#integer"},
       "url": {"type": "uri", "value": "https://localhost:4443/items/Copenhagen%20City/"}
+    }]
+  }
+}
+```
+
+## ldh-BatchPATCH(endpoint: str, update: str) -> Dict
+
+Executes batched SPARQL UPDATE operations on LinkedDataHub's /update endpoint. Allows multiple UPDATE operations to be executed atomically in a single request. Functionally equivalent to making multiple PATCH requests to individual document URIs.
+
+IMPORTANT CONSTRAINTS:
+- Each UPDATE operation MUST include a WITH <graph-uri> clause
+- The WITH clause specifies the target graph (equivalent to the document URI you would PATCH)
+- Only INSERT/DELETE/WHERE or DELETE WHERE operations are supported
+- NO GRAPH patterns are allowed in UPDATE operations
+- All graph URIs must be owned by the authenticated agent
+- Requires owner-level access to the application's /update endpoint
+- Per-graph authorization: Checks ACL.Write access for EACH graph URI
+- Fail-fast behavior: If ANY graph lacks authorization, the ENTIRE batch is rejected (nothing is executed)
+- All graph URIs must be under the same application base URL
+
+### Example JSON
+
+```json
+{
+  "@op": "ldh-BatchPATCH",
+  "args": {
+    "endpoint": "https://localhost:4443/update",
+    "update": "WITH <https://localhost:4443/document1/> DELETE { ?item dct:title ?oldTitle } INSERT { ?item dct:title \"New Title 1\" } WHERE { ?item dct:title ?oldTitle } ; WITH <https://localhost:4443/document2/> DELETE { ?item dct:title ?oldTitle } INSERT { ?item dct:title \"New Title 2\" } WHERE { ?item dct:title ?oldTitle }"
+  }
+}
+```
+
+Result:
+```json
+{
+  "head": {"vars": ["status", "url"]},
+  "results": {
+    "bindings": [{
+      "status": {"type": "literal", "value": "204", "datatype": "http://www.w3.org/2001/XMLSchema#integer"},
+      "url": {"type": "uri", "value": "https://localhost:4443/update"}
     }]
   }
 }

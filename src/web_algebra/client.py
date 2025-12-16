@@ -243,3 +243,21 @@ class SPARQLClient:
         else:
             # return SPARQL JSON results as a dict
             return json.loads(data.decode("utf-8"))
+
+    def update(self, endpoint_url: str, update_string: str) -> HTTPResponse:
+        """
+        Executes a SPARQL UPDATE operation.
+
+        :param endpoint_url: The SPARQL update endpoint URL
+        :param update_string: SPARQL UPDATE query string
+        :return: The HTTPResponse object (typically 204 No Content on success)
+        """
+        headers = {"Content-Type": "application/sparql-update"}
+        request = urllib.request.Request(
+            endpoint_url,
+            data=update_string.encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+
+        return self.opener.open(request)
