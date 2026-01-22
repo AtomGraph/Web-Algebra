@@ -1,3 +1,4 @@
 __pycache__
 src/web_algebra/operations/.DS_Store
 /src/WebAlgebra.egg-info
+/packages
