@@ -89,11 +89,13 @@ class GeneratePackageStylesheet(Operation):
         # Define XSLT namespace
         XSL_NS = "http://www.w3.org/1999/XSL/Transform"
         XS_NS = "http://www.w3.org/2001/XMLSchema"
+        BS2_NS = "http://graphity.org/xsl/bootstrap/2.3.2"
 
         # Create namespace map for XSLT root
         nsmap = {
             'xsl': XSL_NS,
             'xs': XS_NS,
+            'bs2': BS2_NS,
         }
 
         # Add namespace prefixes from ontology for properties
