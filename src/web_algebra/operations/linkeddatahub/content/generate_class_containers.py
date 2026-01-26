@@ -3,25 +3,27 @@ from rdflib import URIRef, Literal, Namespace, Graph
 from rdflib.namespace import RDF, RDFS, XSD, DCTERMS
 from rdflib.query import Result
 from web_algebra.operation import Operation
-from web_algebra.operations.linkeddatahub.create_container import CreateContainer
+from web_algebra.operations.linkeddatahub.create_item import CreateItem
 from web_algebra.operations.linked_data.post import POST
+from web_algebra.operations.linkeddatahub.content.add_object_block import AddObjectBlock
 from web_algebra.json_result import JSONResult
 
 
 class GenerateClassContainers(Operation):
-    """Creates LinkedDataHub containers for ontology classes with instance list views.
+    """Creates LinkedDataHub items for ontology classes with instance list views.
 
     For each class in the ontology:
-    1. Creates a container using CreateContainer operation
+    1. Creates an item using CreateItem operation
     2. POSTs a SPIN sp:Select query that lists all instances
     3. POSTs an ldh:View that displays the instances
+    4. Adds an object block to display the view in the item
 
     This operation orchestrates actual HTTP operations to set up the portal structure.
     """
 
     @classmethod
     def description(cls) -> str:
-        return "Creates LinkedDataHub containers with instance list views for ontology classes"
+        return "Creates LinkedDataHub items with instance list views for ontology classes"
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -49,16 +51,16 @@ class GenerateClassContainers(Operation):
         }
 
     def execute(self, ontology: Graph, parent_container: URIRef, endpoint: URIRef, service_uri: URIRef) -> Result:
-        """Create LDH containers for ontology classes
+        """Create LDH items for ontology classes
 
         Args:
             ontology: RDF graph containing classes
-            parent_container: URI of parent container where class containers will be created
+            parent_container: URI of parent container where class items will be created
             endpoint: SPARQL endpoint URI to be used by the queries (for query text generation)
             service_uri: URI of the global SPARQL service resource to reference in queries and views
 
         Returns:
-            Concatenated Result containing all operation results (CreateContainer + POST bindings)
+            Concatenated Result containing all operation results (CreateItem + POST + AddObjectBlock bindings)
         """
         # Define namespaces
         LDH = Namespace("https://w3id.org/atomgraph/linkeddatahub#")
@@ -96,41 +98,54 @@ class GenerateClassContainers(Operation):
             # Extract local name for URI
             class_local = self._get_local_name(class_uri)
 
-            logging.info(f"Creating container for class {class_uri}")
+            logging.info(f"Creating item for class {class_uri}")
 
-            # Step 1: Create container
+            # Step 1: Create item
             title = Literal(f"{class_local} instances", datatype=XSD.string)
             slug = Literal(class_local, datatype=XSD.string)
 
-            create_result = CreateContainer(settings=self.settings, context=self.context).execute(
+            create_result = CreateItem(settings=self.settings, context=self.context).execute(
                 parent_container, title, slug
             )
 
-            # Collect bindings from CreateContainer
+            # Collect bindings from CreateItem
             all_bindings.extend(create_result.bindings)
             all_vars.update(create_result.vars)
 
-            # Extract created container URL from result
-            container_uri = URIRef(create_result.bindings[0]["url"])
-            logging.info(f"Created container at {container_uri}")
+            # Extract created item URL from result
+            item_uri = URIRef(create_result.bindings[0]["url"])
+            logging.info(f"Created item at {item_uri}")
 
             # Step 2: Create and POST sp:Select query
-            query_uri = URIRef(f"{container_uri}#Instances_Query")
+            query_uri = URIRef(f"{item_uri}#Instances_Query")
             sparql_text = self._generate_instance_query(class_uri)
 
             query_graph = self._build_query_graph(query_uri, class_local, sparql_text, service_uri, LDH, SP)
-            post_query_result = POST(settings=self.settings, context=self.context).execute(container_uri, query_graph)
+            post_query_result = POST(settings=self.settings, context=self.context).execute(item_uri, query_graph)
             all_bindings.extend(post_query_result.bindings)
             all_vars.update(post_query_result.vars)
-            logging.info(f"Posted query to {container_uri}")
+            logging.info(f"Posted query to {item_uri}")
 
             # Step 3: Create and POST ldh:View with service reference
-            view_uri = URIRef(f"{container_uri}#Instances_View")
+            view_uri = URIRef(f"{item_uri}#Instances_View")
             view_graph = self._build_view_graph(view_uri, class_local, query_uri, service_uri, LDH, SP, AC, SPIN)
-            post_view_result = POST(settings=self.settings, context=self.context).execute(container_uri, view_graph)
+            post_view_result = POST(settings=self.settings, context=self.context).execute(item_uri, view_graph)
             all_bindings.extend(post_view_result.bindings)
             all_vars.update(post_view_result.vars)
-            logging.info(f"Posted view to {container_uri}")
+            logging.info(f"Posted view to {item_uri}")
+
+            # Step 4: Add object block to display the view in the item
+            logging.info(f"Adding object block to display view in {item_uri}")
+            add_block_result = AddObjectBlock(settings=self.settings, context=self.context).execute(
+                url=item_uri,
+                value=view_uri,
+                title=Literal(f"All {class_local}", datatype=XSD.string),
+                fragment=Literal("InstancesBlock", datatype=XSD.string),
+                mode=None
+            )
+            all_bindings.extend(add_block_result.bindings)
+            all_vars.update(add_block_result.vars)
+            logging.info(f"Added object block to {item_uri}")
 
         # Create concatenated Result using JSONResult
         return JSONResult(list(all_vars), all_bindings)
