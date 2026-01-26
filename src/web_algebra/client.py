@@ -1,7 +1,11 @@
 from typing import Optional
 import ssl
 import json
+import logging
+import time
 import urllib.request
+import urllib.error
+from email.utils import parsedate_to_datetime
 from http.client import HTTPResponse
 from rdflib import Graph
 from rdflib.plugins.sparql.parser import parseQuery
@@ -67,6 +71,56 @@ class LinkedDataClient:
             )
         ]
 
+    def _request_with_retry(self, request: urllib.request.Request, max_retries: int = 5) -> HTTPResponse:
+        """
+        Execute HTTP request with automatic retry on 429 (Too Many Requests) responses.
+
+        Respects the Retry-After header if present, otherwise uses exponential backoff.
+        All other HTTP errors are raised immediately without retry.
+
+        :param request: The urllib Request object to execute
+        :param max_retries: Maximum number of retry attempts (default 5)
+        :return: HTTPResponse object on success
+        :raises: urllib.error.HTTPError for non-429 errors or after max retries
+        """
+        attempt = 0
+
+        while attempt <= max_retries:
+            try:
+                return self.opener.open(request)
+            except urllib.error.HTTPError as e:
+                # Only retry on 429 (Too Many Requests)
+                if e.code != 429:
+                    raise
+
+                # Check if we've exhausted retries
+                if attempt >= max_retries:
+                    logging.error(f"Max retries ({max_retries}) exceeded for {request.full_url}")
+                    raise
+
+                # Parse Retry-After header
+                retry_after = e.headers.get('Retry-After')
+                if retry_after:
+                    try:
+                        # Try parsing as seconds (integer)
+                        wait_time = int(retry_after)
+                    except ValueError:
+                        # Try parsing as HTTP-date
+                        try:
+                            retry_date = parsedate_to_datetime(retry_after)
+                            wait_time = (retry_date - parsedate_to_datetime(time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime()))).total_seconds()
+                            wait_time = max(0, wait_time)  # Ensure non-negative
+                        except Exception:
+                            # Fallback to exponential backoff if parsing fails
+                            wait_time = min(1 * (2 ** attempt), 60)
+                else:
+                    # No Retry-After header, use exponential backoff
+                    wait_time = min(1 * (2 ** attempt), 60)
+
+                attempt += 1
+                logging.warning(f"HTTP 429 received for {request.full_url}. Retry {attempt}/{max_retries} after {wait_time:.1f} seconds")
+                time.sleep(wait_time)
+
     def get(self, url: str) -> Graph:
         """
         Fetches RDF data from the given URL and returns it as an RDFLib Graph.
@@ -79,8 +133,8 @@ class LinkedDataClient:
         headers = {"Accept": accept_header}
         request = urllib.request.Request(url, headers=headers)
 
-        # Perform the HTTP request
-        response = self.opener.open(request)
+        # Perform the HTTP request with retry on 429
+        response = self._request_with_retry(request)
 
         # Read and decode the response data
         data = response.read().decode("utf-8")
@@ -114,7 +168,7 @@ class LinkedDataClient:
             url, data=data.encode("utf-8"), headers=headers, method="POST"
         )
 
-        return self.opener.open(request)
+        return self._request_with_retry(request)
 
     def put(self, url: str, graph: Graph) -> HTTPResponse:
         """
@@ -134,7 +188,7 @@ class LinkedDataClient:
             url, data=data.encode("utf-8"), headers=headers, method="PUT"
         )
 
-        return self.opener.open(request)
+        return self._request_with_retry(request)
 
     def delete(self, url: str) -> HTTPResponse:
         """
@@ -145,7 +199,7 @@ class LinkedDataClient:
         """
         request = urllib.request.Request(url, method="DELETE")
 
-        return self.opener.open(request)
+        return self._request_with_retry(request)
 
     def patch(self, url: str, sparql_update: str) -> HTTPResponse:
         """
@@ -163,7 +217,7 @@ class LinkedDataClient:
             url, data=sparql_update.encode("utf-8"), headers=headers, method="PATCH"
         )
 
-        return self.opener.open(request)
+        return self._request_with_retry(request)
 
 
 class SPARQLClient:
