@@ -35,21 +35,26 @@ class GenerateOntologyViews(Operation):
                 "service_uri": {
                     "type": "string",
                     "description": "URI of the sd:Service resource to be referenced by queries"
+                },
+                "package_path": {
+                    "type": "string",
+                    "description": "Optional path to write the ontology as ns.ttl file"
                 }
             },
             "required": ["ontology", "base_uri", "service_uri"],
         }
 
-    def execute(self, ontology: Graph, base_uri: URIRef, service_uri: URIRef) -> Graph:
+    def execute(self, ontology: Graph, base_uri: URIRef, service_uri: URIRef, package_path: str = None) -> Graph:
         """Generate LDH view templates for non-functional properties
 
         Args:
             ontology: RDF graph containing classes and properties with optional restrictions
             base_uri: Base URI for generating view and query resource URIs
             service_uri: URI of the sd:Service resource to be referenced by queries
+            package_path: Optional path to write the ontology as ns.ttl file
 
         Returns:
-            RDF graph containing ldh:View, sp:Select, and ldh:template triples
+            RDF graph containing ldh:View, sp:Select, and ldh:view triples
         """
         # Define namespaces
         LDH = Namespace("https://w3id.org/atomgraph/linkeddatahub#")
@@ -116,9 +121,10 @@ class GenerateOntologyViews(Operation):
             class_local = self._get_local_name(class_uri)
             property_local = self._get_local_name(property_uri)
 
-            # Generate URIs for view and query
-            view_uri = URIRef(f"{base_uri}#{class_local}_{property_local}_View")
-            query_uri = URIRef(f"{base_uri}#{class_local}_{property_local}_Query")
+            # Generate URIs for view and query using Namespace for proper URI resolution
+            ns = Namespace(base_uri)
+            view_uri = ns[f"{class_local}_{property_local}_View"]
+            query_uri = ns[f"{class_local}_{property_local}_Query"]
 
             # Generate human-readable title
             title = f"{property_local}"
@@ -126,8 +132,8 @@ class GenerateOntologyViews(Operation):
             # Generate SPARQL query text
             sparql_text = self._generate_sparql_query(property_uri, property_type, range_uri)
 
-            # Create ldh:template link from class to view
-            g.add((class_uri, LDH.template, view_uri))
+            # Create ldh:view link from property to view
+            g.add((property_uri, LDH.view, view_uri))
 
             # Create ldh:View resource
             g.add((view_uri, RDF.type, LDH.View))
@@ -141,6 +147,18 @@ class GenerateOntologyViews(Operation):
             g.add((query_uri, RDFS.label, Literal(f"Select {property_local}")))
             g.add((query_uri, SP.text, Literal(sparql_text, datatype=XSD.string)))
             g.add((query_uri, LDH.service, service_uri))
+
+        # Write to file if package_path is provided
+        if package_path:
+            from pathlib import Path
+
+            # Create package directory if it doesn't exist
+            package_dir = Path(package_path)
+            package_dir.mkdir(parents=True, exist_ok=True)
+
+            # Write ontology as Turtle file
+            ontology_file = package_dir / "ns.ttl"
+            ontology_file.write_text(g.serialize(format="turtle"))
 
         return g
 
@@ -197,4 +215,18 @@ ORDER BY ?label"""
                 f"GenerateOntologyViews operation expects 'service_uri' to be URIRef, got {type(service_uri_data)}"
             )
 
-        return self.execute(ontology_data, base_uri_data, service_uri_data)
+        # Process optional package_path
+        package_path_data = None
+        if "package_path" in arguments:
+            package_path_data = Operation.process_json(
+                self.settings, arguments["package_path"], self.context, variable_stack
+            )
+            if not isinstance(package_path_data, (str, Literal)):
+                raise TypeError(
+                    f"GenerateOntologyViews operation expects 'package_path' to be string, got {type(package_path_data)}"
+                )
+            # Convert Literal to string if needed
+            if isinstance(package_path_data, Literal):
+                package_path_data = str(package_path_data)
+
+        return self.execute(ontology_data, base_uri_data, service_uri_data, package_path_data)
