@@ -52,15 +52,14 @@ class LDHList(Operation, MCPTool):
                 },
                 "endpoint": {
                     "type": "string",
-                    "description": "The SPARQL endpoint URL to query.",
+                    "description": "The SPARQL endpoint URL to query. Either 'endpoint' or 'base' must be provided.",
                 },
                 "base": {
                     "type": "string",
-                    "description": "Base URL for constructing the SPARQL endpoint. Needs to end with a slash.",
+                    "description": "Base URL for constructing the SPARQL endpoint. Needs to end with a slash. Either 'endpoint' or 'base' must be provided.",
                 },
             },
             "required": ["url"],
-            "oneOf": [{"required": ["endpoint"]}, {"required": ["base"]}],
         }
 
     def execute(
