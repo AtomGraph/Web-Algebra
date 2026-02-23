@@ -86,10 +86,11 @@ class SELECT(Operation, MCPTool):
 
         result = self.execute(endpoint, query)
 
-        # Return summary for MCP
+        import json
+
         return [
             types.TextContent(
                 type="text",
-                text=f"SPARQL query returned {len(result.bindings)} results",
+                text=json.dumps(result.to_json()),
             )
         ]
