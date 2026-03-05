@@ -1,0 +1,42 @@
+{
+  "@op": "GeneratePortal",
+  "args": {
+    "endpoint": {
+      "@op": "URI",
+      "args": {
+        "input": "https://linkeddatahub.com/demo/northwind-traders/sparql"
+      }
+    },
+    "package_name": "northwind-portal",
+    "package_namespace": {
+      "@op": "URI",
+      "args": {
+        "input": "https://localhost:4443/ns/northwind#"
+      }
+    },
+    "admin_base": {
+      "@op": "URI",
+      "args": {
+        "input": "https://admin.localhost:4443/"
+      }
+    },
+    "parent_container": {
+      "@op": "URI",
+      "args": {
+        "input": "https://localhost:4443/"
+      }
+    },
+    "files_container": {
+      "@op": "URI",
+      "args": {
+        "input": "https://localhost:4443/files/"
+      }
+    },
+    "services_container": {
+      "@op": "URI",
+      "args": {
+        "input": "https://localhost:4443/services/"
+      }
+    }
+  }
+}
