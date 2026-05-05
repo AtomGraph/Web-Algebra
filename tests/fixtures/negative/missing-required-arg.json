@@ -1,0 +1,12 @@
+{
+  "name": "Replace without `pattern` arg surfaces an error",
+  "operation": {
+    "@op": "Replace",
+    "args": {
+      "input": "Hello World",
+      "replacement": "Universe"
+    }
+  },
+  "expected_error": "Exception",
+  "comment": "Spec is silent on the exact exception class for missing required args — see tests/SPEC_GAPS.md."
+}

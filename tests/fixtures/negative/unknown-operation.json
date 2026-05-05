@@ -1,0 +1,9 @@
+{
+  "name": "Unknown @op surfaces an error",
+  "operation": {
+    "@op": "DoesNotExist",
+    "args": {}
+  },
+  "expected_error": "ValueError",
+  "comment": "Harness-level sanity check; spec is silent on the exact exception class — see tests/SPEC_GAPS.md."
+}

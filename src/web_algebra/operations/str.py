@@ -1,6 +1,6 @@
 from typing import Any
 from rdflib.term import Node
-from rdflib import Literal
+from rdflib import BNode, Literal, URIRef
 from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.operation import Operation
@@ -27,6 +27,11 @@ class Str(Operation):
 
     def execute(self, term: Node) -> Literal:
         """Pure function: RDFLib term → string literal"""
+        # Strict Type Checking: spec defines Str as Term → Literal where Term = URI + Literal + BNode.
+        if not isinstance(term, (URIRef, Literal, BNode)):
+            raise TypeError(
+                f"Str expects a Term (URIRef, Literal, BNode), got {type(term).__name__}"
+            )
         # Check if already string-compatible
         if isinstance(term, Literal):
             if term.datatype == XSD.string:
