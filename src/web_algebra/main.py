@@ -116,8 +116,7 @@ def main(settings: BaseSettings, json_data: Optional[str]):
                 print(Operation.process_json(settings, reply_json))
 
 
-if __name__ == "__main__":
-    # Parse script arguments
+def cli() -> None:
     parser = argparse.ArgumentParser(description="Run the AI-powered DSL interpreter.")
     parser.add_argument(
         "--from-json",
@@ -144,3 +143,7 @@ if __name__ == "__main__":
         settings = BaseSettings()
 
     main(settings, args.from_json)
+
+
+if __name__ == "__main__":
+    cli()

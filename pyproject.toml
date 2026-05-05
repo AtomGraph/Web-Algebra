@@ -1,11 +1,24 @@
 [project]
-name = "WebAlgebra"
-version = "0.1.0"
+name = "web-algebra"
+version = "1.0.0"
 description = "Composable RDF operations in JSON"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
   { name = "Martynas Jusevicius", email = "martynas@atomgraph.com" }
 ]
 requires-python = ">=3.10"
+keywords = ["rdf", "sparql", "linked-data", "mcp", "json-dsl"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
 dependencies = [
     "rdflib==7.0.0",
     "openai",
@@ -13,8 +26,16 @@ dependencies = [
     "pydantic-settings",
 ]
 
+[project.urls]
+Homepage = "https://github.com/AtomGraph/Web-Algebra"
+Repository = "https://github.com/AtomGraph/Web-Algebra"
+Issues = "https://github.com/AtomGraph/Web-Algebra/issues"
+
+[project.scripts]
+web-algebra = "web_algebra.main:cli"
+
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -24,11 +45,7 @@ include = ["web_algebra*"]
 [tool.setuptools.package-dir]
 "" = "src"
 
-[tool.uv.sources]
-webalgebra = { workspace = true }
-
 [dependency-groups]
 dev = [
-    "webalgebra",
     "ruff",
 ]
