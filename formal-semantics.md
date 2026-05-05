@@ -132,6 +132,14 @@ Abstract: () → Literal
 Python:   def execute(self) -> Literal
 ```
 
+### Date/Time Operations
+
+**NOW** - Return the current datetime as an xsd:dateTime literal
+```
+Abstract: () → Literal
+Python:   def execute(self) -> Literal
+```
+
 ### SPARQL Operations
 
 **SELECT** - Execute SPARQL SELECT query

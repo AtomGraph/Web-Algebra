@@ -962,3 +962,39 @@ Result:
 ```json
 "550e8400-e29b-41d4-a716-446655440000"
 ```
+
+# Date/Time Operations
+
+## NOW() -> dateTime
+
+Returns the current datetime as an `xsd:dateTime` literal in ISO 8601 format (UTC), following the behavior of SPARQL's `NOW()`. Each invocation produces a fresh value, so it composes naturally as the source for timestamps in other operations.
+
+### Example JSON
+
+```json
+{
+  "@op": "NOW"
+}
+```
+
+Result:
+```json
+"2026-05-05T21:10:48.961811+00:00"
+```
+
+### Composed example
+
+Use `NOW` to stamp a created document with its creation time via `Substitute`:
+
+```json
+{
+  "@op": "Substitute",
+  "args": {
+    "query": "INSERT DATA { <urn:doc> <http://purl.org/dc/terms/created> ?ts }",
+    "var": "ts",
+    "binding": {
+      "@op": "NOW"
+    }
+  }
+}
+```

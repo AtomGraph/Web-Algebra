@@ -56,6 +56,8 @@ The operations cover read-write Linked Data, SPARQL queries, URI manipulation, a
   - `Replace`
   - `Str`
   - `URI`
+- Date/Time
+  - `NOW`
 - Control Flow & Variables
   - `Value`
   - `Variable`
