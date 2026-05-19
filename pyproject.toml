@@ -48,4 +48,17 @@ include = ["web_algebra*"]
 [dependency-groups]
 dev = [
     "ruff",
+    "pytest>=8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers -m 'not network and not sparql and not ldh'"
+markers = [
+    "unit: pure unit tests (auto-applied to tests/unit/)",
+    "integration: JSON-fixture composition tests (auto-applied to tests/integration/)",
+    "network: requires live HTTP endpoint",
+    "sparql: requires live SPARQL endpoint",
+    "ldh: requires LinkedDataHub instance + CERT_PEM_PATH/CERT_PASSWORD",
 ]

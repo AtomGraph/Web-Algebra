@@ -1,0 +1,15 @@
+{
+  "name": "ForEach with non-iterable select raises TypeError",
+  "operation": {
+    "@op": "ForEach",
+    "args": {
+      "select": "not-a-sequence-or-result",
+      "operation": {
+        "@op": "Current",
+        "args": {}
+      }
+    }
+  },
+  "expected_error": "TypeError",
+  "comment": "Strict Type Checking property: Sequence or Result expected for `select`."
+}

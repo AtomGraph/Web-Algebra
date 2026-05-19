@@ -1,0 +1,20 @@
+{
+  "name": "ForEach over a literal sequence with Str/Current",
+  "operation": {
+    "@op": "ForEach",
+    "args": {
+      "select": ["alpha", "beta", "gamma"],
+      "operation": {
+        "@op": "Str",
+        "args": {
+          "input": {
+            "@op": "Current",
+            "args": {}
+          }
+        }
+      }
+    }
+  },
+  "comment": "JSON arg keys for ForEach (`select`, `operation`) are presumed from Python parameter names; flagged in tests/SPEC_GAPS.md.",
+  "expected": ["alpha", "beta", "gamma"]
+}

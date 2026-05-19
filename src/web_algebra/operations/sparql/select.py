@@ -38,6 +38,16 @@ class SELECT(Operation, MCPTool):
 
     def execute(self, endpoint: URIRef, query: Literal) -> Result:
         """Pure function: execute SPARQL query"""
+        # Strict Type Checking before any network side effect.
+        if not isinstance(endpoint, URIRef):
+            raise TypeError(
+                f"SELECT expects endpoint to be URIRef, got {type(endpoint).__name__}"
+            )
+        if not isinstance(query, Literal):
+            raise TypeError(
+                f"SELECT expects query to be Literal, got {type(query).__name__}"
+            )
+
         endpoint_url = str(endpoint)
         query_str = str(query)
 
