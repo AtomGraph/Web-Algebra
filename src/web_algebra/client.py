@@ -1,7 +1,12 @@
 from typing import Optional
 import ssl
 import json
+import time
+import urllib.error
+import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from http.client import HTTPResponse
 from rdflib import Graph
 from rdflib.plugins.sparql.parser import parseQuery
@@ -23,6 +28,28 @@ class HTTPRedirectHandler308(urllib.request.HTTPRedirectHandler):
                 newurl, data=req.data, headers=req.headers, method=req.get_method()
             )
         return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+class RetryAfterHandler(urllib.request.BaseHandler):
+    def __init__(self, max_retries: int = 3):
+        self.max_retries = max_retries
+        self._retry_counts: dict = {}
+
+    def http_error_429(self, req, fp, code, msg, hdrs):
+        key = req.full_url
+        count = self._retry_counts.get(key, 0)
+        if count >= self.max_retries:
+            self._retry_counts.pop(key, None)
+            raise urllib.error.HTTPError(req.full_url, code, msg, hdrs, fp)
+        self._retry_counts[key] = count + 1
+        retry_after = hdrs.get("Retry-After", "1")
+        try:
+            delay = float(retry_after)
+        except ValueError:
+            retry_dt = parsedate_to_datetime(retry_after)
+            delay = max(0.0, (retry_dt - datetime.now(tz=timezone.utc)).total_seconds())
+        time.sleep(delay)
+        return self.parent.open(req)
 
 
 class LinkedDataClient:
@@ -57,6 +84,7 @@ class LinkedDataClient:
         self.opener = urllib.request.build_opener(
             urllib.request.HTTPSHandler(context=self.ssl_context),
             HTTPRedirectHandler308(),
+            RetryAfterHandler(),
         )
 
         # Add proper User-Agent header for external services like Wikidata
@@ -195,7 +223,8 @@ class SPARQLClient:
             self.ssl_context.verify_mode = ssl.CERT_NONE
 
         self.opener = urllib.request.build_opener(
-            urllib.request.HTTPSHandler(context=self.ssl_context)
+            urllib.request.HTTPSHandler(context=self.ssl_context),
+            RetryAfterHandler(),
         )
 
         # Add proper User-Agent header for external services like Wikidata
