@@ -246,6 +246,12 @@ Abstract: URI × Literal × Maybe Literal × Maybe Literal × Maybe Literal → 
 Python:   def execute(self, url: URIRef, value: Literal, title: Literal = None, description: Literal = None, fragment: Literal = None) -> Any
 ```
 
+**ldh-AddFile** - Add file (binary) to LinkedDataHub document via multipart RDF/POST
+```
+Abstract: URI × Literal × Literal × Maybe Literal × Maybe Literal → Any
+Python:   def execute(self, url: URIRef, file_path: Literal, title: Literal, description: Literal = None, content_type: Literal = None) -> Any
+```
+
 **ldh-RemoveBlock** - Remove content block from LinkedDataHub document
 ```
 Abstract: URI × Maybe URI → Any  
