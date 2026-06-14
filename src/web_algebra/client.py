@@ -1,4 +1,5 @@
-from typing import Optional
+from typing import Optional, Tuple
+import hashlib
 import ssl
 import json
 import time
@@ -10,6 +11,7 @@ from email.utils import parsedate_to_datetime
 from http.client import HTTPResponse
 from rdflib import Graph
 from rdflib.plugins.sparql.parser import parseQuery
+from urllib3.filepost import encode_multipart_formdata
 
 
 MEDIA_TYPES = {
@@ -192,6 +194,124 @@ class LinkedDataClient:
         )
 
         return self.opener.open(request)
+
+
+class FileClient:
+    """Multipart RDF/POST file upload for LinkedDataHub file resources.
+
+    Files are not Linked Data — request bodies are bytes with a Content-Type
+    rather than RDF graphs — so they get their own client surface instead
+    of being grafted onto `LinkedDataClient`. Auth and TLS setup duplicate
+    `LinkedDataClient` / `SPARQLClient` by convention: each client in this
+    module configures its own ssl_context + opener inline.
+
+    Wire format matches LinkedDataHub's `bin/add-file.sh` script: a
+    multipart/form-data body using LDH's RDF/POST dialect where each
+    `pu=<predicate>` form field is paired with the next `ol=<literal>` or
+    `ou=<uri>` field, sharing a blank-node subject named via `sb=`. The
+    file body itself is carried as a multipart file part labelled `ol`
+    with the supplied Content-Type. LDH stores the bytes under its
+    built-in `/uploads/{sha1}` namespace and appends the file's RDF
+    description (filename, MIME type, sha1, title) to the target document.
+    """
+
+    _NFO_FILE_NAME = "http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#fileName"
+    _NFO_FILE_DATA_OBJECT = "http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#FileDataObject"
+    _DCT_TITLE = "http://purl.org/dc/terms/title"
+    _DCT_DESCRIPTION = "http://purl.org/dc/terms/description"
+    _RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+
+    def __init__(
+        self,
+        cert_pem_path: Optional[str] = None,
+        cert_password: Optional[str] = None,
+        verify_ssl: bool = True,
+    ):
+        """Initialize TLS context + opener; mirrors `LinkedDataClient.__init__`."""
+        self.ssl_context = ssl.create_default_context()
+
+        if cert_pem_path and cert_password:
+            self.ssl_context.load_cert_chain(
+                certfile=cert_pem_path, password=cert_password
+            )
+
+        if not verify_ssl:
+            self.ssl_context.check_hostname = False
+            self.ssl_context.verify_mode = ssl.CERT_NONE
+
+        self.opener = urllib.request.build_opener(
+            urllib.request.HTTPSHandler(context=self.ssl_context),
+            HTTPRedirectHandler308(),
+            RetryAfterHandler(),
+        )
+
+        self.opener.addheaders = [
+            (
+                "User-Agent",
+                "Web-Algebra/1.0 (LinkedData Processing System; https://github.com/atomgraph/Web-Algebra)",
+            )
+        ]
+
+    def add_file(
+        self,
+        target_url: str,
+        file_body: bytes,
+        content_type: str,
+        title: str,
+        description: Optional[str] = None,
+        filename: Optional[str] = None,
+    ) -> Tuple[HTTPResponse, str]:
+        """RDF/POST a file to `target_url`.
+
+        :param target_url: The document URI the file's RDF description is
+            appended to. Note this is *not* the URI the file ends up at —
+            LDH stores the bytes under its own `/uploads/{sha1}` namespace
+            regardless of `target_url`.
+        :param file_body: Raw file bytes.
+        :param content_type: MIME type of the file (e.g. `image/png`).
+        :param title: `dct:title` literal.
+        :param description: Optional `dct:description` literal.
+        :param filename: Optional filename for the multipart part's
+            `Content-Disposition`. Defaults to `"upload"` when absent;
+            LDH does not depend on this value for URI minting.
+        :return: `(HTTPResponse, sha1_hex)`. The sha1 is computed over
+            `file_body` client-side so callers can construct the resulting
+            `<base>/uploads/{sha1}` URI without parsing the response body.
+        """
+        sha1 = hashlib.sha1(file_body).hexdigest()
+
+        # `encode_multipart_formdata` accepts a list of `(name, value)`
+        # tuples — duplicates allowed, order preserved. A plain string/bytes
+        # value becomes a form field; a `(filename, body, content_type)`
+        # tuple becomes a file part. RDF/POST relies on this ordering
+        # because each `pu=<predicate>` field is paired with the next
+        # `ol=<literal>` / `ou=<uri>` field by LDH's parser.
+        fields: list[tuple[str, object]] = [
+            ("rdf", ""),
+            ("sb", "file"),
+            ("pu", self._NFO_FILE_NAME),
+            ("ol", (filename or "upload", file_body, content_type)),
+            ("pu", self._DCT_TITLE),
+            ("ol", title),
+            ("pu", self._RDF_TYPE),
+            ("ou", self._NFO_FILE_DATA_OBJECT),
+        ]
+        if description:
+            fields.extend([
+                ("pu", self._DCT_DESCRIPTION),
+                ("ol", description),
+            ])
+
+        body, content_type_header = encode_multipart_formdata(fields)
+        headers = {
+            "Content-Type": content_type_header,
+            "Accept": "text/turtle",
+        }
+        request = urllib.request.Request(
+            target_url, data=body, headers=headers, method="POST"
+        )
+        response = self.opener.open(request)
+        return response, sha1
 
 
 class SPARQLClient:
