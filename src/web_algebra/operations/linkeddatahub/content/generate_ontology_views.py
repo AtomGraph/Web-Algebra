@@ -17,6 +17,10 @@ class GenerateOntologyViews(Operation):
     """
 
     @classmethod
+    def name(cls):
+        return "ldh-GenerateOntologyViews"
+
+    @classmethod
     def description(cls) -> str:
         return "Generates LinkedDataHub views and SPIN queries for ontology properties (excluding owl:FunctionalProperty)"
 

@@ -49,21 +49,34 @@ The operations cover read-write Linked Data, SPARQL queries, URI manipulation, a
   - `DESCRIBE`
   - `SELECT`
   - `Substitute`
+  - `SPARQLString`
+- Schema
+  - `ExtractClasses`
+  - `ExtractDatatypeProperties`
+  - `ExtractObjectProperties`
+  - `ExtractOntology`
 - URI & String Operations
   - `ResolveURI`
   - `EncodeForURI`
   - `Concat`
   - `Replace`
   - `Str`
+  - `STRUUID`
   - `URI`
 - Control Flow & Variables
   - `Value`
   - `Variable`
   - `ForEach`
+  - `Filter`
+  - `Bindings`
+  - `Current`
+  - `Execute`
+  - `Merge`
 - LinkedDataHub-specific
   - `ldh-CreateContainer`
   - `ldh-CreateItem`
   - `ldh-List`
+  - `ldh-AddFile`
   - `ldh-AddGenericService`
   - `ldh-AddResultSetChart`
   - `ldh-AddSelect`
@@ -71,6 +84,9 @@ The operations cover read-write Linked Data, SPARQL queries, URI manipulation, a
   - `ldh-AddObjectBlock`
   - `ldh-AddXHTMLBlock`
   - `ldh-RemoveBlock`
+  - `ldh-GeneratePortal`
+  - `ldh-GenerateClassContainers`
+  - `ldh-GenerateOntologyViews`
 
 ## Usage
 
