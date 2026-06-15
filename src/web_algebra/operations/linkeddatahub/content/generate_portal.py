@@ -21,6 +21,10 @@ class GeneratePortal(Operation):
     """
 
     @classmethod
+    def name(cls):
+        return "ldh-GeneratePortal"
+
+    @classmethod
     def description(cls) -> str:
         return "Generates a complete LinkedDataHub portal with class containers and property views from a SPARQL endpoint"
 
