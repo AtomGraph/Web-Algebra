@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import json
 import logging
 from typing import Type, Dict, Optional, Any, List, ClassVar, Union
 from pydantic import BaseModel, Field, ConfigDict
@@ -7,6 +8,13 @@ from rdflib.term import Node
 from rdflib import URIRef, Literal, BNode, Graph
 from rdflib.namespace import XSD
 from rdflib.query import Result
+
+
+# JSON-LD keyword set used to recognise a top-level dict as RDF data rather
+# than generic JSON to recurse into. Presence of any of these at the root is
+# a strong, unambiguous signal — they are JSON-LD reserved terms with no
+# legitimate meaning in non-RDF JSON.
+_JSONLD_KEYS = ("@context", "@graph", "@id", "@type")
 
 
 class Operation(ABC, BaseModel):
@@ -91,7 +99,24 @@ class Operation(ABC, BaseModel):
                 # Return RDFLib objects as-is for operation chaining
                 return result
 
-            # 🔁 Recurse into each value — allows nested @op inside JSON-LD and SPARQL bindings
+            # JSON-LD shape recognition — a dict carrying any JSON-LD reserved
+            # key is RDF data, not generic JSON to recurse into. Parse it
+            # once at the runtime layer so every consuming op (POST, PUT,
+            # Merge, ldh-Create*/Add*) receives an `rdflib.Graph` directly
+            # instead of re-parsing identically inside its own
+            # `execute_json`. Symmetric with the bare-value auto-wrap
+            # below: that branch turns a JSON scalar into the matching
+            # RDFLib term; this branch turns a JSON-LD object into the
+            # matching RDFLib graph.
+            if any(k in json_data for k in _JSONLD_KEYS):
+                graph = Graph()
+                graph.parse(data=json.dumps(json_data), format="json-ld")
+                return graph
+
+            # 🔁 Recurse into each value — allows nested @op inside generic
+            # JSON structures (e.g. SPARQL binding objects), without
+            # collapsing pure-data dicts that JSON-LD detection above
+            # already handled.
             return {
                 k: cls.process_json(settings, v, context, variable_stack)
                 for k, v in json_data.items()
