@@ -1,23 +1,24 @@
+import hashlib
 from rdflib import URIRef, Literal, Namespace, Graph
 from rdflib.namespace import RDF, RDFS, XSD, DCTERMS
 from web_algebra.operation import Operation
 
 
 class GenerateOntologyViews(Operation):
-    """Generates LinkedDataHub view templates for non-functional properties.
+    """Generates LinkedDataHub views for ontology properties.
 
     Takes an extracted ontology graph and generates an RDF graph containing:
     - ldh:View resources for each non-functional property
     - SPIN sp:Select queries for retrieving related resources
-    - ldh:template links from classes to views
+    - ldh:view links from properties to views
 
-    A property is considered non-functional if it does not have a
-    owl:maxQualifiedCardinality restriction of 1.
+    Functional properties (declared `owl:FunctionalProperty`) are skipped:
+    they yield at most one value, so a table view would be redundant.
     """
 
     @classmethod
     def description(cls) -> str:
-        return "Generates LinkedDataHub view templates and SPIN queries for non-functional properties"
+        return "Generates LinkedDataHub views and SPIN queries for ontology properties (excluding owl:FunctionalProperty)"
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -41,15 +42,15 @@ class GenerateOntologyViews(Operation):
         }
 
     def execute(self, ontology: Graph, base_uri: URIRef, service_uri: URIRef) -> Graph:
-        """Generate LDH view templates for non-functional properties
+        """Generate LDH views for ontology properties
 
         Args:
-            ontology: RDF graph containing classes and properties with optional restrictions
+            ontology: RDF graph containing property declarations
             base_uri: Base URI for generating view and query resource URIs
             service_uri: URI of the sd:Service resource to be referenced by queries
 
         Returns:
-            RDF graph containing ldh:View, sp:Select, and ldh:template triples
+            RDF graph containing ldh:View, sp:Select, and ldh:view triples
         """
         # Define namespaces
         LDH = Namespace("https://w3id.org/atomgraph/linkeddatahub#")
@@ -57,29 +58,20 @@ class GenerateOntologyViews(Operation):
         SPIN = Namespace("http://spinrdf.org/spin#")
         AC = Namespace("https://w3id.org/atomgraph/client#")
 
-        # Query to find all non-functional properties with their classes
+        # Find all distinct datatype/object properties that are not owl:FunctionalProperty.
+        # Views attach to properties (LDH `ldh:view` has rdfs:domain rdf:Property), so we
+        # iterate by property rather than by (class, property) pair.
         query = """
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
-        SELECT DISTINCT ?class ?property ?propertyType ?range
+        SELECT DISTINCT ?property ?propertyType
         WHERE {
-          # Get all properties with their domain
-          ?property a ?propertyType ;
-                    rdfs:domain ?class ;
-                    rdfs:range ?range .
+          ?property a ?propertyType .
           FILTER(?propertyType IN (owl:DatatypeProperty, owl:ObjectProperty))
-
-          # Exclude functional properties (those with maxQualifiedCardinality = 1)
-          FILTER NOT EXISTS {
-            ?class rdfs:subClassOf ?restriction .
-            ?restriction a owl:Restriction ;
-                         owl:onProperty ?property ;
-                         owl:maxQualifiedCardinality 1 .
-          }
+          FILTER NOT EXISTS { ?property a owl:FunctionalProperty }
         }
-        ORDER BY ?class ?property
+        ORDER BY ?property
         """
 
         results = ontology.query(query)
@@ -94,48 +86,42 @@ class GenerateOntologyViews(Operation):
         g.bind("rdfs", RDFS)
         g.bind("rdf", RDF)
 
-        # Generate views and queries for each non-functional property
+        seen_locals: set[str] = set()
+
         for row in results:
             row_dict = row.asdict()
-            class_uri = row_dict["class"]
             property_uri = row_dict["property"]
             property_type = row_dict["propertyType"]
-            range_uri = row_dict["range"]
 
-            # Validate that all values are URIRefs
-            if not isinstance(class_uri, URIRef):
-                raise TypeError(f"Expected class to be URIRef, got {type(class_uri)}")
             if not isinstance(property_uri, URIRef):
                 raise TypeError(f"Expected property to be URIRef, got {type(property_uri)}")
             if not isinstance(property_type, URIRef):
                 raise TypeError(f"Expected propertyType to be URIRef, got {type(property_type)}")
-            if not isinstance(range_uri, URIRef):
-                raise TypeError(f"Expected range to be URIRef, got {type(range_uri)}")
 
-            # Extract local names for URIs
-            class_local = self._get_local_name(class_uri)
+            # Disambiguate when two properties share a local name (different namespaces).
             property_local = self._get_local_name(property_uri)
+            if property_local in seen_locals:
+                suffix = hashlib.sha1(str(property_uri).encode()).hexdigest()[:6]
+                property_local = f"{property_local}_{suffix}"
+            seen_locals.add(property_local)
 
-            # Generate URIs for view and query
-            view_uri = URIRef(f"{base_uri}#{class_local}_{property_local}_View")
-            query_uri = URIRef(f"{base_uri}#{class_local}_{property_local}_Query")
+            view_uri = URIRef(f"{base_uri}#{property_local}_View")
+            query_uri = URIRef(f"{base_uri}#{property_local}_Query")
 
-            # Generate human-readable title
             title = f"{property_local}"
+            sparql_text = self._generate_sparql_query(property_uri)
 
-            # Generate SPARQL query text
-            sparql_text = self._generate_sparql_query(property_uri, property_type, range_uri)
+            # Attach view to property via ldh:view (forward direction).
+            # TODO: emit ldh:inverseView for selected object properties in a follow-up.
+            g.add((property_uri, LDH.view, view_uri))
 
-            # Create ldh:template link from class to view
-            g.add((class_uri, LDH.template, view_uri))
-
-            # Create ldh:View resource
+            # ldh:View resource
             g.add((view_uri, RDF.type, LDH.View))
             g.add((view_uri, DCTERMS.title, Literal(title)))
             g.add((view_uri, SPIN.query, query_uri))
             g.add((view_uri, AC.mode, AC.TableMode))
 
-            # Create sp:Select query resource
+            # sp:Select query resource
             g.add((query_uri, RDF.type, SP.Select))
             g.add((query_uri, DCTERMS.title, Literal(f"Select {property_local}")))
             g.add((query_uri, RDFS.label, Literal(f"Select {property_local}")))
@@ -153,8 +139,8 @@ class GenerateOntologyViews(Operation):
             return uri_str.split('/')[-1]
         return uri_str
 
-    def _generate_sparql_query(self, property_uri: URIRef, property_type: URIRef, range_uri: URIRef) -> str:
-        """Generate SPARQL SELECT query for a property"""
+    def _generate_sparql_query(self, property_uri: URIRef) -> str:
+        """Generate SPARQL SELECT query for a property (forward direction)"""
         sparql = f"""SELECT DISTINCT ?related ?label
 WHERE {{
   GRAPH ?relatedGraph {{
