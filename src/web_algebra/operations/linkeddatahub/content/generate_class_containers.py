@@ -21,6 +21,10 @@ class GenerateClassContainers(Operation):
     """
 
     @classmethod
+    def name(cls):
+        return "ldh-GenerateClassContainers"
+
+    @classmethod
     def description(cls) -> str:
         return "Creates LinkedDataHub containers with instance list views for ontology classes"
 

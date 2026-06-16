@@ -1,5 +1,5 @@
 {
-  "@op": "GeneratePortal",
+  "@op": "ldh-GeneratePortal",
   "args": {
     "endpoint": {
       "@op": "URI",
