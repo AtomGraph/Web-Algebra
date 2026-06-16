@@ -51,6 +51,19 @@ class GeneratePortal(Operation):
         Returns:
             Concatenated Result containing all operation results
         """
+        if not isinstance(endpoint, URIRef):
+            raise TypeError(
+                f"GeneratePortal operation expects 'endpoint' to be URIRef, got {type(endpoint)}"
+            )
+        if not isinstance(ontology_namespace, URIRef):
+            raise TypeError(
+                f"GeneratePortal operation expects 'ontology_namespace' to be URIRef, got {type(ontology_namespace)}"
+            )
+        if not isinstance(parent_container, URIRef):
+            raise TypeError(
+                f"GeneratePortal operation expects 'parent_container' to be URIRef, got {type(parent_container)}"
+            )
+
         import logging
 
         # Step 0: Create service resource for the SPARQL endpoint

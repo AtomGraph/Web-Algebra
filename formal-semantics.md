@@ -258,6 +258,24 @@ Abstract: URI × Maybe URI → Any
 Python:   def execute(self, url: URIRef, block: URIRef = None) -> Any
 ```
 
+**ldh-GenerateOntologyViews** - Generate LDH views (`ldh:view`) and SPIN `sp:Select` queries for each non-`owl:FunctionalProperty` `owl:DatatypeProperty`/`owl:ObjectProperty` in an ontology graph
+```
+Abstract: Graph × URI × URI → Graph
+Python:   def execute(self, ontology: rdflib.Graph, base_uri: URIRef, service_uri: URIRef) -> rdflib.Graph
+```
+
+**ldh-GenerateClassContainers** - Create an LDH container per `owl:Class` in an ontology graph (each with a SPARQL service and instance-list view)
+```
+Abstract: Graph × URI × URI → Result
+Python:   def execute(self, ontology: rdflib.Graph, parent_container: URIRef, endpoint: URIRef) -> Result
+```
+
+**ldh-GeneratePortal** - End-to-end portal generation; composes `ExtractOntology`, `ldh-GenerateOntologyViews`, `POST`, and `ldh-GenerateClassContainers`
+```
+Abstract: URI × URI × URI → Result
+Python:   def execute(self, endpoint: URIRef, ontology_namespace: URIRef, parent_container: URIRef) -> Result
+```
+
 ### Schema Operations
 
 **ExtractClasses** - Extract RDF classes from graph
@@ -273,6 +291,12 @@ Python:   def execute(self, endpoint: URIRef) -> rdflib.Graph
 ```
 
 **ExtractObjectProperties** - Extract object properties from graph
+```
+Abstract: URI → Graph
+Python:   def execute(self, endpoint: URIRef) -> rdflib.Graph
+```
+
+**ExtractOntology** - Extract a full ontology (classes + datatype + object properties) from a SPARQL endpoint as a single graph
 ```
 Abstract: URI → Graph
 Python:   def execute(self, endpoint: URIRef) -> rdflib.Graph

@@ -56,6 +56,19 @@ class GenerateOntologyViews(Operation):
         Returns:
             RDF graph containing ldh:View, sp:Select, and ldh:view triples
         """
+        if not isinstance(ontology, Graph):
+            raise TypeError(
+                f"GenerateOntologyViews operation expects 'ontology' to be Graph, got {type(ontology)}"
+            )
+        if not isinstance(base_uri, URIRef):
+            raise TypeError(
+                f"GenerateOntologyViews operation expects 'base_uri' to be URIRef, got {type(base_uri)}"
+            )
+        if not isinstance(service_uri, URIRef):
+            raise TypeError(
+                f"GenerateOntologyViews operation expects 'service_uri' to be URIRef, got {type(service_uri)}"
+            )
+
         # Define namespaces
         LDH = Namespace("https://w3id.org/atomgraph/linkeddatahub#")
         SP = Namespace("http://spinrdf.org/sp#")
