@@ -60,6 +60,18 @@ class GenerateClassContainers(Operation):
         Returns:
             Concatenated Result containing all operation results (CreateContainer + AddGenericService + POST bindings)
         """
+        if not isinstance(ontology, Graph):
+            raise TypeError(
+                f"GenerateClassContainers operation expects 'ontology' to be Graph, got {type(ontology)}"
+            )
+        if not isinstance(parent_container, URIRef):
+            raise TypeError(
+                f"GenerateClassContainers operation expects 'parent_container' to be URIRef, got {type(parent_container)}"
+            )
+        if not isinstance(endpoint, URIRef):
+            raise TypeError(
+                f"GenerateClassContainers operation expects 'endpoint' to be URIRef, got {type(endpoint)}"
+            )
         # Define namespaces
         LDH = Namespace("https://w3id.org/atomgraph/linkeddatahub#")
         SP = Namespace("http://spinrdf.org/sp#")

@@ -27,6 +27,10 @@ class ExtractOntology(Operation):
 
     def execute(self, endpoint: URIRef) -> Graph:
         """Extract complete ontology by composing individual extraction operations"""
+        if not isinstance(endpoint, URIRef):
+            raise TypeError(
+                f"ExtractOntology operation expects 'endpoint' to be URIRef, got {type(endpoint)}"
+            )
 
         # Extract classes
         classes_graph = ExtractClasses(settings=self.settings, context=self.context).execute(endpoint)
