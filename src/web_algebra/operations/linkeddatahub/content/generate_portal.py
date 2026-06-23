@@ -95,10 +95,9 @@ class GeneratePortal(Operation):
         # Step 3: POST views to ontology namespace
         post_views_result = POST(settings=self.settings, context=self.context).execute(ontology_namespace, views_graph)
 
-        # Step 4: Generate class containers (performs multiple operations internally)
-        # Each container creates its own service resource
+        # Step 4: Generate class items (the global service_uri is reused across all class items)
         class_containers_result = GenerateClassContainers(settings=self.settings, context=self.context).execute(
-            ontology_graph, parent_container, endpoint
+            ontology_graph, parent_container, endpoint, service_uri
         )
 
         # Concatenate all results
