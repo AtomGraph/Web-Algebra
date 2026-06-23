@@ -8,7 +8,7 @@
           "endpoint": {
             "@op": "URI",
             "args": {
-              "input": "https://linkeddatahub.com/demo/skos/sparql"
+              "input": "https://northwind-traders.demo.linkeddatahub.com/sparql"
             }
           }
         }
@@ -19,7 +19,7 @@
           "endpoint": {
             "@op": "URI",
             "args": {
-              "input": "https://linkeddatahub.com/demo/skos/sparql"
+              "input": "https://northwind-traders.demo.linkeddatahub.com/sparql"
             }
           }
         }
@@ -30,7 +30,7 @@
           "endpoint": {
             "@op": "URI",
             "args": {
-              "input": "https://linkeddatahub.com/demo/skos/sparql"
+              "input": "https://northwind-traders.demo.linkeddatahub.com/sparql"
             }
           }
         }
