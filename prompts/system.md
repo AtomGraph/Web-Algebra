@@ -962,3 +962,116 @@ Result:
 ```json
 "550e8400-e29b-41d4-a716-446655440000"
 ```
+
+## PATCH(url: URL, update: str) -> Dict
+
+Applies a SPARQL Update (DELETE/INSERT/WHERE) to a document via HTTP PATCH. Use this to atomically modify existing RDF triples in a LinkedDataHub document.
+
+### Example JSON
+
+```json
+{
+  "@op": "PATCH",
+  "args": {
+    "url": "https://localhost:4443/corporations/",
+    "update": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nDELETE { <https://localhost:4443/corporations/> rdf:_1 ?m . ?m ?p ?o . }\nINSERT { <https://localhost:4443/corporations/> rdf:_1 _:m . _:m rdf:value <https://localhost:4443/corporations/#Instances_View> . }\nWHERE { <https://localhost:4443/corporations/> rdf:_1 ?m . ?m ?p ?o . }"
+  }
+}
+```
+
+Result:
+```json
+{
+  "head": {"vars": ["status", "url"]},
+  "results": {
+    "bindings": [{
+      "status": {"type": "literal", "value": "200", "datatype": "http://www.w3.org/2001/XMLSchema#integer"},
+      "url": {"type": "uri", "value": "https://localhost:4443/corporations/"}
+    }]
+  }
+}
+```
+
+## ExtractOntology(endpoint: str) -> Graph
+
+Extracts a complete ontology (classes + datatype properties + object properties) from a SPARQL endpoint as a single merged graph. Infers structure from instance data using the closed-world assumption — does not rely on a formal ontology declaration at `/ns`. Properties where the global max objects-per-subject = 1 are emitted as `owl:FunctionalProperty`.
+
+### Example JSON
+
+```json
+{
+  "@op": "ExtractOntology",
+  "args": {
+    "endpoint": "https://northwind-traders.demo.linkeddatahub.com/sparql"
+  }
+}
+```
+
+Result: Returns a JSON-LD graph containing `owl:Class`, `owl:DatatypeProperty`, `owl:ObjectProperty`, and `owl:FunctionalProperty` declarations.
+
+## ldh-GenerateOntologyViews(ontology: Graph, base_uri: URI, service_uri: URI) -> Graph
+
+Generates LinkedDataHub view resources for each non-functional `owl:ObjectProperty` in an ontology graph. Produces `ldh:View` resources, `sp:Select` SPARQL queries, and `ldh:view` triples linking properties to their views. `owl:DatatypeProperty` and `owl:FunctionalProperty` are intentionally excluded.
+
+### Example JSON
+
+```json
+{
+  "@op": "ldh-GenerateOntologyViews",
+  "args": {
+    "ontology": {
+      "@op": "ExtractOntology",
+      "args": {
+        "endpoint": "https://northwind-traders.demo.linkeddatahub.com/sparql"
+      }
+    },
+    "base_uri": "https://admin.localhost:4443/ontologies/namespace/",
+    "service_uri": "https://admin.localhost:4443/ontologies/namespace/#Service"
+  }
+}
+```
+
+Result: Returns a JSON-LD graph containing `ldh:View`, `sp:Select`, and `ldh:view` triples.
+
+## ldh-GenerateClassContainers(ontology: Graph, parent_container: URI, endpoint: URI) -> Dict
+
+Creates a LinkedDataHub container for each `owl:Class` in an ontology graph. Each container gets a SPARQL service resource, an `sp:Select` instance-list query, an `ldh:View`, and a PATCH to wire the view as the container's primary (`rdf:_1`) view.
+
+### Example JSON
+
+```json
+{
+  "@op": "ldh-GenerateClassContainers",
+  "args": {
+    "ontology": {
+      "@op": "ExtractOntology",
+      "args": {
+        "endpoint": "https://northwind-traders.demo.linkeddatahub.com/sparql"
+      }
+    },
+    "parent_container": "https://localhost:4443/",
+    "endpoint": "https://northwind-traders.demo.linkeddatahub.com/sparql"
+  }
+}
+```
+
+Result: Returns a SPARQL results table with one binding per HTTP operation performed.
+
+## ldh-GeneratePortal(endpoint: URI, ontology_namespace: URI, parent_container: URI) -> Dict
+
+End-to-end portal generation: extracts an ontology from a SPARQL endpoint, generates views and posts them to the ontology namespace document, then creates class containers with instance views under the parent container. Composes `ExtractOntology`, `ldh-GenerateOntologyViews`, `POST`, and `ldh-GenerateClassContainers`.
+
+### Example JSON
+
+```json
+{
+  "@op": "ldh-GeneratePortal",
+  "args": {
+    "endpoint": "https://northwind-traders.demo.linkeddatahub.com/sparql",
+    "ontology_namespace": "https://admin.localhost:4443/ontologies/namespace/",
+    "parent_container": "https://localhost:4443/"
+  }
+}
+```
+
+Result: Returns a SPARQL results table aggregating all HTTP operation results.

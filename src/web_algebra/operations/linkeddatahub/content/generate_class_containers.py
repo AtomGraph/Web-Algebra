@@ -5,6 +5,7 @@ from rdflib.query import Result
 from web_algebra.operation import Operation
 from web_algebra.operations.linkeddatahub.create_container import CreateContainer
 from web_algebra.operations.linked_data.post import POST
+from web_algebra.operations.linked_data.patch import PATCH
 from web_algebra.operations.linkeddatahub.add_generic_service import AddGenericService
 from web_algebra.json_result import JSONResult
 
@@ -158,6 +159,29 @@ class GenerateClassContainers(Operation):
             all_bindings.extend(post_view_result.bindings)
             all_vars.update(post_view_result.vars)
             logging.info(f"Posted view to {container_uri}")
+
+            # Step 5: Replace rdf:_1 (default ldh:ChildrenView) with the custom instances view.
+            patch_update = (
+                f"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n"
+                f"PREFIX ldh: <https://w3id.org/atomgraph/linkeddatahub#>\n\n"
+                f"DELETE {{\n"
+                f"    <{container_uri}> rdf:_1 ?member .\n"
+                f"    ?member ?p ?o .\n"
+                f"}}\nINSERT {{\n"
+                f"    <{container_uri}> rdf:_1 _:member .\n"
+                f"    _:member a ldh:Object ;\n"
+                f"        rdf:value <{view_uri}> .\n"
+                f"}}\nWHERE {{\n"
+                f"    <{container_uri}> rdf:_1 ?member .\n"
+                f"    ?member ?p ?o .\n"
+                f"}}"
+            )
+            patch_result = PATCH(settings=self.settings, context=self.context).execute(
+                container_uri, Literal(patch_update, datatype=XSD.string)
+            )
+            all_bindings.extend(patch_result.bindings)
+            all_vars.update(patch_result.vars)
+            logging.info(f"Replaced rdf:_1 in {container_uri} with {view_uri}")
 
         # Create concatenated Result using JSONResult
         return JSONResult(list(all_vars), all_bindings)

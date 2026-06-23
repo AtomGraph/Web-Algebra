@@ -258,7 +258,7 @@ Abstract: URI × Maybe URI → Any
 Python:   def execute(self, url: URIRef, block: URIRef = None) -> Any
 ```
 
-**ldh-GenerateOntologyViews** - Generate LDH views (`ldh:view`) and SPIN `sp:Select` queries for each non-`owl:FunctionalProperty` `owl:DatatypeProperty`/`owl:ObjectProperty` in an ontology graph
+**ldh-GenerateOntologyViews** - Generate LDH views (`ldh:view`) and SPIN `sp:Select` queries for each non-`owl:FunctionalProperty` `owl:ObjectProperty` in an ontology graph; `owl:DatatypeProperty` is excluded because literal values are displayed inline in LDH and do not benefit from a table view
 ```
 Abstract: Graph × URI × URI → Graph
 Python:   def execute(self, ontology: rdflib.Graph, base_uri: URIRef, service_uri: URIRef) -> rdflib.Graph
@@ -290,7 +290,7 @@ Abstract: URI → Graph
 Python:   def execute(self, endpoint: URIRef) -> rdflib.Graph
 ```
 
-**ExtractObjectProperties** - Extract object properties from graph
+**ExtractObjectProperties** - Extract object properties from instance data; infers `owl:FunctionalProperty` when global max objects-per-subject = 1 (closed-world assumption over present triples, ignores formal ontology at `/ns`)
 ```
 Abstract: URI → Graph
 Python:   def execute(self, endpoint: URIRef) -> rdflib.Graph

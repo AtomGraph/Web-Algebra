@@ -82,10 +82,9 @@ class GenerateOntologyViews(Operation):
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
-        SELECT DISTINCT ?property ?propertyType
+        SELECT DISTINCT ?property
         WHERE {
-          ?property a ?propertyType .
-          FILTER(?propertyType IN (owl:DatatypeProperty, owl:ObjectProperty))
+          ?property a owl:ObjectProperty .
           FILTER NOT EXISTS { ?property a owl:FunctionalProperty }
         }
         ORDER BY ?property
@@ -108,12 +107,9 @@ class GenerateOntologyViews(Operation):
         for row in results:
             row_dict = row.asdict()
             property_uri = row_dict["property"]
-            property_type = row_dict["propertyType"]
 
             if not isinstance(property_uri, URIRef):
                 raise TypeError(f"Expected property to be URIRef, got {type(property_uri)}")
-            if not isinstance(property_type, URIRef):
-                raise TypeError(f"Expected propertyType to be URIRef, got {type(property_type)}")
 
             # Disambiguate when two properties share a local name (different namespaces).
             property_local = self._get_local_name(property_uri)
