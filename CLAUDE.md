@@ -48,6 +48,27 @@ When adding new operations:
 3. Place in `src/web_algebra/operations/` directory for auto-discovery
 4. Use `@op` and `args` structure in JSON examples
 
+### RDF type convention
+
+The system works in the rdflib type system (`Node`, `Result`, `Graph`); JSON is
+only the transport. Conversion happens at fixed boundaries — operations do not
+pass raw JSON around:
+
+- **`execute()` is pure rdflib** — it takes and returns `Node` / `Result` /
+  `Graph` only. Never accept a `dict` here.
+- **`execute_json()` is the JSON boundary** — it resolves its arguments with
+  `Operation.process_json()` (which evaluates nested `@op`/variable references)
+  and then converts any JSON-LD body to a `Graph` with **`Operation.to_graph()`**
+  before calling `execute()`. `to_graph` is the *single* place JSON-LD is parsed
+  and the only place an operation applies its base IRI
+  (`to_graph(data, base=<target url>)`), which is needed to resolve relative
+  IRIs. An input that is already a `Graph` (e.g. from an upstream `CONSTRUCT`)
+  passes through unchanged.
+- **`process_json()` never parses JSON-LD to a `Graph`** — it resolves
+  `@op`/variables in place and returns plain data (`dict`/`list`/term). It can't
+  know an op's base IRI, and eager parsing would freeze unresolved `@op` holes
+  (an op-valued `@id` would silently become a blank node).
+
 ### JSON DSL Format
 
 Operations must follow this structure:

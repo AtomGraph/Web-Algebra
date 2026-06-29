@@ -1,6 +1,5 @@
 import logging
 from typing import Any
-import json
 from rdflib import URIRef, Literal, Graph
 from rdflib.namespace import XSD
 from mcp import types
@@ -57,12 +56,8 @@ class CONSTRUCT(Operation, MCPTool):
         # Execute using the SPARQL client and get JSON-LD response
         json_ld_response = self.client.query(endpoint_url, query_str)
 
-        # Convert JSON-LD to RDF Graph
-        graph = Graph()
-        json_str = json.dumps(json_ld_response)
-        graph.parse(data=json_str, format="json-ld")
-
-        return graph
+        # Convert JSON-LD response to RDF Graph
+        return self.to_graph(json_ld_response)
 
     def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
         """JSON execution: process arguments and return Graph (same as execute)"""

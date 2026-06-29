@@ -1,7 +1,7 @@
 from typing import Any, Optional
 import logging
 import urllib.parse
-from rdflib import URIRef, Literal, Graph
+from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.operation import Operation
@@ -107,11 +107,8 @@ class CreateContainer(PUT):
         if description:
             data["dct:description"] = str(description)
 
-        # Create graph and call parent PUT operation
-        import json
-
-        graph = Graph()
-        graph.parse(data=json.dumps(data), format="json-ld", publicID=url)
+        # Convert the document to a Graph and call parent PUT operation
+        graph = self.to_graph(data, base=url)
 
         # Call parent PUT execute method
         return super().execute(URIRef(url), graph)
