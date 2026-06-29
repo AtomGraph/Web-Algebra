@@ -217,13 +217,8 @@ class AddView(POST):
 
         logging.info(f"Posting View with JSON-LD data: {data}")
 
-        # POST the JSON-LD content to the target URI
-        # Convert JSON-LD dict to Graph
-        import json
-        from rdflib import Graph
-
-        graph = Graph()
-        graph.parse(data=json.dumps(data), format="json-ld", publicID=url_str)
+        # Convert the JSON-LD content to a Graph and POST to the target URI
+        graph = self.to_graph(data, base=url_str)
         return super().execute(url, graph)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:

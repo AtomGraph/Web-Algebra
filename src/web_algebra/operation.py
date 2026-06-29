@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import json
 import logging
 from typing import Type, Dict, Optional, Any, List, ClassVar, Union
 from pydantic import BaseModel, Field, ConfigDict
@@ -210,6 +211,31 @@ class Operation(ABC, BaseModel):
         raise ValueError(f"Variable '{name}' not found")
 
     # Conversion helpers between different formats
+    @staticmethod
+    def to_graph(data: Any, *, base: Optional[str] = None) -> Graph:
+        """Convert a JSON-LD document into an `rdflib.Graph`.
+
+        The single conversion point from JSON-LD transport into the rdflib
+        type system. Operations resolve their arguments to plain data (via
+        `process_json`) and then call this to hand `execute` a `Graph` — so
+        `execute` always works in rdflib terms, never raw JSON. Input that is
+        already a `Graph` (e.g. the output of an upstream op such as CONSTRUCT)
+        passes through unchanged.
+
+        `base` is the document's base IRI — typically the target URL of the
+        enclosing op — used to resolve any relative IRIs in the JSON-LD.
+        """
+        if isinstance(data, Graph):
+            return data
+        if isinstance(data, dict):
+            graph = Graph()
+            graph.parse(data=json.dumps(data), format="json-ld", publicID=base)
+            return graph
+        raise TypeError(
+            f"Cannot convert {type(data).__name__} to Graph; "
+            "expected a JSON-LD dict or an rdflib.Graph"
+        )
+
     @staticmethod
     def json_to_rdflib(data) -> Node:
         """Convert JSON/binding objects to RDFLib terms"""

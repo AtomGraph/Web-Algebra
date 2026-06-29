@@ -218,15 +218,13 @@ WHERE {{
 
     def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
         """JSON execution: process arguments with type checking"""
-        # Process ontology graph
-        ontology_data = Operation.process_json(
-            self.settings, arguments["ontology"], self.context, variable_stack
-        )
-
-        if not isinstance(ontology_data, Graph):
-            raise TypeError(
-                f"GenerateClassContainers operation expects 'ontology' to be Graph, got {type(ontology_data)}"
+        # Process ontology graph — accept a Graph (e.g. from CONSTRUCT) or a
+        # JSON-LD document, converting the latter to a Graph
+        ontology_data = self.to_graph(
+            Operation.process_json(
+                self.settings, arguments["ontology"], self.context, variable_stack
             )
+        )
 
         # Process parent_container
         parent_container_data = Operation.process_json(

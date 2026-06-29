@@ -1,5 +1,4 @@
 from typing import Any
-import json
 import logging
 from rdflib import URIRef, Graph, Literal
 from rdflib.namespace import XSD
@@ -96,22 +95,8 @@ class PUT(Operation, MCPTool):
             self.settings, arguments["data"], self.context, variable_stack
         )
 
-        # Convert processed data to Graph object
-        if isinstance(data_result, Graph):
-            # Already a Graph (from some operation result)
-            graph_data = data_result
-        elif isinstance(data_result, dict):
-            # Processed JSON-LD - convert to Graph
-            import json
-
-            json_str = json.dumps(data_result)
-            graph = Graph()
-            graph.parse(data=json_str, format="json-ld", publicID=str(url_data))
-            graph_data = graph
-        else:
-            raise TypeError(
-                f"PUT operation expects data to be Graph or dict, got {type(data_result)}"
-            )
+        # Convert resolved JSON-LD into a Graph at the target's base IRI
+        graph_data = self.to_graph(data_result, base=str(url_data))
 
         return self.execute(url_data, graph_data)
 
@@ -119,11 +104,8 @@ class PUT(Operation, MCPTool):
         """MCP execution: plain args → plain results"""
         url = URIRef(arguments["url"])
 
-        # Convert JSON-LD data to Graph
-        data_dict = arguments["data"]
-        json_str = json.dumps(data_dict)
-        graph = Graph()
-        graph.parse(data=json_str, format="json-ld", publicID=str(url))
+        # Convert JSON-LD data to Graph at the target's base IRI
+        graph = self.to_graph(arguments["data"], base=str(url))
 
         result = self.execute(url, graph)
 

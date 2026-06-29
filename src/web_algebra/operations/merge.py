@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import Any, List
 from rdflib import Graph
@@ -67,24 +66,8 @@ class Merge(Operation, MCPTool):
                 f"Merge operation expects 'graphs' to be list, got {type(graphs_data)}"
             )
 
-        # Convert processed data to Graph objects
-        graph_objects = []
-        for item in graphs_data:
-            if isinstance(item, Graph):
-                # Already a Graph (from some operation result)
-                graph_objects.append(item)
-            elif isinstance(item, dict):
-                # Processed JSON-LD - convert to Graph
-                import json
-
-                json_str = json.dumps(item)
-                graph = Graph()
-                graph.parse(data=json_str, format="json-ld")
-                graph_objects.append(graph)
-            else:
-                raise TypeError(
-                    f"Merge operation expects graph items to be Graph or dict, got {type(item)}"
-                )
+        # Convert each resolved JSON-LD item into a Graph
+        graph_objects = [self.to_graph(item) for item in graphs_data]
 
         # Delegate to execute() with Graph objects
         return self.execute(graph_objects)
@@ -94,12 +77,7 @@ class Merge(Operation, MCPTool):
         graphs_data = arguments["graphs"]
 
         # Convert JSON-LD objects to RDF Graphs
-        graphs = []
-        for data in graphs_data:
-            json_str = json.dumps(data)
-            graph = Graph()
-            graph.parse(data=json_str, format="json-ld")
-            graphs.append(graph)
+        graphs = [self.to_graph(data) for data in graphs_data]
 
         result_graph = self.execute(graphs)
 
