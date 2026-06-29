@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import json
 import logging
 from typing import Type, Dict, Optional, Any, List, ClassVar, Union
 from pydantic import BaseModel, Field, ConfigDict
@@ -10,10 +9,10 @@ from rdflib.namespace import XSD
 from rdflib.query import Result
 
 
-# JSON-LD keyword set used to recognise a top-level dict as RDF data rather
-# than generic JSON to recurse into. Presence of any of these at the root is
-# a strong, unambiguous signal — they are JSON-LD reserved terms with no
-# legitimate meaning in non-RDF JSON.
+# JSON-LD keyword set used to recognise a dict as RDF data (a JSON-LD
+# document/fragment) rather than generic JSON to recurse into. Presence of any
+# of these is a strong, unambiguous signal — they are JSON-LD reserved terms
+# with no legitimate meaning in non-RDF JSON.
 _JSONLD_KEYS = ("@context", "@graph", "@id", "@type")
 
 
@@ -100,18 +99,23 @@ class Operation(ABC, BaseModel):
                 return result
 
             # JSON-LD shape recognition — a dict carrying any JSON-LD reserved
-            # key is RDF data, not generic JSON to recurse into. Parse it
-            # once at the runtime layer so every consuming op (POST, PUT,
-            # Merge, ldh-Create*/Add*) receives an `rdflib.Graph` directly
-            # instead of re-parsing identically inside its own
-            # `execute_json`. Symmetric with the bare-value auto-wrap
-            # below: that branch turns a JSON scalar into the matching
-            # RDFLib term; this branch turns a JSON-LD object into the
-            # matching RDFLib graph.
+            # key is RDF data (a JSON-LD document or fragment), not generic
+            # JSON to recurse into. It may still embed `@op` operations or
+            # variable references in its values (e.g. an `@id` computed from a
+            # runtime binding), so resolve those in place but keep the dict
+            # intact and let the consuming op parse it.
+            #
+            # We deliberately do NOT parse to an `rdflib.Graph` here. Every op
+            # that consumes a JSON-LD body (POST, PUT, Merge, ldh Create*/Add*)
+            # already parses a dict itself — and does so with the right base
+            # IRI (`publicID=<target url>`), which a central parse here cannot
+            # know. Parsing centrally would also freeze any unresolved `@op`
+            # holes: `@id` expects a string IRI, so an op-valued `@id` would
+            # silently become a blank node and the intended URI would be lost.
             if any(k in json_data for k in _JSONLD_KEYS):
-                graph = Graph()
-                graph.parse(data=json.dumps(json_data), format="json-ld")
-                return graph
+                return cls._resolve_jsonld(
+                    settings, json_data, context, variable_stack
+                )
 
             # 🔁 Recurse into each value — allows nested @op inside generic
             # JSON structures (e.g. SPARQL binding objects), without
@@ -134,6 +138,40 @@ class Operation(ABC, BaseModel):
         else:
             # Convert plain values to RDFLib terms
             return cls.json_to_rdflib(json_data)
+
+    @classmethod
+    def _resolve_jsonld(
+        cls,
+        settings: BaseSettings,
+        json_data: Any,
+        context: dict = {},
+        variable_stack: list = [],
+    ) -> Any:
+        """Resolve embedded `@op` nodes inside a JSON-LD document in place.
+
+        Walks a JSON-LD-shaped structure evaluating only `@op` nodes (to their
+        RDFLib terms — `str` subclasses for URIs/literals, so they serialise
+        cleanly) while leaving every other scalar as plain JSON for the
+        consuming op's JSON-LD parser to interpret. Nested dicts/lists keep
+        their structure so the whole document serialises as one unit; in
+        particular, fragments that merely look like JSON-LD (e.g. a
+        `{"@id": "..."}` object reference) stay dicts rather than being parsed
+        into standalone Graphs.
+        """
+        if isinstance(json_data, dict):
+            if "@op" in json_data:
+                return cls.process_json(settings, json_data, context, variable_stack)
+            return {
+                k: cls._resolve_jsonld(settings, v, context, variable_stack)
+                for k, v in json_data.items()
+            }
+        elif isinstance(json_data, list):
+            return [
+                cls._resolve_jsonld(settings, item, context, variable_stack)
+                for item in json_data
+            ]
+        else:
+            return json_data
 
     @staticmethod
     def _serialize_for_json_context(obj) -> Any:
