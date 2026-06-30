@@ -913,6 +913,37 @@ CONSTRUCT WHERE {
 }
 ```
 
+## Values(query: str, data: Result, vars: List[str]) -> str
+
+Appends a SPARQL `VALUES` data block, built from a SPARQL result set, to a query.
+
+`Values` is the set-valued counterpart of `Substitute`: where `Substitute` injects a single term for a single variable, `Values` injects a whole result set (rows of bindings) as inline data. Use it to constrain or batch one query by the results of another (e.g. a `SELECT`) in a single request, instead of iterating with `ForEach`.
+
+The block is appended as a trailing `VALUES` clause, which joins with the query's outermost group — the variable names in `data` (or the optional `vars` subset) must match the variables used in the query. Each value is serialized from its RDF term with correct escaping; blank nodes are rejected (they are not allowed in a `VALUES` block). A missing binding in a row is emitted as `UNDEF`.
+
+### Example JSON
+
+```json
+{
+  "@op": "Values",
+  "args": {
+    "query": "DESCRIBE ?city WHERE { ?city a <http://dbpedia.org/ontology/City> }",
+    "data": {
+      "@op": "SELECT",
+      "args": {
+        "endpoint": "https://dbpedia.org/sparql",
+        "query": "SELECT ?city WHERE { ?city <http://dbpedia.org/ontology/country> <http://dbpedia.org/resource/Denmark> } LIMIT 2"
+      }
+    }
+  }
+}
+```
+
+Result:
+```sparql
+DESCRIBE ?city WHERE { ?city a <http://dbpedia.org/ontology/City> } VALUES ?city { <http://dbpedia.org/resource/Copenhagen> <http://dbpedia.org/resource/Aarhus> }
+```
+
 ## Concat(inputs: List[str]) -> str
 
 Concatenates a list of string inputs into a single string. Useful for building URIs from multiple parts.

@@ -158,6 +158,12 @@ Abstract: Literal × Literal × Term → Literal
 Python:   def execute(self, query: Literal, var: Literal, binding_value: Any) -> Literal
 ```
 
+**Values** - Append a VALUES data block from a result set to a SPARQL query
+```
+Abstract: Literal × Result × Maybe (Sequence Literal) → Literal
+Python:   def execute(self, query: Literal, data: Result, vars: Optional[List[str]] = None) -> Literal
+```
+
 **SPARQLString** - Generate SPARQL queries from natural language
 ```
 Abstract: Literal → Literal
