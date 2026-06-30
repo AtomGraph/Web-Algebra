@@ -18,12 +18,18 @@ which they all already do — and with the correct base IRI.
 
 from __future__ import annotations
 
-from rdflib import BNode, Graph, URIRef
+from types import SimpleNamespace
+
+from rdflib import BNode, Graph, Literal, URIRef
+from rdflib.namespace import RDF
 
 from web_algebra.operation import Operation
 
 PROV_GENERATED_BY = URIRef("http://www.w3.org/ns/prov#wasGeneratedBy")
 FOAF_PRIMARY_TOPIC = URIRef("http://xmlns.com/foaf/0.1/primaryTopic")
+FOAF_NAME = URIRef("http://xmlns.com/foaf/0.1/name")
+EX_AGE = URIRef("http://example.org/age")
+DOC_TYPE = URIRef("http://example.org/Document")
 DOC_URI = URIRef("https://example.org/doc/")
 ACTIVITY_URI = URIRef("https://example.org/activity/#this")
 MESSAGE_URI = URIRef("https://example.org/message/#this")
@@ -120,3 +126,108 @@ class TestPureDataJsonLd:
         graph.parse(data=json.dumps(result), format="json-ld")
 
         assert (DOC_URI, PROV_GENERATED_BY, ACTIVITY_URI) in graph
+
+
+class TestEmbeddedOpsAndVariables:
+    """Ops/variables embedded in positions other than a subject @id."""
+
+    def test_op_as_property_value_resolves_to_literal(self, settings):
+        # An embedded op in object position (a property value), not an @id.
+        json_data = {
+            "@id": str(DOC_URI),
+            str(FOAF_NAME): {"@op": "Value", "args": {"name": "$name"}},
+        }
+        stack = [{"name": Literal("Alice")}]
+
+        result = Operation.process_json(settings, json_data, {}, stack)
+        graph = Operation.to_graph(result)
+
+        names = list(graph.objects(DOC_URI, FOAF_NAME))
+        assert [str(n) for n in names] == ["Alice"]
+
+    def test_op_in_type_resolves_to_iri(self, settings):
+        # @type expects an IRI; an op-valued @type must resolve to a URIRef.
+        json_data = {
+            "@id": str(DOC_URI),
+            "@type": {"@op": "Value", "args": {"name": "$cls"}},
+        }
+        stack = [{"cls": DOC_TYPE}]
+
+        result = Operation.process_json(settings, json_data, {}, stack)
+        graph = Operation.to_graph(result)
+
+        assert (DOC_URI, RDF.type, DOC_TYPE) in graph
+
+    def test_variable_from_context_binding(self, settings):
+        # Bare name (no $) resolves from the context — the ForEach-row case from
+        # the original bug report.
+        json_data = {
+            "@id": {"@op": "Value", "args": {"name": "doc"}},
+            str(FOAF_PRIMARY_TOPIC): {
+                "@id": {"@op": "Value", "args": {"name": "topic"}}
+            },
+        }
+        context = SimpleNamespace(doc=DOC_URI, topic=MESSAGE_URI)
+
+        result = Operation.process_json(settings, json_data, context, [])
+        graph = Operation.to_graph(result)
+
+        assert (DOC_URI, FOAF_PRIMARY_TOPIC, MESSAGE_URI) in graph
+        assert not any(isinstance(s, BNode) for s, _, _ in graph)
+
+    def test_embedded_ops_in_graph_array(self, settings):
+        # @graph is a list of nodes; embedded ops in each must resolve, and the
+        # @graph keyword must trigger JSON-LD handling (not generic recursion).
+        a, b = URIRef("https://example.org/a"), URIRef("https://example.org/b")
+        json_data = {
+            "@graph": [
+                {
+                    "@id": {"@op": "Value", "args": {"name": "$a"}},
+                    str(FOAF_NAME): "A",
+                },
+                {
+                    "@id": {"@op": "Value", "args": {"name": "$b"}},
+                    str(FOAF_NAME): "B",
+                },
+            ]
+        }
+        stack = [{"a": a, "b": b}]
+
+        result = Operation.process_json(settings, json_data, {}, stack)
+        graph = Operation.to_graph(result)
+
+        assert [str(n) for n in graph.objects(a, FOAF_NAME)] == ["A"]
+        assert [str(n) for n in graph.objects(b, FOAF_NAME)] == ["B"]
+        assert not any(isinstance(s, BNode) for s, _, _ in graph)
+
+    def test_context_keyword_preserved_with_embedded_op(self, settings):
+        # A @context (which carries no @op) must survive intact so the parser
+        # can use it, while a sibling embedded op still resolves.
+        json_data = {
+            "@context": {"name": str(FOAF_NAME)},
+            "@id": str(DOC_URI),
+            "name": {"@op": "Value", "args": {"name": "$name"}},
+        }
+        stack = [{"name": Literal("Alice")}]
+
+        result = Operation.process_json(settings, json_data, {}, stack)
+
+        assert result["@context"] == {"name": str(FOAF_NAME)}
+        graph = Operation.to_graph(result)
+        assert [str(n) for n in graph.objects(DOC_URI, FOAF_NAME)] == ["Alice"]
+
+    def test_native_scalar_preserved_in_op_bearing_document(self, settings):
+        # A plain JSON scalar inside an op-bearing document is left as native
+        # JSON (not coerced to an rdflib term), so its JSON-LD datatype survives.
+        json_data = {
+            "@id": {"@op": "Value", "args": {"name": "$doc"}},
+            str(EX_AGE): 30,
+        }
+        stack = [{"doc": DOC_URI}]
+
+        result = Operation.process_json(settings, json_data, {}, stack)
+
+        assert result[str(EX_AGE)] == 30  # still a Python int, not a Literal
+        graph = Operation.to_graph(result)
+        ages = list(graph.objects(DOC_URI, EX_AGE))
+        assert len(ages) == 1 and ages[0].value == 30  # parsed as xsd:integer
