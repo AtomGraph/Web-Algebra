@@ -49,6 +49,7 @@ The operations cover read-write Linked Data, SPARQL queries, URI manipulation, a
   - `DESCRIBE`
   - `SELECT`
   - `Substitute`
+  - `Values`
   - `SPARQLString`
 - Schema
   - `ExtractClasses`
