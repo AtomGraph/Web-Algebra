@@ -222,18 +222,23 @@ class Operation(ABC, BaseModel):
         already a `Graph` (e.g. the output of an upstream op such as CONSTRUCT)
         passes through unchanged.
 
+        Both shapes of JSON-LD document are accepted: a single node object
+        (`dict`) and a top-level array of nodes (`list`) — the latter is what
+        SPARQL DESCRIBE/CONSTRUCT over multiple subjects returns. rdflib's
+        JSON-LD parser handles both natively.
+
         `base` is the document's base IRI — typically the target URL of the
         enclosing op — used to resolve any relative IRIs in the JSON-LD.
         """
         if isinstance(data, Graph):
             return data
-        if isinstance(data, dict):
+        if isinstance(data, (dict, list)):
             graph = Graph()
             graph.parse(data=json.dumps(data), format="json-ld", publicID=base)
             return graph
         raise TypeError(
             f"Cannot convert {type(data).__name__} to Graph; "
-            "expected a JSON-LD dict or an rdflib.Graph"
+            "expected a JSON-LD dict/list or an rdflib.Graph"
         )
 
     @staticmethod
