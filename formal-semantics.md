@@ -206,6 +206,8 @@ Lisp sense, and their quoted operands are evaluated under a different regime
 | Operation | Operand | Evaluation regime |
 |-----------|---------|-------------------|
 | `ForEach` | `operation` | once per iteration item, under the focus *(item, position, size)* |
+| `Iterate` | `operation` | once per loop iteration, in the loop's environment |
+| `Iterate` | `next-iteration` member values | after each iteration's body, in the iteration's environment |
 | `Execute` | `operation` | once, under the current focus and environment |
 
 All other arguments of all operations are eagerly evaluated. An operation not
@@ -273,6 +275,8 @@ Ordering guarantees:
   must not rely on effect ordering *across* iterations (within one iteration,
   sequence ordering applies). The Python implementation is currently
   sequential.
+- `Iterate` is strictly sequential by definition: iteration *k+1*'s
+  parameters are computed from iteration *k*'s environment.
 
 There are no transactions: if evaluation fails midway, effects already
 performed are not rolled back.
@@ -413,16 +417,37 @@ rule (propagation rules are omitted below).
              [q₁,…,q_m], the premise evaluates it as a sequence within the
              iteration's scope and wᵢ is the last non-unit element value.
 
+             ρ, φ ⊢ params member forms (document order) ⇓ P, ρ′, σ₀   (eager)
+             loop(ρ′·{P}, σ₀, 1) = ⟨[w₁ … w_m], σ′⟩
+(ITERATE)    ─────────────────────────────────────
+             ρ, φ ⊢ ⟨Iterate(params, operation: q⟨quoted⟩,
+                            next-iteration: N⟨quoted⟩, break: b), σ⟩
+                 ⇓ ⟨[wᵢ | wᵢ ≠ unit], ρ′, σ′⟩
+
+             where loop(ρ_it, σ, k) is defined by:
+               1. ρ_it·∅, φ ⊢ ⟨q, σ⟩ ⇓ ⟨w, ρ_b, σ₁⟩   (array operand as in FOREACH)
+               2. if N is absent or k = CAP: ⟨[w], σ₁⟩
+               3. ρ_b, φ ⊢ N's member forms in document order ⇓ v₁ … vⱼ, σ₂
+                  (each binding nᵢ ↦ vᵢ before the next evaluates)
+               4. ρ_it ← ρ_it with each nᵢ ↦ vᵢ rebound in the loop scope;
+                  the body scope is dropped
+               5. if b holds of ρ_it: ⟨[w], σ₂⟩
+               6. else ⟨W, σ″⟩ = loop(ρ_it, σ₂, k+1); ⟨w·W, σ″⟩
+             CAP = 1000 (normative). b holds iff the lexical form of the
+             named loop variable equals (resp. differs from) the eagerly
+             evaluated comparison value; a missing variable compares as "".
+
              q is an operation-call form      ρ, φ ⊢ ⟨q, σ⟩ ⇓ ⟨v, ρ′, σ′⟩
 (EXECUTE)    ─────────────────────────────────────
              ρ, φ ⊢ ⟨Execute(operation: q⟨quoted⟩), σ⟩ ⇓ ⟨v, ρ′, σ′⟩
 ```
 
-**Metatheory.** Because forms are finite terms, there is no recursion, and
-`ForEach` iterates a *computed, finite* sequence, every evaluation terminates
-provided every δ_op does (structural induction on forms, with (FOREACH)
-measured by the size of `items(C)`). Evaluation is deterministic up to the
-declared non-deterministic operators and the World's own behavior. In
+**Metatheory.** Because forms are finite terms, there is no recursion,
+`ForEach` iterates a *computed, finite* sequence, and `Iterate` is bounded
+by its normative iteration cap, every evaluation terminates provided every
+δ_op does (structural induction on forms, with (FOREACH) measured by the
+size of `items(C)` and (ITERATE) by `CAP − k`). Evaluation is deterministic
+up to the declared non-deterministic operators and the World's own behavior. In
 (FOREACH), each iteration's environment writes are confined to its fresh
 scope and results are indexed by position, so evaluating iterations
 concurrently is observationally equivalent for programs that do not rely on
@@ -453,6 +478,42 @@ JSON:     select: Sequence α + Result · operation⟨quoted⟩: form or array o
 - Iteration values that are Unit (`None`) are dropped from the output;
   sequence-valued iteration results are kept nested (no flattening). Output
   length therefore equals input length minus Unit-valued iterations.
+
+**Iterate** — stateful iteration with parameter passing between iterations,
+inspired by XSLT 3.0's `xsl:iterate`; shared with the REST-VKG (XML)
+serialization.
+```
+Abstract: (Name ⇀ Value) × Operation⟨quoted⟩
+          × Maybe (Name ⇀ Operation⟨quoted⟩) × Maybe Break → Sequence β
+Python:   execute_json only (interpreter-level special form)
+JSON:     params: Maybe object of name → form (eager)
+          · operation⟨quoted⟩: form or array of forms
+          · next-iteration⟨quoted⟩: Maybe object of name → form
+          · break: Maybe {name: String, equals: form}
+                   or {name: String, not-equals: form}
+```
+- `params` members are evaluated once, eagerly, in the enclosing environment
+  and bound as variables in a fresh loop scope (read via `$name`).
+- Each iteration evaluates `operation` in a fresh scope inside the loop scope
+  (array operands as in `ForEach`: the last non-Unit value). Unit-valued
+  iterations are dropped from the output; the result is the sequence of
+  iteration values, in order.
+- After the body, each `next-iteration` member is evaluated *in the
+  iteration's environment* — the loop parameters plus any bindings the body
+  made — in document order, each visible to the ones after it; the results
+  rebind the loop parameters for the next iteration. Without
+  `next-iteration`, exactly one iteration runs.
+- `break` is tested after the parameters are rebound: the lexical form of
+  the named loop variable is compared with the eagerly evaluated `equals`
+  (or `not-equals`) value; a missing variable compares as the empty string.
+  Exactly one of `equals`/`not-equals` is required (`ValueError` otherwise).
+  This is the structured form of the XML serialization's
+  `test="$name = 'literal'"` / `!=` condition.
+- The iteration count is bounded by a **normative cap of 1000**; reaching it
+  stops the loop (it is not an error), which keeps `Iterate` — and the
+  algebra — terminating.
+- `Iterate` does not establish a focus; the enclosing focus, if any, remains
+  visible to the body.
 
 **Filter** — positional selection from a sequence, XSLT-style.
 ```
@@ -781,9 +842,13 @@ JSON: `endpoint: URI`.
 - The JSON serialization here and the XML serialization used by REST-VKG are
   two concrete syntaxes of the same abstract algebra; operation names and
   abstract signatures are shared. Operations currently exclusive to one
-  implementation (e.g. `Iterate` in REST-VKG; `PATCH`, `Values`, `Filter`,
-  `Bindings`, `URI`, `Position`, `Last` and the schema operations here) are
-  slated for parity.
+  implementation (`PATCH`, `Values`, `Filter`, `Bindings`, `URI`, `Position`,
+  `Last` and the schema operations here) are slated for parity.
+- `Iterate` is shared with REST-VKG, whose implementation returns the merged
+  graph of the iteration results (the same fused `Merge ∘ …` specialization
+  as its `ForEach`) and additionally honors a `totalLimit` parameter capping
+  the merged graph's distinct subjects; the JSON serialization returns the
+  iteration-value sequence, and `Merge(Iterate(…))` expresses the fusion.
 - MCP exposure (`mcp_run`) is an interface adapter, not part of the algebra;
   its plain-JSON conversions are implementation detail.
 

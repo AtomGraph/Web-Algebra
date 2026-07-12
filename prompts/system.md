@@ -827,6 +827,43 @@ Result (example):
 }
 ```
 
+## Iterate(params: Dict, operation: Union[Callable, List[Callable]], next-iteration: Dict, break: Dict) -> List
+
+Stateful iteration with parameter passing between iterations, inspired by XSLT 3.0's `xsl:iterate`. Use it for cursor- or URL-driven pagination, where the next request depends on the previous response.
+
+- `params`: initial parameters (name → value/operation), bound as variables and read via `{"@op": "Value", "args": {"name": "$name"}}`.
+- `operation`: evaluated once per iteration; may be a list (executed in order, last non-null result is the iteration's value).
+- `next-iteration` (optional): name → operation, evaluated after each iteration — it sees the loop parameters *and* any `Variable` bindings the body made — and rebinds the parameters. Without it, exactly one iteration runs.
+- `break` (optional): `{"name": "param", "equals": "value"}` or `{"name": "param", "not-equals": "value"}`, tested after rebinding.
+
+Returns the list of iteration results. The iteration count is capped at 1000.
+
+### Example JSON
+
+```json
+{
+  "@op": "Iterate",
+  "args": {
+    "params": {
+      "url": {"@id": "https://api.example.com/items"}
+    },
+    "operation": [
+      {
+        "@op": "Variable",
+        "args": {"name": "page", "value": {"@op": "GET", "args": {"url": {"@op": "URI", "args": {"input": {"@op": "Value", "args": {"name": "$url"}}}}}}}
+      },
+      {"@op": "Value", "args": {"name": "$page"}}
+    ],
+    "next-iteration": {
+      "url": {"@op": "Value", "args": {"name": "$nextPageUrl"}}
+    },
+    "break": {"name": "url", "equals": ""}
+  }
+}
+```
+
+Result: a list with one RDF graph per fetched page (merge them with `Merge` if a single graph is needed).
+
 ## Position() -> int
 
 Returns the 1-based position of the current iteration item, like XPath's `fn:position()`. Only meaningful inside `ForEach`, which establishes the focus (item, position, size).
