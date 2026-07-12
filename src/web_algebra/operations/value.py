@@ -3,6 +3,7 @@ from typing import Any
 import logging
 from rdflib.query import ResultRow
 from mcp import types
+from web_algebra.focus import Focus
 from web_algebra.operation import Operation
 
 
@@ -39,8 +40,10 @@ class Value(Operation):
             )
             return result
         else:
-            # Context lookup (formal-semantics.md §3.5): Binding → bound term,
-            # mapping → member value, other object → attribute.
+            # Focus-item lookup (formal-semantics.md §3.5): Binding → bound
+            # term, mapping → member value, other object → attribute.
+            if isinstance(context, Focus):
+                context = context.item
             if isinstance(context, ResultRow):
                 # SPARQL result row - access by variable name
                 try:

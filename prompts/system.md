@@ -827,6 +827,34 @@ Result (example):
 }
 ```
 
+## Position() -> int
+
+Returns the 1-based position of the current iteration item, like XPath's `fn:position()`. Only meaningful inside `ForEach`, which establishes the focus (item, position, size).
+
+### Example JSON
+
+```json
+{
+  "@op": "Position"
+}
+```
+
+Result (example): `2` (an `xsd:integer` literal) while processing the second row.
+
+## Last() -> int
+
+Returns the size of the sequence being iterated, like XPath's `fn:last()`. Only meaningful inside `ForEach`. Combine with `Position` for progress-style values, e.g. "item 2 of 10".
+
+### Example JSON
+
+```json
+{
+  "@op": "Last"
+}
+```
+
+Result (example): `10` (an `xsd:integer` literal) while iterating ten rows.
+
 ## ExtractClasses(endpoint: str) -> Graph
 
 Extracts OWL classes from an RDF dataset via SPARQL endpoint.

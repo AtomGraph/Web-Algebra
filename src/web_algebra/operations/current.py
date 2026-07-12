@@ -1,5 +1,6 @@
 from typing import Any
 from mcp import types
+from web_algebra.focus import Focus
 from web_algebra.operation import Operation
 
 
@@ -28,14 +29,19 @@ class Current(Operation):
         return current_item
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> Any:
-        """JSON execution: return current context item"""
-        # No iteration context established (formal-semantics.md §3.5) — the
-        # interpreter's default context is an empty dict.
+        """JSON execution: return the current focus item"""
+        # The focus is established by ForEach (formal-semantics.md §3.5);
+        # Current yields its item.
+        if isinstance(self.context, Focus):
+            return self.execute(self.context.item)
+
+        # No focus established — the interpreter's default context is an
+        # empty dict.
         if self.context is None or (
             isinstance(self.context, dict) and not self.context
         ):
             raise ValueError(
-                "Current requires an iteration context (only ForEach establishes one)"
+                "Current requires an iteration focus (only ForEach establishes one)"
             )
 
         return self.execute(self.context)

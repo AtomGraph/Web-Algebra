@@ -1,6 +1,7 @@
 from typing import Any, List, Union
 import logging
 from mcp import types
+from web_algebra.focus import Focus
 from web_algebra.operation import Operation
 from rdflib.query import Result
 
@@ -79,8 +80,13 @@ class ForEach(Operation):
             )
 
         results = []
-        for item in items:
+        size = len(items)
+        for position, item in enumerate(items, start=1):
             logging.info("Processing item: %s", item)
+
+            # The focus (item, position, size) per formal-semantics.md §3.5,
+            # accessed by Current/Position/Last and focus-item Value lookups.
+            focus = Focus(item=item, position=position, size=size)
 
             # Each iteration runs in a fresh variable scope
             # (formal-semantics.md §3.4): bindings made inside one iteration
@@ -89,7 +95,7 @@ class ForEach(Operation):
             try:
                 # Handle list of operations or single operation
                 if isinstance(operation, list):
-                    # Execute operations in sequence, with item as context;
+                    # Execute operations in sequence under the focus;
                     # the iteration's value is the last non-Unit result.
                     last_result = None
 
@@ -97,7 +103,7 @@ class ForEach(Operation):
                         result = Operation.process_json(
                             self.settings,
                             op,
-                            context=item,
+                            context=focus,
                             variable_stack=variable_stack,
                         )
                         if result is not None:
@@ -111,7 +117,7 @@ class ForEach(Operation):
                     result = Operation.process_json(
                         self.settings,
                         operation,
-                        context=item,
+                        context=focus,
                         variable_stack=variable_stack,
                     )
                     # Only collect non-None results

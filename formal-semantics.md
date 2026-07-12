@@ -29,6 +29,8 @@ Position    = integer ≥ 1 (XSLT-style 1-based index)
 Unit        = no meaningful value (an operation executed for its effect)
 Context     = the current iteration item (see §3.5); one of
               Binding + Term + Graph + JSON value
+Focus       = Context × Position × Position — the dynamic context of an
+              iteration: (item, position, size), exactly XSLT's focus (§3.5)
 Environment = stack of variable scopes; each scope maps names to values
 Operation   = an unevaluated operation form (see quoting, §3.3)
 ```
@@ -190,8 +192,8 @@ Lisp sense, and their quoted operands are evaluated under a different regime
 
 | Operation | Operand | Evaluation regime |
 |-----------|---------|-------------------|
-| `ForEach` | `operation` | once per iteration item, with that item as context |
-| `Execute` | `operation` | once, in the current context and environment |
+| `ForEach` | `operation` | once per iteration item, under the focus *(item, position, size)* |
+| `Execute` | `operation` | once, under the current focus and environment |
 
 All other arguments of all operations are eagerly evaluated. An operation not
 in this table never sees an unevaluated form.
@@ -217,16 +219,25 @@ name: `Variable` binds `name`, `Value` reads `$name`. Because the sigil
 decides the lookup domain, variable and context lookups never shadow each
 other.
 
-### 3.5 Context
+### 3.5 Focus
 
-The context is the current iteration item. It is established *only* by
-`ForEach`, which evaluates its quoted `operation` once per item with that item
-as context; nested `ForEach` shadows the outer context for the extent of its
-own operand. Outside any iteration there is no context, and operations that
-require one (`Current`, context-lookup `Value`) raise `ValueError`.
+The **focus** is the dynamic context of an iteration — the triple
+*(item, position, size)*, exactly XSLT's dynamic-context triple. It is
+established *only* by `ForEach`, which evaluates its quoted `operation` once
+per item with the focus *(item i, i, n)* where *n* is the number of items;
+within any evaluation of the operand, 1 ≤ position ≤ size. A nested `ForEach`
+shadows the outer focus for the extent of its own operand. Outside any
+iteration there is no focus, and operations that require one raise
+`ValueError`.
 
-- `Current` yields the context item itself.
-- `Value` with an unprefixed name looks the name up *in* the context item:
+The focus accessors, named after their XSLT/XPath counterparts:
+
+- `Current` yields the focus item itself (XSLT `current()`).
+- `Position` yields the item's 1-based position as an `xsd:integer` Literal
+  (XPath `fn:position()`).
+- `Last` yields the iteration size as an `xsd:integer` Literal (XPath
+  `fn:last()`).
+- `Value` with an unprefixed name looks the name up *in* the focus item:
   - `Binding` (SPARQL row): the term bound to that variable name;
   - mapping (e.g. a JSON object item): the member value;
   - any other object: the attribute of that name;
@@ -265,7 +276,7 @@ Failures raise Python exceptions per this table (normative):
 | missing required argument key | `KeyError` |
 | argument or operand of the wrong type (any layer) | `TypeError` |
 | unknown variable in `$name` lookup | `ValueError` |
-| context lookup miss, or no context established | `ValueError` |
+| focus-item lookup miss, or no focus established | `ValueError` |
 | `Filter` position < 1 or > length | `ValueError` |
 | regular-expression errors in `Replace` — invalid pattern or flags, zero-length-matching pattern, invalid replacement (XPath `err:FORX000*`) | `ValueError` |
 | unknown `type` in SPARQL JSON term form | `ValueError` |
@@ -277,6 +288,133 @@ Type checking is strict: operations validate their inputs and raise `TypeError`
 kinds; the only implicit conversion anywhere is scalar coercion (§2.2) and
 string-compatibility (§4.2).
 
+### 3.8 Formal definition
+
+This section is the definition; §§3.2–3.7 restate it in prose, and on any
+disagreement this section wins.
+
+**Abstract syntax.** Forms `e` (concrete syntax per §2.2):
+
+```
+e ::= s                          scalar: string | integer | double | boolean
+    | {"@id": e}                 URI reference
+    | {k₁: e₁, …, kₙ: eₙ}        generic object (no reserved keys)
+    | data                       RDF data form (JSON-LD object; may contain
+                                 operation-call holes)
+    | [e₁, …, eₙ]                sequence
+    | op(k₁: e₁, …, kₙ: eₙ)      operation call, op a catalog name; operands
+                                 marked ⟨quoted⟩ in the catalog are taken as
+                                 unevaluated forms
+```
+
+**Semantic domains.**
+
+```
+v ∈ Value                        §3.1
+ρ ∈ Env    = Scope*              stack of scopes; Scope = Name ⇀ Value
+φ ∈ Focus⊥ = (Value × ℕ⁺ × ℕ⁺) + ⊥    (item, position, size), or absent
+σ ∈ World                        external web state (graphs behind URIs,
+                                 endpoint contents); opaque
+```
+
+Each catalog operation `op` that is not treated by a rule below is a plain
+operator with an interpretation
+
+```
+δ_op : Value* × World → (Value × World) + Err
+```
+
+*Pure* operations neither read nor write the World; *query* operations read
+it; *update* operations read and write it; `STRUUID` and `SPARQLString` are
+relations rather than functions (non-determinism, §3.6).
+
+**Judgments.**
+
+```
+ρ, φ ⊢ ⟨e, σ⟩ ⇓ ⟨v, ρ′, σ′⟩      e evaluates to v
+ρ, φ ⊢ ⟨e, σ⟩ ⇓ err E            e fails with E (per the §3.7 table)
+```
+
+The environment is threaded in *and out* because `Variable` writes into the
+innermost scope; since binding only ever targets the innermost scope, popping
+a scope restores the environment that surrounded it. Error propagation is
+left-to-right: the first failing premise's error is the conclusion of the
+rule (propagation rules are omitted below).
+
+**Rules.**
+
+```
+(SCALAR)     ─────────────────────────────────────
+             ρ, φ ⊢ ⟨s, σ⟩ ⇓ ⟨coerce(s), ρ, σ⟩          coerce per §2.2
+                                                        (null: err TypeError)
+
+             ρ, φ ⊢ ⟨e, σ⟩ ⇓ ⟨t, ρ′, σ′⟩      t ∈ Term
+(URI-REF)    ─────────────────────────────────────
+             ρ, φ ⊢ ⟨{"@id": e}, σ⟩ ⇓ ⟨uri(lex(t)), ρ′, σ′⟩
+
+             ρᵢ₋₁, φ ⊢ ⟨eᵢ, σᵢ₋₁⟩ ⇓ ⟨vᵢ, ρᵢ, σᵢ⟩      (i = 1…n, document order)
+(OBJ)        ─────────────────────────────────────
+             ρ₀, φ ⊢ ⟨{k₁:e₁,…,kₙ:eₙ}, σ₀⟩ ⇓ ⟨{k₁:v₁,…,kₙ:vₙ}, ρₙ, σₙ⟩
+
+(DATA)       as (OBJ), but only operation-call holes are evaluated (threaded
+             in document order); all other members are left untouched and the
+             value is the resulting JSON structure
+
+             ρ₀ = ρ·∅      ρᵢ₋₁, φ ⊢ ⟨eᵢ, σᵢ₋₁⟩ ⇓ ⟨vᵢ, ρᵢ, σᵢ⟩      (i = 1…n)
+(SEQ)        ─────────────────────────────────────
+             ρ, φ ⊢ ⟨[e₁,…,eₙ], σ₀⟩ ⇓ ⟨[v₁,…,vₙ], pop(ρₙ), σₙ⟩
+
+             op has no quoted operands
+             ρᵢ₋₁, φ ⊢ ⟨eᵢ, σᵢ₋₁⟩ ⇓ ⟨vᵢ, ρᵢ, σᵢ⟩      (i = 1…n, document order)
+             δ_op(v₁,…,vₙ, σₙ) = (v, σ′)
+(CALL)       ─────────────────────────────────────
+             ρ₀, φ ⊢ ⟨op(k₁:e₁,…,kₙ:eₙ), σ₀⟩ ⇓ ⟨v, ρₙ, σ′⟩
+
+             ρ, φ ⊢ ⟨e, σ⟩ ⇓ ⟨v, ρ′, σ′⟩
+(VARIABLE)   ─────────────────────────────────────
+             ρ, φ ⊢ ⟨Variable(name: x, value: e), σ⟩
+                 ⇓ ⟨unit, bind(ρ′, x, v), σ′⟩
+             bind writes x ↦ v into the innermost scope (pushing one onto an
+             empty stack); rebinding overwrites
+
+(VALUE-VAR)  ρ, φ ⊢ ⟨Value(name: $x), σ⟩ ⇓ ⟨lookup(ρ, x), ρ, σ⟩
+             lookup searches scopes innermost→outermost; miss: err ValueError
+
+(VALUE-CTX)  φ = (c, i, n)
+             ρ, φ ⊢ ⟨Value(name: x), σ⟩ ⇓ ⟨member(c, x), ρ, σ⟩
+             member per §3.5 (Binding | mapping | attribute);
+             φ = ⊥ or miss: err ValueError
+
+(CURRENT)    φ = (c, i, n)   ⇒   ρ, φ ⊢ ⟨Current(), σ⟩ ⇓ ⟨c, ρ, σ⟩
+(POSITION)   φ = (c, i, n)   ⇒   ρ, φ ⊢ ⟨Position(), σ⟩ ⇓ ⟨int(i), ρ, σ⟩
+(LAST)       φ = (c, i, n)   ⇒   ρ, φ ⊢ ⟨Last(), σ⟩ ⇓ ⟨int(n), ρ, σ⟩
+             each: φ = ⊥ ⇒ err ValueError; int(·) is an xsd:integer Literal
+
+             ρ, φ ⊢ ⟨e_sel, σ⟩ ⇓ ⟨C, ρ′, σ₀⟩      items(C) = c₁ … cₙ
+             ρ′·∅, (cᵢ, i, n) ⊢ ⟨q, σᵢ₋₁⟩ ⇓ ⟨wᵢ, _, σᵢ⟩      (i = 1…n)
+(FOREACH)    ─────────────────────────────────────
+             ρ, φ ⊢ ⟨ForEach(select: e_sel, operation: q⟨quoted⟩), σ⟩
+                 ⇓ ⟨[wᵢ | wᵢ ≠ unit], ρ′, σₙ⟩
+             items(Sequence) = its elements; items(Result) = its rows in
+             result order; other C: err TypeError. If q is an array
+             [q₁,…,q_m], the premise evaluates it as a sequence within the
+             iteration's scope and wᵢ is the last non-unit element value.
+
+             q is an operation-call form      ρ, φ ⊢ ⟨q, σ⟩ ⇓ ⟨v, ρ′, σ′⟩
+(EXECUTE)    ─────────────────────────────────────
+             ρ, φ ⊢ ⟨Execute(operation: q⟨quoted⟩), σ⟩ ⇓ ⟨v, ρ′, σ′⟩
+```
+
+**Metatheory.** Because forms are finite terms, there is no recursion, and
+`ForEach` iterates a *computed, finite* sequence, every evaluation terminates
+provided every δ_op does (structural induction on forms, with (FOREACH)
+measured by the size of `items(C)`). Evaluation is deterministic up to the
+declared non-deterministic operators and the World's own behavior. In
+(FOREACH), each iteration's environment writes are confined to its fresh
+scope and results are indexed by position, so evaluating iterations
+concurrently is observationally equivalent for programs that do not rely on
+cross-iteration effect ordering — the license granted in §3.6.
+
 ## 4. Operation Catalog (normative)
 
 Catalog entry conventions: the *Abstract* signature is in the type language of
@@ -287,7 +425,7 @@ expected value types after evaluation; ⟨quoted⟩ marks quoted operands (§3.3
 ### 4.1 Control flow, variables, context
 
 **ForEach** — evaluate an operation once per item of a sequence or per row of
-a SPARQL result; the item is the context (§3.5).
+a SPARQL result; establishes the focus *(item, position, size)* (§3.5).
 ```
 Abstract: (Sequence α + Result) × Operation⟨quoted⟩ → Sequence β
 Python:   execute_json only (interpreter-level special form)
@@ -295,7 +433,8 @@ JSON:     select: Sequence α + Result · operation⟨quoted⟩: form or array o
 ```
 - Iterates a `Sequence` item-by-item, a `Result` row-by-row in result order.
   Any other `select` value raises `TypeError`.
-- Each iteration runs in a fresh variable scope with the item as context.
+- Each iteration runs in a fresh variable scope under the focus
+  *(item i, i, n)*.
 - If `operation` is an array, its forms evaluate in order within the
   iteration's scope and the iteration's value is the *last* non-Unit value.
 - Iteration values that are Unit (`None`) are dropped from the output;
@@ -331,22 +470,41 @@ JSON:     name: String (plain JSON string, not a form) · value: any form
   in a `ForEach` operation array, Unit values do not become the iteration's
   value.
 
-**Value** — read a variable (`$name`) or a context member (`name`). §3.4–3.5.
+**Value** — read a variable (`$name`) or a focus-item member (`name`). §3.4–3.5.
 ```
 Abstract: String → Any
 Python:   def execute(self, name: str, context: Any, variable_stack: list) -> Any
 JSON:     name: String (plain JSON string; `$` prefix selects variable lookup)
 ```
 
-**Current** — the context item itself (like XSLT `current()`).
+**Current** — the focus item itself, per XSLT `current()`.
 ```
 Abstract: () → Context
 Python:   def execute(self, current_item: Any) -> Any
 JSON:     (no arguments)
 ```
-- Raises `ValueError` when no context is established (§3.5).
+- Raises `ValueError` when no focus is established (§3.5).
 
-**Execute** — evaluate a quoted operation form in the current context and
+**Position** — the 1-based position of the focus item, per XPath
+`fn:position()`.
+```
+Abstract: () → Literal
+Python:   def execute(self, focus: Focus) -> Literal
+JSON:     (no arguments)
+```
+- An `xsd:integer` Literal; within a focus, 1 ≤ position ≤ size. Raises
+  `ValueError` when no focus is established (§3.5).
+
+**Last** — the size of the iterated sequence, per XPath `fn:last()`.
+```
+Abstract: () → Literal
+Python:   def execute(self, focus: Focus) -> Literal
+JSON:     (no arguments)
+```
+- An `xsd:integer` Literal. Raises `ValueError` when no focus is established
+  (§3.5).
+
+**Execute** — evaluate a quoted operation form under the current focus and
 environment.
 ```
 Abstract: Operation⟨quoted⟩ → Any
@@ -594,7 +752,8 @@ JSON: `endpoint: URI`.
   two concrete syntaxes of the same abstract algebra; operation names and
   abstract signatures are shared. Operations currently exclusive to one
   implementation (e.g. `Iterate` in REST-VKG; `PATCH`, `Values`, `Filter`,
-  `Bindings`, `URI` and the schema operations here) are slated for parity.
+  `Bindings`, `URI`, `Position`, `Last` and the schema operations here) are
+  slated for parity.
 - MCP exposure (`mcp_run`) is an interface adapter, not part of the algebra;
   its plain-JSON conversions are implementation detail.
 

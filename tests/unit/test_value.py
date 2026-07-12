@@ -30,10 +30,18 @@ class TestValuePure:
         assert result == Literal("outer")
 
     def test_mapping_context_lookup(self, settings):
-        # §3.5: mapping context item → member value
+        # §3.5: mapping focus item → member value
         op = Operation.get("Value")(settings=settings)
         result = op.execute("city", {"city": Literal("Vilnius")}, [])
         assert result == Literal("Vilnius")
+
+    def test_lookup_unwraps_the_focus(self, settings):
+        # §3.5: the unprefixed lookup targets the focus *item*
+        from web_algebra.focus import Focus
+
+        op = Operation.get("Value")(settings=settings)
+        focus = Focus(item={"city": Literal("Vilnius")}, position=1, size=1)
+        assert op.execute("city", focus, []) == Literal("Vilnius")
 
     def test_attribute_context_lookup(self, settings):
         # §3.5: any other object → the attribute of that name

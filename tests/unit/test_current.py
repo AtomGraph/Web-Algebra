@@ -34,3 +34,13 @@ class TestCurrentJson:
         op = op_cls(settings=settings, context=ctx_value)
         result = op.execute_json({})
         assert result == ctx_value
+
+    def test_yields_the_focus_item(self, settings):
+        # §3.5: Current yields the focus item itself, not the focus triple
+        from web_algebra.focus import Focus
+
+        op = Operation.get("Current")(
+            settings=settings,
+            context=Focus(item=Literal("the-item"), position=2, size=3),
+        )
+        assert op.execute_json({}) == Literal("the-item")

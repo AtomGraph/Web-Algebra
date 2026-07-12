@@ -71,6 +71,8 @@ The operations cover read-write Linked Data, SPARQL queries, URI manipulation, a
   - `Filter`
   - `Bindings`
   - `Current`
+  - `Position`
+  - `Last`
   - `Execute`
   - `Merge`
 - LinkedDataHub-specific
