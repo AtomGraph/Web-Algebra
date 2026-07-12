@@ -70,9 +70,12 @@ class Substitute(Operation, MCPTool):
             raise TypeError(
                 f"Substitute.execute expects var to be Literal, got {type(var)}"
             )
-        if not isinstance(binding_value, (URIRef, Literal, BNode)):
+        if not isinstance(binding_value, (URIRef, Literal)):
+            # formal-semantics.md §4.3: a blank-node label in a query is a
+            # fresh variable, not a reference — substituting one is
+            # meaningless, so BNode is rejected along with non-Terms.
             raise TypeError(
-                f"Substitute.execute expects binding_value to be URIRef, Literal, or BNode, got {type(binding_value)}"
+                f"Substitute.execute expects binding_value to be URIRef or Literal, got {type(binding_value)}"
             )
 
         query_str = str(query)
@@ -86,7 +89,7 @@ class Substitute(Operation, MCPTool):
 
         return Literal(substituted_query, datatype=XSD.string)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Literal:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Literal:
         """JSON execution: process arguments and call pure function"""
         # Process query
         query_data = Operation.process_json(
@@ -185,8 +188,6 @@ class ParameterizedSparqlString:
                 return f'"{node}"^^<{node.datatype}>'
             else:
                 return f'"{node}"'
-        elif isinstance(node, BNode):
-            return f"_: {node}"
         else:
             raise ValueError("Unsupported RDFLib node type")
 

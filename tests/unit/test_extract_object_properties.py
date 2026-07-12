@@ -17,12 +17,13 @@ class TestExtractObjectPropertiesPure:
         with pytest.raises(TypeError):
             op.execute(Literal("not-a-uri"))
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): is the URI a SPARQL endpoint, document URL, or ontology IRI?")
-    def test_happy_path(self, settings):
-        pass
+    # §4.6: the URI names a SPARQL endpoint; the happy path queries it and
+    # is covered under the `sparql` marker via the live suite.
 
 
 class TestExtractObjectPropertiesJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): JSON arg key not given by spec or existing fixtures")
-    def test_json_dispatch(self, settings):
-        pass
+    def test_wrong_endpoint_type_raises_before_network(self, settings):
+        # §4.6 JSON: endpoint: URI. §3.7: strict typing before any effect.
+        op = Operation.get("ExtractObjectProperties")(settings=settings)
+        with pytest.raises(TypeError):
+            op.execute_json({"endpoint": "http://example.org/sparql"})

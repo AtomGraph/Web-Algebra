@@ -46,9 +46,10 @@ class Filter(Operation):
             # Positional filtering (current implementation)
             filtered_items = self._apply_positional_filter(items, expression)
         else:
-            # Future: could support other expression types (boolean expressions, etc.)
-            raise NotImplementedError(
-                f"Filter expression type {type(expression)} not yet supported"
+            # formal-semantics.md §4.1: only positional (integer) expressions
+            # are defined in this version of the algebra.
+            raise TypeError(
+                f"Filter expects an integer position expression, got {type(expression)}"
             )
 
         # Return single item directly if only one result (XSLT semantics)
@@ -57,7 +58,7 @@ class Filter(Operation):
         return filtered_items
 
     def execute_json(
-        self, arguments: dict, variable_stack: list = []
+        self, arguments: dict, variable_stack: list = None
     ) -> Union[list, Any]:
         """JSON execution: process arguments with support for both Result and sequence"""
         # Process input

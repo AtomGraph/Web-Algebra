@@ -97,7 +97,7 @@ class Replace(Operation, MCPTool):
         return Literal(formatted_string, datatype=XSD.string)
 
     def execute_json(
-        self, arguments: dict, variable_stack: list = []
+        self, arguments: dict, variable_stack: list = None
     ) -> Literal:
         """JSON execution: process arguments with strict type checking"""
         # Process input - allow implicit string conversion

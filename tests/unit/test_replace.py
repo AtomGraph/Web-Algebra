@@ -38,9 +38,11 @@ class TestReplacePure:
         with pytest.raises(TypeError):
             op.execute(Literal("Hello"), Literal("e"), URIRef("http://example.org/x"))
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): regex vs literal pattern semantics — class name and SPARQL parallel suggest regex but spec is silent")
-    def test_regex_metacharacter_treated_as_regex(self, settings):
-        pass
+    def test_pattern_is_a_regular_expression(self, settings):
+        # §4.2: the pattern is a regular expression (Python re dialect)
+        op = Operation.get("Replace")(settings=settings)
+        result = op.execute(Literal("a1b2c3"), Literal("[0-9]"), Literal("#"))
+        assert str(result) == "a#b#c#"
 
 
 class TestReplaceJson:

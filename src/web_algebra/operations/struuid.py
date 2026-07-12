@@ -29,7 +29,7 @@ class STRUUID(Operation, MCPTool):
         logging.info("Generated UUID: %s", generated_uuid)
         return Literal(generated_uuid, datatype=XSD.string)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Literal:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Literal:
         """JSON execution: process arguments and call pure function"""
         return self.execute()
 

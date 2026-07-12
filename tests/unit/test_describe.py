@@ -37,6 +37,14 @@ class TestDESCRIBELive:
 
 
 class TestDESCRIBEJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): DESCRIBE JSON arg shape not exemplified by existing fixtures")
-    def test_json_dispatch(self, settings):
-        pass
+    def test_wrong_endpoint_type_raises_before_network(self, settings):
+        # §4.3 JSON: endpoint: URI · query: Literal (xsd:string).
+        # §3.7: strict typing before any effect.
+        op = Operation.get("DESCRIBE")(settings=settings)
+        with pytest.raises(TypeError):
+            op.execute_json(
+                {
+                    "endpoint": "http://example.org/sparql",
+                    "query": "DESCRIBE <http://ex/x>",
+                }
+            )

@@ -43,7 +43,7 @@ class Concat(Operation, MCPTool):
 
         return Literal(result_str, datatype=XSD.string)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Literal:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Literal:
         """JSON execution: process arguments and call pure function"""
         inputs_data = arguments["inputs"]
         

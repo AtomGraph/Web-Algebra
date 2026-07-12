@@ -47,7 +47,7 @@ class ExtractOntology(Operation):
 
         return ontology_graph
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Graph:
         """JSON execution: process arguments with strict type checking"""
         # Process endpoint
         endpoint_data = Operation.process_json(

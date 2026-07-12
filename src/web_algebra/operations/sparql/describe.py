@@ -59,7 +59,7 @@ class DESCRIBE(Operation, MCPTool):
         # Convert JSON-LD response to RDF Graph
         return self.to_graph(json_ld_response)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Graph:
         """JSON execution: process arguments and return Graph (same as execute)"""
         # Process endpoint
         endpoint_data = Operation.process_json(

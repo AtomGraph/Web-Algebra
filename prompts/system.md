@@ -9,9 +9,11 @@ Your output must be a **JSON-formatted structure** of operation calls, where **o
 - **Operations must be represented as JSON objects**. Each operation corresponds to a function call with a specific signature.
 - **Operations may be nested inside arguments** to indicate dependencies.
 - **A result can be used directly as an argument in another operation** instead of requiring explicit intermediate variables.
+- **URIs are written with the URI reference form** `{"@id": "https://..."}` — an object whose only member is `@id`. A plain JSON string is **always a string literal, never a URI**. To produce a URI from a computed value, use `URI` or `ResolveURI`.
 - **ForEach supports executing multiple operations sequentially** when provided with a list of operations. Each operation in the list is executed for every row in the table before moving to the next row.
 - **Where an operation returns or expects RDF data, it is handled internally as an `rdflib.Graph`, but is represented as JSON-LD in the JSON structure.**
 - **SPARQL tabular data** (e.g., from `SELECT`) can be provided inline as a list of bindings, while **RDF Graph data** (e.g., from `GET`, `CONSTRUCT`, or merges) can be provided inline as JSON-LD objects.
+- **A document may optionally be wrapped in an envelope** `{"@web-algebra": "1", "name": "...", "description": "...", "program": [...]}`; the bare operation object or array remains valid.
 
 ## Example JSON Output
 
@@ -28,7 +30,9 @@ would produce this JSON output:
     "select": {
       "@op": "SELECT",
       "args": {
-        "endpoint": "https://dbpedia.org/sparql",
+        "endpoint": {
+          "@id": "https://dbpedia.org/sparql"
+        },
         "query": {
           "@op": "SPARQLString",
           "args": {
@@ -43,7 +47,9 @@ would produce this JSON output:
         "url": {
           "@op": "ResolveURI",
           "args": {
-            "base": "http://localhost/denmark/",
+            "base": {
+              "@id": "http://localhost/denmark/"
+            },
             "relative": {
               "@op": "Value",
               "args": {
@@ -56,7 +62,7 @@ would produce this JSON output:
           "@op": "GET",
           "args": {
             "url": {
-              "@op": "Str",
+              "@op": "URI",
               "args": {
                 "input": {
                   "@op": "Value",

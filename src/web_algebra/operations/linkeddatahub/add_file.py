@@ -165,7 +165,7 @@ class AddFile(Operation, MCPTool):
             ],
         )
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments with strict type checking."""
         url_data = Operation.process_json(
             self.settings, arguments["url"], self.context, variable_stack

@@ -46,7 +46,7 @@ class Str(Operation):
         return Literal(str(term), datatype=XSD.string)
 
     def execute_json(
-        self, arguments: dict, variable_stack: list = []
+        self, arguments: dict, variable_stack: list = None
     ) -> Literal:
         """JSON execution: processes JSON args, returns RDFLib string literal"""
         # Process the input argument through the JSON system

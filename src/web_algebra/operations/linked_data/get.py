@@ -53,7 +53,7 @@ class GET(Operation, MCPTool):
 
         return graph
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Graph:
         """JSON execution: process arguments and delegate to execute()"""
         url_data = Operation.process_json(
             self.settings, arguments["url"], self.context, variable_stack

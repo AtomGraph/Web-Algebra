@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any
 import logging
 from rdflib.query import ResultRow
@@ -38,13 +39,18 @@ class Value(Operation):
             )
             return result
         else:
-            # Context binding reference
+            # Context lookup (formal-semantics.md §3.5): Binding → bound term,
+            # mapping → member value, other object → attribute.
             if isinstance(context, ResultRow):
                 # SPARQL result row - access by variable name
                 try:
                     return context[name]  # Already RDFLib term
                 except KeyError:
                     raise ValueError(f"Variable '{name}' not found in ResultRow")
+            elif isinstance(context, Mapping):
+                if name in context:
+                    return context[name]
+                raise ValueError(f"Context member '{name}' not found in mapping")
             else:
                 # Other context types
                 if hasattr(context, name):
@@ -53,8 +59,10 @@ class Value(Operation):
                     f"Context variable '{name}' not found in {type(context)}"
                 )
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Any:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Any:
         """JSON execution: processes JSON args, returns value (RDFLib term or raw value)"""
+        if variable_stack is None:
+            variable_stack = []
         var_name: str = arguments["name"]
         logging.info("Resolving Value variable: %s", var_name)
 

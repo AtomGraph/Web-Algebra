@@ -53,7 +53,7 @@ class Operation(ABC, BaseModel):
 
     @abstractmethod
     def execute_json(
-        self, arguments: dict, variable_stack: list = []
+        self, arguments: dict, variable_stack: list = None
     ) -> Union[Node, Result, Graph]:
         """JSON execution: processes JSON args, returns RDFLib objects"""
         pass
@@ -75,15 +75,37 @@ class Operation(ABC, BaseModel):
     def get(cls, name: str) -> Optional[Type["Operation"]]:
         return cls.registry.get(name)
 
+    @staticmethod
+    def unwrap_document(json_data: Any) -> Any:
+        """Unwrap an optional document envelope (formal-semantics.md §2.1).
+
+        An envelope is a top-level object whose `@web-algebra` member names
+        the dialect version and whose `program` member holds the form(s) to
+        evaluate; other members (`name`, `description`, ...) are informative
+        and ignored. Bare documents pass through unchanged. The envelope is
+        recognized at the document top level only.
+        """
+        if isinstance(json_data, dict) and "@web-algebra" in json_data:
+            if "program" not in json_data:
+                raise ValueError(
+                    "Web Algebra envelope is missing its 'program' member"
+                )
+            return json_data["program"]
+        return json_data
+
     @classmethod
     def process_json(
         cls,
         settings: BaseSettings,
         json_data: Any,
-        context: dict = {},
-        variable_stack: list = [],
+        context: dict = None,
+        variable_stack: list = None,
     ) -> Any:
         """Class method for processing JSON with @op structures"""
+        if context is None:
+            context = {}
+        if variable_stack is None:
+            variable_stack = []
         if isinstance(json_data, dict):
             if "@op" in json_data:
                 op_name = json_data["@op"]
@@ -98,6 +120,18 @@ class Operation(ABC, BaseModel):
 
                 # Return RDFLib objects as-is for operation chaining
                 return result
+
+            # URI reference form (formal-semantics.md §2.2 rule 2): an object
+            # whose ONLY member is `@id` evaluates to a URI. This is JSON-LD's
+            # node-reference syntax — a bare node reference carries no triples,
+            # so reusing it as the URI form is unambiguous. Inside an RDF data
+            # form this rule never fires: `_resolve_jsonld` walks those without
+            # re-entering this dispatch for non-`@op` objects.
+            if set(json_data.keys()) == {"@id"}:
+                inner = cls.process_json(
+                    settings, json_data["@id"], context, variable_stack
+                )
+                return URIRef(str(inner))
 
             # JSON-LD shape recognition — a dict carrying any JSON-LD reserved
             # key is RDF data (a JSON-LD document or fragment), not generic
@@ -128,13 +162,18 @@ class Operation(ABC, BaseModel):
             }
 
         elif isinstance(json_data, list):
-            # For sequential operations, share variable stack to allow accumulation
-            results = []
-            current_stack = variable_stack.copy()
-            for item in json_data:
-                result = cls.process_json(settings, item, context, current_stack)
-                results.append(result)
-            return results
+            # Sequence form (formal-semantics.md §3.2): elements evaluate in
+            # order in a fresh variable scope, so a Variable bound in step N is
+            # visible to steps N+1.. and to nested forms, and goes out of scope
+            # when the sequence ends.
+            variable_stack.append({})
+            try:
+                return [
+                    cls.process_json(settings, item, context, variable_stack)
+                    for item in json_data
+                ]
+            finally:
+                variable_stack.pop()
 
         else:
             # Convert plain values to RDFLib terms
@@ -145,8 +184,8 @@ class Operation(ABC, BaseModel):
         cls,
         settings: BaseSettings,
         json_data: Any,
-        context: dict = {},
-        variable_stack: list = [],
+        context: dict = None,
+        variable_stack: list = None,
     ) -> Any:
         """Resolve embedded `@op` nodes inside a JSON-LD document in place.
 
@@ -173,19 +212,6 @@ class Operation(ABC, BaseModel):
             ]
         else:
             return json_data
-
-    @staticmethod
-    def _serialize_for_json_context(obj) -> Any:
-        """Convert RDFLib objects to appropriate format for JSON consumption"""
-        if isinstance(obj, (URIRef, Literal, BNode)):
-            return str(obj)  # Convert RDFLib terms to strings for JSON-LD
-        elif hasattr(obj, "to_json") and callable(obj.to_json):
-            return obj.to_json()  # Convert Result to SPARQL JSON format
-        elif isinstance(obj, Graph):
-            # Keep graphs as-is for now - they'll be serialized by HTTP operations
-            return obj
-        else:
-            return obj
 
     # Variable stack management methods
     def push_variable_scope(self, variable_stack: list):
@@ -244,6 +270,9 @@ class Operation(ABC, BaseModel):
     @staticmethod
     def json_to_rdflib(data) -> Node:
         """Convert JSON/binding objects to RDFLib terms"""
+        if data is None:
+            # formal-semantics.md §2.2: null is not a valid form.
+            raise TypeError("null is not a valid Web Algebra form")
         if isinstance(data, dict) and "type" in data and "value" in data:
             # SPARQL binding object - values may have been processed to RDFLib terms
             type_str = str(data["type"])  # Convert potential Literal to string
@@ -275,12 +304,13 @@ class Operation(ABC, BaseModel):
         elif isinstance(data, str):
             # Plain string → always convert to string literal
             return Literal(data, datatype=XSD.string)
+        elif isinstance(data, bool):
+            # bool before int — bool is an int subclass in Python
+            return Literal(data, datatype=XSD.boolean)
         elif isinstance(data, int):
             return Literal(data, datatype=XSD.integer)
         elif isinstance(data, float):
             return Literal(data, datatype=XSD.double)
-        elif isinstance(data, bool):
-            return Literal(data, datatype=XSD.boolean)
         else:
             # Default: convert to string literal
             return Literal(str(data), datatype=XSD.string)
@@ -291,12 +321,13 @@ class Operation(ABC, BaseModel):
         if isinstance(value, str):
             # Plain string → always convert to string literal
             return Literal(value, datatype=XSD.string)
+        elif isinstance(value, bool):
+            # bool before int — bool is an int subclass in Python
+            return Literal(value, datatype=XSD.boolean)
         elif isinstance(value, int):
             return Literal(value, datatype=XSD.integer)
         elif isinstance(value, float):
             return Literal(value, datatype=XSD.double)
-        elif isinstance(value, bool):
-            return Literal(value, datatype=XSD.boolean)
         else:
             return Literal(str(value), datatype=XSD.string)
 

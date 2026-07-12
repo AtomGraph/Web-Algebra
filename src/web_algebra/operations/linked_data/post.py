@@ -79,7 +79,7 @@ class POST(Operation, MCPTool):
             ],
         )
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments with strict type checking"""
         # Process URL
         url_data = Operation.process_json(

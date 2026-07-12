@@ -27,10 +27,16 @@ class Current(Operation):
         """Pure function: return current sequence item"""
         return current_item
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Any:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Any:
         """JSON execution: return current context item"""
-        if self.context is None:
-            raise ValueError("Current operation requires context")
+        # No iteration context established (formal-semantics.md §3.5) — the
+        # interpreter's default context is an empty dict.
+        if self.context is None or (
+            isinstance(self.context, dict) and not self.context
+        ):
+            raise ValueError(
+                "Current requires an iteration context (only ForEach establishes one)"
+            )
 
         return self.execute(self.context)
 

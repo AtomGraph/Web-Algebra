@@ -38,6 +38,25 @@ class TestSELECTLive:
 
 
 class TestSELECTJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): SELECT JSON arg shape — existing fixtures show `{query, endpoint}` for CONSTRUCT but SELECT is not exemplified")
-    def test_json_dispatch(self, settings):
-        pass
+    def test_wrong_endpoint_type_raises_before_network(self, settings):
+        # §4.3 JSON: endpoint: URI · query: Literal (xsd:string).
+        # §3.7: TypeError raised before any effect — a plain string is a
+        # string Literal (§2.2), not a URI.
+        op = Operation.get("SELECT")(settings=settings)
+        with pytest.raises(TypeError):
+            op.execute_json(
+                {
+                    "endpoint": "http://example.org/sparql",
+                    "query": "SELECT * WHERE { ?s ?p ?o }",
+                }
+            )
+
+    def test_wrong_query_type_raises_before_network(self, settings):
+        op = Operation.get("SELECT")(settings=settings)
+        with pytest.raises(TypeError):
+            op.execute_json(
+                {
+                    "endpoint": {"@id": "http://example.org/sparql"},
+                    "query": {"@id": "http://example.org/not-a-query"},
+                }
+            )

@@ -45,10 +45,18 @@ class Execute(Operation):
         # Delegate to Operation.process_json for nested operation execution
         return Operation.process_json(self.settings, operation, self.context)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Any:
-        """JSON execution: pass raw operation to execute"""
-        # Don't process the operation argument - execute() expects raw operation dict
-        return self.execute(arguments["operation"])
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Any:
+        """JSON execution: evaluate the quoted operation form in the current
+        context AND the current variable environment (formal-semantics.md
+        §4.1)."""
+        operation = arguments["operation"]
+        if not isinstance(operation, dict) or "@op" not in operation:
+            raise TypeError(
+                f"Execute expects 'operation' to be an operation-call form, got {type(operation)}"
+            )
+        return Operation.process_json(
+            self.settings, operation, self.context, variable_stack
+        )
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""

@@ -46,7 +46,7 @@ class EncodeForURI(Operation, MCPTool):
         logging.info("Encoded URI: %s", encoded_value)
         return Literal(encoded_value, datatype=XSD.string)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Literal:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Literal:
         """JSON execution: process arguments and call pure function"""
         input_data = Operation.process_json(
             self.settings, arguments["input"], self.context, variable_stack

@@ -43,8 +43,10 @@ class ForEach(Operation):
             "ForEach pure function needs operation execution context"
         )
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> List[Any]:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> List[Any]:
         """JSON execution: apply operations to each item in sequence or SPARQL results"""
+        if variable_stack is None:
+            variable_stack = []
         # Get the select data (sequence or Result)
         select_data = Operation.process_json(
             self.settings, arguments["select"], self.context, variable_stack
@@ -80,32 +82,43 @@ class ForEach(Operation):
         for item in items:
             logging.info("Processing item: %s", item)
 
-            # Handle list of operations or single operation
-            if isinstance(operation, list):
-                # Execute operations in sequence, with item as context
-                last_result = None
+            # Each iteration runs in a fresh variable scope
+            # (formal-semantics.md §3.4): bindings made inside one iteration
+            # do not leak into the next.
+            variable_stack.append({})
+            try:
+                # Handle list of operations or single operation
+                if isinstance(operation, list):
+                    # Execute operations in sequence, with item as context;
+                    # the iteration's value is the last non-Unit result.
+                    last_result = None
 
-                for op in operation:
+                    for op in operation:
+                        result = Operation.process_json(
+                            self.settings,
+                            op,
+                            context=item,
+                            variable_stack=variable_stack,
+                        )
+                        if result is not None:
+                            last_result = result
+
+                    # Only collect the last non-None result
+                    if last_result is not None:
+                        results.append(last_result)
+                else:
+                    # Single operation
                     result = Operation.process_json(
-                        self.settings, op, context=item, variable_stack=variable_stack
+                        self.settings,
+                        operation,
+                        context=item,
+                        variable_stack=variable_stack,
                     )
+                    # Only collect non-None results
                     if result is not None:
-                        last_result = result
-
-                # Only collect the last non-None result
-                if last_result is not None:
-                    results.append(last_result)
-            else:
-                # Single operation
-                result = Operation.process_json(
-                    self.settings,
-                    operation,
-                    context=item,
-                    variable_stack=variable_stack,
-                )
-                # Only collect non-None results
-                if result is not None:
-                    results.append(result)
+                        results.append(result)
+            finally:
+                variable_stack.pop()
 
         return results
 

@@ -35,8 +35,10 @@ class Variable(Operation):
         self.set_variable(name, value, variable_stack)
         return None
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> None:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> None:
         """JSON execution: evaluate value expression and store variable"""
+        if variable_stack is None:
+            variable_stack = []
         name: str = arguments["name"]
         value_expr = arguments["value"]
 

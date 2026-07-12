@@ -35,7 +35,7 @@ class Bindings(Operation):
         return table.bindings
 
     def execute_json(
-        self, arguments: dict, variable_stack: list = []
+        self, arguments: dict, variable_stack: list = None
     ) -> List[Dict[str, Node]]:
         """JSON execution: process arguments with strict type checking"""
         # Process table

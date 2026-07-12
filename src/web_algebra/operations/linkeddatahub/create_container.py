@@ -113,7 +113,7 @@ class CreateContainer(PUT):
         # Call parent PUT execute method
         return super().execute(URIRef(url), graph)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments and call pure function"""
         # Process parent URI
         parent_data = Operation.process_json(

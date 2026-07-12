@@ -31,6 +31,14 @@ class TestPOSTLive:
 
 
 class TestPOSTJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): POST JSON arg shape not exemplified by existing fixtures (presumed `{url, data}`)")
-    def test_json_dispatch(self, settings):
-        pass
+    def test_wrong_url_type_raises_before_network(self, settings):
+        # §4.4 JSON: url: URI · data: Graph or RDF data form.
+        # §3.7: strict typing before any effect.
+        op = Operation.get("POST")(settings=settings)
+        with pytest.raises(TypeError):
+            op.execute_json(
+                {
+                    "url": "http://example.org/x",
+                    "data": {"@id": "http://ex/s", "@type": "http://ex/T"},
+                }
+            )
