@@ -37,6 +37,12 @@ class TestEncodeForURIPure:
         result = op.execute(Literal("AZaz09-._~"))
         assert str(result) == "AZaz09-._~"
 
+    def test_result_is_simple_literal(self, settings):
+        # §4.2: simple literal per `simple literal ENCODE_FOR_URI(string literal)`
+        op = Operation.get("EncodeForURI")(settings=settings)
+        result = op.execute(Literal("hello world", lang="en"))
+        assert result.datatype is None and result.language is None
+
     def test_reserved_characters_are_encoded(self, settings):
         # §4.2: reserved characters like / : * ' are encoded (UTF-8)
         op = Operation.get("EncodeForURI")(settings=settings)

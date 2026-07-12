@@ -286,6 +286,7 @@ Failures raise Python exceptions per this table (normative):
 | unknown variable in `$name` lookup | `ValueError` |
 | context lookup miss, or no context established | `ValueError` |
 | `Filter` position < 1 or > length | `ValueError` |
+| regular-expression errors in `Replace` — invalid pattern or flags, zero-length-matching pattern, invalid replacement (XPath `err:FORX000*`) | `ValueError` |
 | unknown `type` in SPARQL JSON term form | `ValueError` |
 | blank node where SPARQL syntax forbids it (`Values` data) | `ValueError` |
 | HTTP/SPARQL transport failure | `urllib.error.HTTPError` / `URLError`, unwrapped |
@@ -377,43 +378,65 @@ JSON:     operation⟨quoted⟩: an operation-call form
 
 ### 4.2 String and term operations
 
+Operations in this section are named after SPARQL 1.1 / XPath F&O functions
+and follow those definitions exactly — including their signatures (e.g.
+`simple literal STR(literal ltrl)` / `simple literal STR(IRI rsrc)`); the
+summaries below are paraphrases, and where they fall short the W3C text is
+normative. A SPARQL *simple literal* is materialized as an rdflib `Literal`
+with no datatype and no language tag — exactly as rdflib's own SPARQL engine
+does — and under RDF 1.1 denotes the same value as the corresponding
+`xsd:string` literal.
+
 String-compatibility rule: where an operation is documented as accepting a
 *string-compatible* Literal it accepts `xsd:string` literals, language-tagged
 literals, and plain literals; any other Term raises `TypeError` (use `Str` to
 cast explicitly).
 
-**Str** — cast a Term to a string literal.
+**Str** — the lexical form of a Term, per SPARQL 1.1 `STR()`:
+`simple literal STR(literal ltrl)` / `simple literal STR(IRI rsrc)`.
 ```
-Abstract: Term → Literal
+Abstract: (URI + Literal) → Literal
 Python:   def execute(self, term: Node) -> Literal
-JSON:     input: Term
+JSON:     input: URI + Literal
 ```
-- String-compatible literals pass through unchanged (a language tag is
-  *preserved*). Any other Term yields `Literal` of its lexical/IRI form with
-  datatype `xsd:string`. Non-Terms raise `TypeError`.
-- *Known divergence from SPARQL:* SPARQL `STR()` returns a simple literal and
-  drops language tags; Web Algebra `Str` returns `xsd:string` and preserves
-  tags on passthrough.
+- Returns the lexical form of a Literal, or the codepoint representation of a
+  URI, as a **simple literal**. As in SPARQL, the language tag is **not**
+  carried over. A `BNode` raises `TypeError` (a SPARQL type error), as does
+  any non-Term.
 
-**Concat** — concatenate string literals.
+**Concat** — per SPARQL 1.1 `CONCAT()`:
+`string literal CONCAT(string literal ltrl1 ... string literal ltrln)`.
 ```
 Abstract: Sequence Literal → Literal
 Python:   def execute(self, inputs: List[Literal]) -> Literal
 JSON:     inputs: array of string-compatible Literal forms
 ```
-- Result datatype `xsd:string`.
+- Result kind per SPARQL: if all inputs are typed `xsd:string`, so is the
+  result; if all inputs carry the *same* language tag, the result carries it
+  too; in all other cases (including the empty input sequence) the result is
+  a simple literal.
 
-**Replace** — regular-expression replacement, in the spirit of SPARQL
-`REPLACE()`.
+**Replace** — per SPARQL 1.1 `REPLACE()` / XPath `fn:replace`:
+`string literal REPLACE(string literal arg, simple literal pattern,
+simple literal replacement [, simple literal flags])`.
 ```
-Abstract: Literal × Literal × Literal → Literal
-Python:   def execute(self, input_str, pattern, replacement) -> Literal
-JSON:     input · pattern · replacement: string-compatible Literals
+Abstract: Literal × Literal × Literal × Maybe Literal → Literal
+Python:   def execute(self, input_str, pattern, replacement, flags=None) -> Literal
+JSON:     input: string-compatible Literal · pattern · replacement · flags:
+          language-tag-free string Literals (simple literals)
 ```
-- Result datatype `xsd:string`. All three inputs must be string-compatible.
-- *Known divergence:* the pattern dialect is Python `re`, not the XPath/XQuery
-  regular expressions SPARQL specifies. Patterns using shared syntax behave
-  identically.
+- Per the signature, `pattern`, `replacement` and `flags` are simple
+  literals: a language-tagged value there raises `TypeError`. `input` may be
+  any string literal.
+- Pattern and `flags` (`s`, `m`, `i`, `x`, `q`) per XPath `fn:replace`. In the
+  replacement string, `$N` references capture group *N*, `\$` is a literal
+  dollar, and `\\` is a literal backslash; any other use of `\` or `$` is an
+  error.
+- Per the SPARQL string-function convention, the result is a string literal
+  of the same kind as `arg` (its datatype and language tag are carried over).
+- Errors (`ValueError`, mirroring XPath `err:FORX000*`): invalid flags, an
+  invalid pattern, a pattern that matches the zero-length string, or an
+  invalid replacement string.
 
 **EncodeForURI** — percent-encode a string for use inside a URI, per SPARQL
 `ENCODE_FOR_URI` / XPath `fn:encode-for-uri`.
@@ -423,7 +446,9 @@ Python:   def execute(self, input_str: Literal) -> Literal
 JSON:     input: string-compatible Literal
 ```
 - Every character except the RFC 3986 unreserved set
-  (`A–Z a–z 0–9 - . _ ~`) is percent-encoded (UTF-8). Result `xsd:string`.
+  (`A–Z a–z 0–9 - . _ ~`) is percent-encoded (UTF-8). Per the signature
+  `simple literal ENCODE_FOR_URI(string literal ltrl)`, the result is a
+  simple literal.
 
 **STRUUID** — fresh UUID string, per SPARQL `STRUUID()`. Non-deterministic.
 ```
@@ -431,8 +456,9 @@ Abstract: () → Literal
 Python:   def execute(self) -> Literal
 JSON:     (no arguments)
 ```
-- An RFC 4122 version-4 UUID in lowercase hyphenated form, datatype
-  `xsd:string`. Successive invocations differ.
+- A simple literal (per the signature `simple literal STRUUID()`) holding an
+  RFC 4122 version-4 UUID in lowercase hyphenated form. Successive
+  invocations differ.
 
 **URI** — cast a Term to a URI, like SPARQL `URI()`/`IRI()`.
 ```
@@ -459,7 +485,7 @@ JSON:     base: URI · relative: string-compatible Literal
 ```
 Abstract: URI × Literal → Result
 Python:   def execute(self, endpoint: URIRef, query: Literal) -> Result
-JSON:     endpoint: URI · query: Literal (xsd:string)
+JSON:     endpoint: URI · query: string Literal (simple or xsd:string)
 ```
 - Types are validated before any network I/O.
 
@@ -467,14 +493,14 @@ JSON:     endpoint: URI · query: Literal (xsd:string)
 ```
 Abstract: URI × Literal → Graph
 Python:   def execute(self, endpoint: URIRef, query: Literal) -> Graph
-JSON:     endpoint: URI · query: Literal (xsd:string)
+JSON:     endpoint: URI · query: string Literal (simple or xsd:string)
 ```
 
 **DESCRIBE** — execute a SPARQL DESCRIBE query. *Query* effect.
 ```
 Abstract: URI × Literal → Graph
 Python:   def execute(self, endpoint: URIRef, query: Literal) -> Graph
-JSON:     endpoint: URI · query: Literal (xsd:string)
+JSON:     endpoint: URI · query: string Literal (simple or xsd:string)
 ```
 
 **Substitute** — textually substitute one SPARQL variable with a Term.

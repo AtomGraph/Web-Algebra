@@ -332,6 +332,16 @@ class Operation(ABC, BaseModel):
             return Literal(str(value), datatype=XSD.string)
 
     @staticmethod
+    def is_string_literal(term: Any) -> bool:
+        """True for a language-tag-free string literal — a SPARQL simple
+        literal or its RDF 1.1 equivalent, an xsd:string literal."""
+        return (
+            isinstance(term, Literal)
+            and term.language is None
+            and (term.datatype is None or term.datatype == XSD.string)
+        )
+
+    @staticmethod
     def to_string_literal(term: Node) -> Literal:
         """Convert Literal terms to string-compatible literals, following SPARQL semantics"""
         if isinstance(term, Literal):

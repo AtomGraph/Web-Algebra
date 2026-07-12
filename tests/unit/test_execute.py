@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import pytest
 from rdflib import Literal
-from rdflib.namespace import XSD
 
 from web_algebra.operation import Operation
 
@@ -18,8 +17,8 @@ class TestExecutePure:
     def test_evaluates_operation_form(self, settings):
         op = Operation.get("Execute")(settings=settings)
         result = op.execute({"@op": "Str", "args": {"input": "hi"}})
-        # §2.2: the scalar "hi" coerces to an xsd:string Literal
-        assert result == Literal("hi", datatype=XSD.string)
+        # §4.2: Str returns a simple literal
+        assert result == Literal("hi")
 
     def test_non_operation_form_raises_type_error(self, settings):
         # §4.1: the operand must be an operation-call form
@@ -37,7 +36,7 @@ class TestExecuteJson:
         result = op.execute_json(
             {"operation": {"@op": "Str", "args": {"input": "hi"}}}
         )
-        assert result == Literal("hi", datatype=XSD.string)
+        assert result == Literal("hi")
 
     def test_operand_sees_current_environment(self, settings):
         # §4.1/§3.3: the quoted operand evaluates in the current variable

@@ -24,6 +24,12 @@ live.
 - **Live-service behavior** — §3.7 pins transport failures to
   `urllib.error.HTTPError`/`URLError` propagating unwrapped, but content negotiation,
   redirects (beyond 308), timeouts, and retry policy remain unspecified.
+- **XPath regex dialect coverage** — `Replace` compiles patterns with Python's `re`.
+  The common syntax is shared with XPath regular expressions, but XPath-only
+  constructs (`\p{...}` category escapes, `\i`/`\c`, character-class subtraction
+  `[a-z-[aeiou]]`) are not supported and surface as `ValueError` (invalid pattern).
+  This is an implementation gap against the normative fn:replace behavior, not
+  sanctioned spec behavior.
 
 ## Resolved in the 2026-07 spec revision
 
@@ -31,16 +37,26 @@ Each item below is now normative in `formal-semantics.md` (section in parenthese
 and the corresponding tests are un-skipped.
 
 - **Catalog omissions**: `Concat` (§4.2) and `ExtractOntology` (§4.6) added.
-- **Str result datatype** (§4.2): string-compatible literals pass through unchanged
-  (language tags preserved — documented divergence from SPARQL `STR()`); other Terms
-  → `xsd:string` of the lexical/IRI form.
+- **W3C conformance rule** (§4.2 preamble): operations named after SPARQL 1.1 /
+  XPath functions follow those definitions *by normative reference*, signatures
+  included; simple literals are materialized as plain rdflib literals (no
+  datatype), exactly as rdflib's own SPARQL engine does.
+- **Str** (§4.2): per `simple literal STR(literal ltrl)` / `simple literal STR(IRI
+  rsrc)` — lexical form / codepoint representation as a simple literal; language
+  tags are not carried over; BNode → `TypeError` (SPARQL type error).
+- **Concat** (§4.2): per SPARQL `CONCAT()` result-kind rules — all `xsd:string` →
+  `xsd:string`; all same language tag → that tag; otherwise simple literal.
+- **Replace** (§4.2): per SPARQL `REPLACE()` / `fn:replace` — optional `flags`
+  argument (`s m i x q`), `$N` capture-group references with `\$`/`\\` escapes,
+  `err:FORX000*` conditions → `ValueError`, result kind follows the first argument,
+  and `pattern`/`replacement`/`flags` must be simple literals.
 - **URI on BNode / invalid lexical form** (§4.2): BNode → `TypeError`; lexical forms
   are not validated against RFC 3986.
 - **EncodeForURI character set** (§4.2): percent-encode everything outside the
-  RFC 3986 unreserved set (`A–Z a–z 0–9 - . _ ~`), per XPath `fn:encode-for-uri`.
-- **Replace pattern dialect** (§4.2): regular expression, Python `re` dialect
-  (documented divergence from SPARQL's XPath/XQuery regex).
-- **STRUUID format** (§4.2): RFC 4122 version-4, lowercase hyphenated, `xsd:string`.
+  RFC 3986 unreserved set (`A–Z a–z 0–9 - . _ ~`), per XPath `fn:encode-for-uri`;
+  result is a simple literal.
+- **STRUUID format** (§4.2): simple literal; RFC 4122 version-4, lowercase
+  hyphenated.
 - **Substitute** (§4.3): matches `?var` and `$var` at token boundaries; URI → `<iri>`,
   Literal → quoted with lang/datatype; BNode → `TypeError`; substitution is textual
   and documented as not parse-aware.

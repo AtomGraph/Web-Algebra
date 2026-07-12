@@ -23,14 +23,13 @@ class TestSTRUUIDPure:
         assert str(a) != str(b)
 
     def test_uuid_format(self, settings):
-        # §4.2: RFC 4122 version-4 UUID, lowercase hyphenated, xsd:string
+        # §4.2: simple literal per `simple literal STRUUID()`, holding an
+        # RFC 4122 version-4 UUID in lowercase hyphenated form
         import re
-
-        from rdflib.namespace import XSD
 
         op = Operation.get("STRUUID")(settings=settings)
         result = op.execute()
-        assert result.datatype == XSD.string
+        assert result.datatype is None and result.language is None
         assert re.fullmatch(
             r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
             str(result),

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import pytest
 from rdflib import Literal
-from rdflib.namespace import XSD
 
 from web_algebra.json_result import JSONResult
 from web_algebra.operation import Operation
@@ -88,10 +87,8 @@ class TestForEachJson:
                 },
             }
         )
-        # §2.2: scalars coerce to xsd:string Literals
-        assert result == [
-            [Literal("a", datatype=XSD.string), Literal("b", datatype=XSD.string)]
-        ]
+        # §4.2: Str returns simple literals
+        assert result == [[Literal("a"), Literal("b")]]
 
     def test_operation_array_yields_last_non_unit(self, settings):
         # §4.1: operation arrays evaluate in order within the iteration's
@@ -109,7 +106,7 @@ class TestForEachJson:
                 ],
             }
         )
-        assert result == [Literal("a", datatype=XSD.string)]
+        assert result == [Literal("a")]
 
     def test_iteration_scope_does_not_leak(self, settings):
         # §3.4: each iteration runs in a fresh scope — bindings made inside

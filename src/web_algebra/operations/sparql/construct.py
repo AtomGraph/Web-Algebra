@@ -41,7 +41,7 @@ class CONSTRUCT(Operation, MCPTool):
             raise TypeError(
                 f"CONSTRUCT operation expects endpoint to be URIRef, got {type(endpoint)}"
             )
-        if not isinstance(query, Literal) or query.datatype != XSD.string:
+        if not Operation.is_string_literal(query):
             raise TypeError(
                 f"CONSTRUCT operation expects query to be string Literal, got {type(query)}"
             )
@@ -74,7 +74,7 @@ class CONSTRUCT(Operation, MCPTool):
         query_data = Operation.process_json(
             self.settings, arguments["query"], self.context, variable_stack
         )
-        if not isinstance(query_data, Literal) or query_data.datatype != XSD.string:
+        if not Operation.is_string_literal(query_data):
             raise TypeError(
                 f"CONSTRUCT operation expects 'query' to be string Literal, got {type(query_data)}"
             )

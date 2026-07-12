@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 import logging
 import re
 from rdflib import Literal
@@ -10,14 +10,15 @@ from web_algebra.operation import Operation
 
 class Replace(Operation, MCPTool):
     """
-    Replaces occurrences of a specified pattern in an input string with a given replacement.
-    Aligns with SPARQL's REPLACE() function.
+    Regular-expression replacement, per SPARQL 1.1 REPLACE() / XPath
+    fn:replace: `string literal REPLACE(string literal arg, simple literal
+    pattern, simple literal replacement [, simple literal flags])`.
     """
 
     @classmethod
     def description(cls) -> str:
-        return """Replaces occurrences of a specified pattern in an input string with a given replacement. This operation aligns with SPARQL's REPLACE() function, allowing for flexible string manipulation using regular expressions.
-        
+        return """Replaces occurrences of a regular-expression pattern in an input string, per SPARQL's REPLACE() / XPath fn:replace. The replacement string may reference capture groups as $1, $2, ...; flags `s`, `m`, `i`, `x`, `q` are supported. The result is a string literal of the same kind (datatype/language tag) as the input.
+
         Note: this function should not be used to build URIs! That should be done using EncodeForURI()/ResolveURI().
         """
 
@@ -35,66 +36,155 @@ class Replace(Operation, MCPTool):
                 },
                 "pattern": {
                     "type": "string",
-                    "description": "The pattern to be replaced (regular expression)",
+                    "description": "The regular expression to be replaced (XPath fn:replace syntax)",
                 },
                 "replacement": {
                     "type": "string",
-                    "description": "The replacement value",
+                    "description": "The replacement string; $1, $2, ... reference capture groups",
+                },
+                "flags": {
+                    "type": "string",
+                    "description": "Optional XPath regex flags: any of s, m, i, x, q",
                 },
             },
             "required": ["input", "pattern", "replacement"],
         }
+
+    # XPath flag → Python re flag (formal-semantics.md §4.2); `q` is handled
+    # separately (treat pattern and replacement as literal strings).
+    _FLAG_MAP = {
+        "i": re.IGNORECASE,
+        "s": re.DOTALL,
+        "m": re.MULTILINE,
+        "x": re.VERBOSE,
+    }
+
+    @staticmethod
+    def _is_string_compatible(lit: Any) -> bool:
+        # SPARQL string literal: xsd:string, rdf:langString, or plain literal
+        return isinstance(lit, Literal) and (
+            lit.datatype == XSD.string
+            or (lit.datatype is None and lit.language is not None)
+            or (lit.datatype is None and lit.language is None)
+        )
+
+    @staticmethod
+    def _is_simple(lit: Any) -> bool:
+        # SPARQL simple literal (xsd:string accepted per RDF 1.1)
+        return Operation.is_string_literal(lit)
+
+    @staticmethod
+    def _translate_replacement(replacement: str) -> str:
+        """Translate an XPath fn:replace replacement string into Python
+        `re.sub` syntax: `$N` → `\\g<N>`, `\\$` → `$`, `\\\\` → literal
+        backslash. Any other use of `\\` or `$` is an error (err:FORX0004).
+        """
+        out = []
+        i = 0
+        n = len(replacement)
+        while i < n:
+            ch = replacement[i]
+            if ch == "\\":
+                if i + 1 < n and replacement[i + 1] == "\\":
+                    out.append("\\\\")
+                    i += 2
+                    continue
+                if i + 1 < n and replacement[i + 1] == "$":
+                    out.append("$")
+                    i += 2
+                    continue
+                raise ValueError(
+                    "Replace: invalid escape in replacement string (XPath err:FORX0004)"
+                )
+            if ch == "$":
+                j = i + 1
+                while j < n and replacement[j].isdigit():
+                    j += 1
+                if j == i + 1:
+                    raise ValueError(
+                        "Replace: '$' must be followed by a group number in the replacement string (XPath err:FORX0004)"
+                    )
+                out.append(f"\\g<{replacement[i + 1:j]}>")
+                i = j
+                continue
+            out.append(ch)
+            i += 1
+        return "".join(out)
 
     def execute(
         self,
         input_str: Literal,
         pattern: Literal,
         replacement: Literal,
+        flags: Optional[Literal] = None,
     ) -> Literal:
         """Pure function: replace pattern in string with RDFLib terms"""
-
-        # Following SPARQL semantics: accept both xsd:string and rdf:langString (language-tagged literals)
-        def is_string_compatible(lit):
-            return isinstance(lit, Literal) and (
-                lit.datatype == XSD.string  # xsd:string
-                or (
-                    lit.datatype is None
-                    and lit.language is not None
-                )  # rdf:langString
-                or (
-                    lit.datatype is None
-                    and lit.language is None
-                )  # plain literal
-            )
-
-        if not is_string_compatible(input_str):
+        if not self._is_string_compatible(input_str):
             raise TypeError(
-                f"Replace operation expects input to be string-compatible Literal, got {type(input_str)} with datatype {getattr(input_str, 'datatype', None)}"
+                f"Replace expects input to be a string literal, got {type(input_str)} with datatype {getattr(input_str, 'datatype', None)}"
             )
-        if not is_string_compatible(pattern):
-            raise TypeError(
-                f"Replace operation expects pattern to be string-compatible Literal, got {type(pattern)} with datatype {getattr(pattern, 'datatype', None)}"
-            )
-        if not is_string_compatible(replacement):
-            raise TypeError(
-                f"Replace operation expects replacement to be string-compatible Literal, got {type(replacement)} with datatype {getattr(replacement, 'datatype', None)}"
-            )
+        # Per the REPLACE signature, pattern/replacement/flags are simple
+        # literals — a language-tagged value is a type error.
+        for name, lit in (("pattern", pattern), ("replacement", replacement)):
+            if not self._is_simple(lit):
+                raise TypeError(
+                    f"Replace expects {name} to be a simple literal, got {lit!r}"
+                )
+        if flags is not None and not self._is_simple(flags):
+            raise TypeError(f"Replace expects flags to be a simple literal, got {flags!r}")
 
         input_value = str(input_str)
         pattern_value = str(pattern)
         replacement_value = str(replacement)
+        flags_value = str(flags) if flags is not None else ""
+
+        re_flags = 0
+        literal_mode = False
+        for flag_char in flags_value:
+            if flag_char == "q":
+                literal_mode = True
+            elif flag_char in self._FLAG_MAP:
+                re_flags |= self._FLAG_MAP[flag_char]
+            else:
+                raise ValueError(
+                    f"Replace: invalid flag {flag_char!r} (XPath err:FORX0001)"
+                )
+
+        if literal_mode:
+            # q: pattern and replacement are taken literally
+            pattern_value = re.escape(pattern_value)
+            replacement_re = replacement_value.replace("\\", "\\\\")
+        else:
+            replacement_re = self._translate_replacement(replacement_value)
+
+        try:
+            compiled = re.compile(pattern_value, re_flags)
+        except re.error as e:
+            raise ValueError(f"Replace: invalid regular expression: {e} (XPath err:FORX0002)") from None
+        if compiled.search(""):
+            raise ValueError(
+                "Replace: pattern matches a zero-length string (XPath err:FORX0003)"
+            )
 
         logging.info(
-            "Resolving Replace arguments: input=%s, pattern=%s, replacement=%s",
+            "Resolving Replace arguments: input=%s, pattern=%s, replacement=%s, flags=%s",
             input_value,
             pattern_value,
             replacement_value,
+            flags_value,
         )
 
-        formatted_string = re.sub(pattern_value, replacement_value, input_value)
+        try:
+            formatted_string = compiled.sub(replacement_re, input_value)
+        except re.error as e:
+            raise ValueError(f"Replace: invalid replacement string: {e} (XPath err:FORX0004)") from None
 
         logging.info("Formatted result: %s", formatted_string)
-        return Literal(formatted_string, datatype=XSD.string)
+        # SPARQL string-function convention: the result is a string literal
+        # of the same kind as the first argument.
+        if input_str.language is not None:
+            return Literal(formatted_string, lang=input_str.language)
+        return Literal(formatted_string, datatype=input_str.datatype)
 
     def execute_json(
         self, arguments: dict, variable_stack: list = None
@@ -118,14 +208,28 @@ class Replace(Operation, MCPTool):
         )
         replacement_literal = self.to_string_literal(replacement_data)
 
-        return self.execute(input_literal, pattern_literal, replacement_literal)
+        flags_literal = None
+        if "flags" in arguments:
+            flags_data = Operation.process_json(
+                self.settings, arguments["flags"], self.context, variable_stack
+            )
+            flags_literal = self.to_string_literal(flags_data)
+
+        return self.execute(
+            input_literal, pattern_literal, replacement_literal, flags_literal
+        )
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
         input_str = Literal(arguments["input"], datatype=XSD.string)
         pattern = Literal(arguments["pattern"], datatype=XSD.string)
         replacement = Literal(arguments["replacement"], datatype=XSD.string)
+        flags = (
+            Literal(arguments["flags"], datatype=XSD.string)
+            if "flags" in arguments
+            else None
+        )
 
-        result = self.execute(input_str, pattern, replacement)
+        result = self.execute(input_str, pattern, replacement, flags)
 
         return [types.TextContent(type="text", text=str(result))]

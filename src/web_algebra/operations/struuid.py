@@ -2,7 +2,6 @@ import logging
 import uuid
 from typing import Any
 from rdflib import Literal
-from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.operation import Operation
 from web_algebra.mcp_tool import MCPTool
@@ -27,7 +26,8 @@ class STRUUID(Operation, MCPTool):
         generated_uuid = str(uuid.uuid4())
 
         logging.info("Generated UUID: %s", generated_uuid)
-        return Literal(generated_uuid, datatype=XSD.string)
+        # simple literal per `simple literal STRUUID()`
+        return Literal(generated_uuid)
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> Literal:
         """JSON execution: process arguments and call pure function"""
