@@ -13,7 +13,6 @@ Your output must be a **JSON-formatted structure** of operation calls, where **o
 - **ForEach supports executing multiple operations sequentially** when provided with a list of operations. Each operation in the list is executed for every row in the table before moving to the next row.
 - **Where an operation returns or expects RDF data, it is handled internally as an `rdflib.Graph`, but is represented as JSON-LD in the JSON structure.**
 - **SPARQL tabular data** (e.g., from `SELECT`) can be provided inline as a list of bindings, while **RDF Graph data** (e.g., from `GET`, `CONSTRUCT`, or merges) can be provided inline as JSON-LD objects.
-- **A document may optionally be wrapped in an envelope** `{"@web-algebra": "1", "name": "...", "description": "...", "program": [...]}`; the bare operation object or array remains valid.
 
 ## Example JSON Output
 

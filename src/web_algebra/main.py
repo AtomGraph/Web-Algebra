@@ -65,8 +65,7 @@ def main(settings: BaseSettings, json_data: Optional[str]):
         with open(json_data) as json_file:
             json_input = json.load(json_file)
 
-        # Unwrap the optional document envelope, then execute the JSON input
-        json_input = Operation.unwrap_document(json_input)
+        # Execute the JSON input
         result = Operation.process_json(settings, json_input)
 
         # Serialize final result for output

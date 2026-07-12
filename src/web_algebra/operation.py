@@ -75,24 +75,6 @@ class Operation(ABC, BaseModel):
     def get(cls, name: str) -> Optional[Type["Operation"]]:
         return cls.registry.get(name)
 
-    @staticmethod
-    def unwrap_document(json_data: Any) -> Any:
-        """Unwrap an optional document envelope (formal-semantics.md §2.1).
-
-        An envelope is a top-level object whose `@web-algebra` member names
-        the dialect version and whose `program` member holds the form(s) to
-        evaluate; other members (`name`, `description`, ...) are informative
-        and ignored. Bare documents pass through unchanged. The envelope is
-        recognized at the document top level only.
-        """
-        if isinstance(json_data, dict) and "@web-algebra" in json_data:
-            if "program" not in json_data:
-                raise ValueError(
-                    "Web Algebra envelope is missing its 'program' member"
-                )
-            return json_data["program"]
-        return json_data
-
     @classmethod
     def process_json(
         cls,

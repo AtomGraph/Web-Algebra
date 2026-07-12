@@ -1,7 +1,7 @@
 """Spec: formal-semantics.md §2 (Document Model) and §3 (Evaluation Semantics).
 
-Covers the envelope (§2.1), form discrimination and scalar coercion (§2.2),
-the URI reference form, and sequence/variable scoping (§3.2, §3.4).
+Covers form discrimination and scalar coercion (§2.2), the URI reference
+form, and sequence/variable scoping (§3.2, §3.4).
 """
 
 from __future__ import annotations
@@ -11,34 +11,6 @@ from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
 
 from web_algebra.operation import Operation
-
-
-class TestEnvelope:
-    def test_envelope_unwraps_program(self):
-        # §2.1: the `program` member holds the form(s) to evaluate
-        doc = {"@web-algebra": "1", "program": [{"@op": "STRUUID"}]}
-        assert Operation.unwrap_document(doc) == [{"@op": "STRUUID"}]
-
-    def test_envelope_without_program_raises(self):
-        # §2.1/§3.7: an envelope without a `program` member is invalid
-        with pytest.raises(ValueError):
-            Operation.unwrap_document({"@web-algebra": "1"})
-
-    def test_informative_members_are_ignored(self):
-        # §2.1: `name`/`description` are informative; unknown members ignored
-        doc = {
-            "@web-algebra": "1",
-            "name": "x",
-            "description": "y",
-            "future-member": True,
-            "program": [],
-        }
-        assert Operation.unwrap_document(doc) == []
-
-    def test_bare_document_passes_through(self):
-        # §2.1: the envelope is optional; bare forms remain valid
-        bare = [{"@op": "STRUUID"}]
-        assert Operation.unwrap_document(bare) is bare
 
 
 class TestURIReferenceForm:

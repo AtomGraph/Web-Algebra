@@ -52,29 +52,11 @@ Environment = list[dict[str, Any]]         # the "variable stack"
 
 ### 2.1 Documents
 
-A Web Algebra document is a JSON document in one of three shapes:
+A Web Algebra document is a JSON document in one of two shapes:
 
 1. **A single form** — most commonly an operation call object.
 2. **A program** — a JSON array of forms, evaluated in order (§3.2, *sequence
    form*).
-3. **An envelope** — a JSON object whose `@web-algebra` member identifies the
-   dialect version and whose `program` member holds a form or program:
-
-```json
-{
-  "@web-algebra": "1",
-  "name": "united-kingdom-cities",
-  "description": "Create a container and load UK city data into it",
-  "program": [ ... ]
-}
-```
-
-The envelope is optional; the bare forms remain valid. `@web-algebra` is the
-version of this specification the document targets (currently `"1"`). `name`
-and `description` are optional and informative. Consumers ignore unknown
-envelope members (forward compatibility). An envelope without a `program`
-member is invalid (`ValueError`). The envelope is recognized at the document
-top level only; it is not a form and cannot be nested.
 
 ### 2.2 Forms
 
@@ -279,7 +261,6 @@ Failures raise Python exceptions per this table (normative):
 | Condition | Exception |
 |-----------|-----------|
 | unknown operation name in `@op` | `ValueError` |
-| envelope without `program` | `ValueError` |
 | `null` form | `TypeError` |
 | missing required argument key | `KeyError` |
 | argument or operand of the wrong type (any layer) | `TypeError` |
