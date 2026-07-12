@@ -1,7 +1,5 @@
-from typing import Any
 from rdflib.term import Node
 from rdflib import Literal, URIRef
-from mcp import types
 from web_algebra.operation import Operation
 
 
@@ -55,14 +53,3 @@ class Str(Operation):
 
         # Call pure function
         return self.execute(input_data)
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        # Convert plain input to RDFLib term
-        rdflib_term = Operation.plain_to_rdflib(arguments["input"])
-
-        # Call pure function
-        result = self.execute(rdflib_term)
-
-        # Convert result to plain string for MCP
-        return [types.TextContent(type="text", text=str(result))]

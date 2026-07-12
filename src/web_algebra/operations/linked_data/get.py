@@ -3,23 +3,17 @@ from rdflib import Graph, URIRef
 from typing import Any
 from mcp import types
 from web_algebra.mcp_tool import MCPTool
+from web_algebra.client_operation import ClientOperation
 from web_algebra.operation import Operation
-from web_algebra.client import LinkedDataClient
 
 
-class GET(Operation, MCPTool):
+class GET(ClientOperation, Operation, MCPTool):
     """
     Retrieves RDF data from a named graph using HTTP GET.
     The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
     Returns the RDF graph (describing the resource at that URL) as JSON-LD.
     """
 
-    def model_post_init(self, __context: Any) -> None:
-        self.client = LinkedDataClient(
-            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
-            cert_password=getattr(self.settings, "cert_password", None),
-            verify_ssl=False,  # Optionally disable SSL verification
-        )
 
     @classmethod
     def description(cls) -> str:

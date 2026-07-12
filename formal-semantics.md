@@ -305,6 +305,14 @@ Type checking is strict: operations validate their inputs and raise `TypeError`
 kinds; the only implicit conversion anywhere is scalar coercion (§2.2) and
 string-compatibility (§4.2).
 
+Interpreter-level failures (unknown operation, invalid form, unresolved
+variable, missing focus) are raised as `WebAlgebraError` subclasses that
+*also* inherit the built-in class tabulated above, so the contract here holds
+while a caller may `except WebAlgebraError` to distinguish an ill-formed
+document from an unrelated bug. Per-operation argument-type validation stays
+plain `TypeError`. Transport failures are the deliberate exception: they
+propagate unwrapped as noted, never wrapped.
+
 ### 3.8 Formal definition
 
 This section is the definition; §§3.2–3.7 restate it in prose, and on any

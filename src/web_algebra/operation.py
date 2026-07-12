@@ -8,6 +8,11 @@ from rdflib.term import Node
 from rdflib import URIRef, Literal, BNode, Graph
 from rdflib.namespace import XSD
 from rdflib.query import Result
+from web_algebra.exceptions import (
+    InvalidFormError,
+    UnknownOperationError,
+    VariableNotFoundError,
+)
 
 
 # JSON-LD keyword set used to recognise a dict as RDF data (a JSON-LD
@@ -95,7 +100,7 @@ class Operation(ABC, BaseModel):
 
                 operation_cls = cls.get(op_name)
                 if not operation_cls:
-                    raise ValueError(f"Unknown operation: {op_name}")
+                    raise UnknownOperationError(f"Unknown operation: {op_name}")
 
                 operation = operation_cls(settings=settings, context=context)
                 result = operation.execute_json(op_args, variable_stack)
@@ -216,7 +221,7 @@ class Operation(ABC, BaseModel):
         for scope in reversed(variable_stack):
             if name in scope:
                 return scope[name]
-        raise ValueError(f"Variable '{name}' not found")
+        raise VariableNotFoundError(f"Variable '{name}' not found")
 
     # Conversion helpers between different formats
     @staticmethod
@@ -254,7 +259,7 @@ class Operation(ABC, BaseModel):
         """Convert JSON/binding objects to RDFLib terms"""
         if data is None:
             # formal-semantics.md §2.2: null is not a valid form.
-            raise TypeError("null is not a valid Web Algebra form")
+            raise InvalidFormError("null is not a valid Web Algebra form")
         if isinstance(data, dict) and "type" in data and "value" in data:
             # SPARQL binding object - values may have been processed to RDFLib terms
             type_str = str(data["type"])  # Convert potential Literal to string

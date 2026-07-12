@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, ClassVar, Type
 import logging
 import mimetypes
 import urllib.parse
@@ -12,10 +12,11 @@ from rdflib.query import Result
 from web_algebra.client import FileClient
 from web_algebra.json_result import JSONResult
 from web_algebra.mcp_tool import MCPTool
+from web_algebra.client_operation import ClientOperation
 from web_algebra.operation import Operation
 
 
-class AddFile(Operation, MCPTool):
+class AddFile(ClientOperation, Operation, MCPTool):
     """RDF/POST a file to a LinkedDataHub document, returning the minted upload URI.
 
     The file's RDF description (`nfo:FileDataObject` + filename + MIME type +
@@ -29,12 +30,8 @@ class AddFile(Operation, MCPTool):
     `FileClient` instance instead of inheriting `LinkedDataClient` plumbing.
     """
 
-    def model_post_init(self, __context: Any) -> None:
-        self.client = FileClient(
-            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
-            cert_password=getattr(self.settings, "cert_password", None),
-            verify_ssl=False,
-        )
+    client_class: ClassVar[Type] = FileClient
+
 
     @classmethod
     def name(cls):

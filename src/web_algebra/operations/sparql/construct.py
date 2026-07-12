@@ -1,24 +1,21 @@
 import logging
-from typing import Any
+from typing import Any, ClassVar, Type
 from rdflib import URIRef, Literal, Graph
 from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.mcp_tool import MCPTool
+from web_algebra.client_operation import ClientOperation
 from web_algebra.operation import Operation
 from web_algebra.client import SPARQLClient
 
 
-class CONSTRUCT(Operation, MCPTool):
+class CONSTRUCT(ClientOperation, Operation, MCPTool):
     """
     Executes a SPARQL CONSTRUCT query against a specified endpoint.
     """
 
-    def model_post_init(self, __context: Any) -> None:
-        self.client = SPARQLClient(
-            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
-            cert_password=getattr(self.settings, "cert_password", None),
-            verify_ssl=False,  # Optionally disable SSL verification
-        )
+    client_class: ClassVar[Type] = SPARQLClient
+
 
     @classmethod
     def description(cls) -> str:

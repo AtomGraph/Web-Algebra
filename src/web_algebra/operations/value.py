@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from typing import Any
 import logging
 from rdflib.query import ResultRow
-from mcp import types
+from web_algebra.exceptions import VariableNotFoundError
 from web_algebra.focus import Focus
 from web_algebra.operation import Operation
 
@@ -50,11 +50,15 @@ class Value(Operation):
                 try:
                     return context[name]  # Already RDFLib term
                 except KeyError:
-                    raise ValueError(f"Variable '{name}' not found in ResultRow")
+                    raise VariableNotFoundError(
+                        f"Variable '{name}' not found in ResultRow"
+                    )
             elif isinstance(context, Mapping):
                 if name in context:
                     return context[name]
-                raise ValueError(f"Context member '{name}' not found in mapping")
+                raise VariableNotFoundError(
+                    f"Context member '{name}' not found in mapping"
+                )
             else:
                 raise ValueError(
                     f"Value cannot look up '{name}' in a {type(context).__name__} "
@@ -69,8 +73,3 @@ class Value(Operation):
         logging.info("Resolving Value variable: %s", var_name)
 
         return self.execute(var_name, self.context, variable_stack)
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        # For MCP, we don't have variable stack or context, so just return the name
-        return [types.TextContent(type="text", text=arguments["name"])]

@@ -1,5 +1,4 @@
 from typing import Any
-from mcp import types
 from web_algebra.operation import Operation
 
 
@@ -57,8 +56,3 @@ class Execute(Operation):
         return Operation.process_json(
             self.settings, operation, self.context, variable_stack
         )
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        result = self.execute(arguments["operation"])
-        return [types.TextContent(type="text", text=str(result))]

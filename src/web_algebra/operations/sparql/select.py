@@ -1,25 +1,22 @@
-from typing import Any
+from typing import Any, ClassVar, Type
 import logging
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from rdflib.query import Result
 from mcp import types
 from web_algebra.mcp_tool import MCPTool
+from web_algebra.client_operation import ClientOperation
 from web_algebra.operation import Operation
 from web_algebra.client import SPARQLClient
 
 
-class SELECT(Operation, MCPTool):
+class SELECT(ClientOperation, Operation, MCPTool):
     """
     Executes SPARQL SELECT queries against endpoints
     """
 
-    def model_post_init(self, __context: Any) -> None:
-        self.client = SPARQLClient(
-            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
-            cert_password=getattr(self.settings, "cert_password", None),
-            verify_ssl=False,
-        )
+    client_class: ClassVar[Type] = SPARQLClient
+
 
     @classmethod
     def description(cls) -> str:

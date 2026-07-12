@@ -1,6 +1,7 @@
 from rdflib import Literal
 from rdflib.namespace import XSD
 
+from web_algebra.exceptions import NoFocusError
 from web_algebra.focus import Focus
 from web_algebra.operation import Operation
 
@@ -24,7 +25,7 @@ class Last(Operation):
     def execute(self, focus: Focus) -> Literal:
         """Pure function: focus → iteration size as xsd:integer"""
         if not isinstance(focus, Focus):
-            raise ValueError(
+            raise NoFocusError(
                 "Last requires an iteration focus (only ForEach establishes one)"
             )
         return Literal(focus.size, datatype=XSD.integer)

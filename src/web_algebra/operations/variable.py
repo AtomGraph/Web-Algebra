@@ -1,5 +1,4 @@
 from typing import Any
-from mcp import types
 from web_algebra.operation import Operation
 
 
@@ -49,7 +48,3 @@ class Variable(Operation):
 
         # Call pure function to store the variable
         return self.execute(name, value, variable_stack)
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → confirmation"""
-        return [types.TextContent(type="text", text="Variable set successfully")]

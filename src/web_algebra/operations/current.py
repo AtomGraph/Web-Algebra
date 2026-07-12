@@ -1,5 +1,5 @@
 from typing import Any
-from mcp import types
+from web_algebra.exceptions import NoFocusError
 from web_algebra.focus import Focus
 from web_algebra.operation import Operation
 
@@ -40,13 +40,8 @@ class Current(Operation):
         if self.context is None or (
             isinstance(self.context, dict) and not self.context
         ):
-            raise ValueError(
+            raise NoFocusError(
                 "Current requires an iteration focus (only ForEach establishes one)"
             )
 
         return self.execute(self.context)
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        # For MCP, we just return a placeholder since context handling is JSON-specific
-        return [types.TextContent(type="text", text="Current context accessed")]

@@ -1,5 +1,4 @@
 from typing import Any, Union
-from mcp import types
 from web_algebra.operation import Operation
 
 
@@ -100,21 +99,3 @@ class Filter(Operation):
 
         # Convert to 0-based index for Python list access and return as list
         return [bindings[position - 1]]
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        # Convert plain args to RDFLib terms
-        input_json = arguments["input"]
-        from web_algebra.json_result import JSONResult
-
-        input_result = JSONResult.from_json(input_json)
-        expression = arguments["expression"]
-
-        result = self.execute(input_result, expression)
-
-        # Return summary for MCP
-        return [
-            types.TextContent(
-                type="text", text=f"Filtered to {len(result.bindings)} result(s)"
-            )
-        ]

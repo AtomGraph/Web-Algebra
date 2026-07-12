@@ -1,6 +1,5 @@
 from typing import Any, List, Union
 import logging
-from mcp import types
 from web_algebra.focus import Focus
 from web_algebra.operation import Operation
 from rdflib.query import Result
@@ -37,11 +36,15 @@ class ForEach(Operation):
     def execute(
         self, select_data: Union[List[Any], Result], operation: Any
     ) -> List[Any]:
-        """Pure function: apply operation to each item in sequence or SPARQL results"""
-        # This is complex because we need to execute operations with context
-        # For now, this will be handled in execute_json
+        """Interpreter-level special form — no pure form (formal-semantics.md §4.1).
+
+        `ForEach` evaluates a *quoted* operand once per item under a per-item
+        focus and variable scope; that requires the interpreter, so it has no
+        pure `execute()` and lives entirely in `execute_json`.
+        """
         raise NotImplementedError(
-            "ForEach pure function needs operation execution context"
+            "ForEach is an interpreter-level special form (formal-semantics.md "
+            "§4.1); use execute_json"
         )
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> List[Any]:
@@ -127,7 +130,3 @@ class ForEach(Operation):
                 variable_stack.pop()
 
         return results
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        return [types.TextContent(type="text", text="ForEach operation completed")]

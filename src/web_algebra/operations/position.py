@@ -1,6 +1,7 @@
 from rdflib import Literal
 from rdflib.namespace import XSD
 
+from web_algebra.exceptions import NoFocusError
 from web_algebra.focus import Focus
 from web_algebra.operation import Operation
 
@@ -25,7 +26,7 @@ class Position(Operation):
     def execute(self, focus: Focus) -> Literal:
         """Pure function: focus → 1-based position as xsd:integer"""
         if not isinstance(focus, Focus):
-            raise ValueError(
+            raise NoFocusError(
                 "Position requires an iteration focus (only ForEach establishes one)"
             )
         return Literal(focus.position, datatype=XSD.integer)

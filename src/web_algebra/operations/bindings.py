@@ -1,5 +1,4 @@
-from typing import Any, List, Dict
-from mcp import types
+from typing import List, Dict
 from web_algebra.operation import Operation
 from rdflib.query import Result
 from rdflib.term import Node
@@ -48,12 +47,3 @@ class Bindings(Operation):
             )
 
         return self.execute(table_data)
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        # For MCP, just return summary
-        return [
-            types.TextContent(
-                type="text", text="Extracted bindings from SPARQL results"
-            )
-        ]

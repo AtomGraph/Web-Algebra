@@ -52,7 +52,8 @@ class Iterate(Operation):
 
     def execute(self, *args) -> Any:
         raise NotImplementedError(
-            "Iterate is an interpreter-level special form; use execute_json"
+            "Iterate is an interpreter-level special form (formal-semantics.md "
+            "§4.1); use execute_json"
         )
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> List[Any]:
