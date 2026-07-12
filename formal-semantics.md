@@ -22,10 +22,12 @@ BNode       = blank node
 Term        = URI + Literal + BNode
 Graph       = RDF graph (set of triples)
 Result      = SPARQL SELECT result: a variable list and an ordered sequence
-              of Bindings
+              of Bindings. Result values are materialized — they hold their
+              rows and may be iterated any number of times
 Binding     = one solution row: a partial mapping from variable names to Terms
 Sequence α  = ordered list of values of type α
-Position    = integer ≥ 1 (XSLT-style 1-based index)
+Position    = integer ≥ 1 (XSLT-style 1-based index; also the name of the
+              focus-accessor operation, §4.1 — context disambiguates)
 Unit        = no meaningful value (an operation executed for its effect)
 Context     = the current iteration item (see §3.5); one of
               Binding + Term + Graph + JSON value
@@ -120,7 +122,7 @@ this is the *program* shape.
 |------|------|
 | string | `Literal` with datatype `xsd:string` |
 | integer | `Literal` with datatype `xsd:integer` |
-| number with fraction | `Literal` with datatype `xsd:double` |
+| number parsed as floating-point (e.g. `1.5`, `1.0`, `1e3`) | `Literal` with datatype `xsd:double` |
 | boolean | `Literal` with datatype `xsd:boolean` |
 
 A plain string is *always* a string literal, never a URI; URIs are written
@@ -156,12 +158,23 @@ member values may themselves be computed by nested operation calls.
 Evaluation maps forms to values in the domain
 
 ```
-Value = Term + Graph + Result + Sequence Value + Binding + Unit + JSON
+Value  = Term + Graph + Result + Binding + Unit + Sequence Value
+       + Object + Data
+
+Object = JSON object whose member values are Values — the result of a
+         generic-object form (members are evaluated, so its scalars have
+         been coerced to Terms)
+Data   = JSON-LD structure whose evaluated hole positions hold Terms and
+         whose remaining content is raw, uncoerced JSON — the result of an
+         RDF data form
 ```
 
-(`JSON` covers RDF data forms and generic objects, which evaluate to JSON
-structures with their holes filled; they become `Graph`s only at operation
-boundaries.)
+Note the two closures differ deliberately: a generic object's members are
+forms and evaluate (§3.2), while an RDF data form's non-hole content is data
+for a JSON-LD parser and must stay untouched. A `Data` value becomes a
+`Graph` only at an operation boundary, parsed with that operation's base IRI
+(§2.3); an `Object` value becomes a Term only where an operation's catalog
+entry accepts the SPARQL JSON term form (§2.4).
 
 ### 3.2 Evaluation rules
 
@@ -280,6 +293,7 @@ Failures raise Python exceptions per this table (normative):
 | regular-expression errors in `Replace` — invalid pattern or flags, zero-length-matching pattern, invalid replacement (XPath `err:FORX000*`) | `ValueError` |
 | unknown `type` in SPARQL JSON term form | `ValueError` |
 | blank node where SPARQL syntax forbids it (`Values` data) | `ValueError` |
+| non-RDF response to a Linked Data or SPARQL operation — unsupported media type, missing `Content-Type`, or a body that does not parse as the negotiated format (§4.3–4.4) | `ValueError` |
 | HTTP/SPARQL transport failure | `urllib.error.HTTPError` / `URLError`, unwrapped |
 
 Type checking is strict: operations validate their inputs and raise `TypeError`
@@ -623,6 +637,11 @@ JSON:     base: URI · relative: string-compatible Literal
 
 ### 4.3 SPARQL operations
 
+The query operations negotiate their response formats transparently (SPARQL
+Results for `SELECT`, an RDF serialization for `CONSTRUCT`/`DESCRIBE`); a
+response that does not parse as the negotiated format raises `ValueError`
+(§3.7).
+
 **SELECT** — execute a SPARQL SELECT query against an endpoint. *Query* effect.
 ```
 Abstract: URI × Literal → Result
@@ -684,6 +703,14 @@ JSON:     question: Literal
   out. The generated query text is not specified.
 
 ### 4.4 Linked Data (HTTP) operations
+
+The Linked Data operations are RDF-specific and **symmetric**: they read and
+write RDF graphs. Content negotiation is handled transparently by the
+implementation — RDF media types are requested and offered; the concrete
+serializations on the wire are implementation detail and never visible in
+the algebra. A response that is not an RDF representation — an unsupported
+media type, a missing `Content-Type`, or a body that does not parse as its
+declared RDF type — raises `ValueError` (§3.7).
 
 `POST`, `PUT` and `PATCH` return a single-row `Result` with variables
 `status` (`xsd:integer` HTTP status) and `url` (the effective request URI).

@@ -22,8 +22,9 @@ live.
   Literal); the operation is non-deterministic (LLM) and needs an OpenAI client, so
   even the type contract is only exercised in live runs.
 - **Live-service behavior** — §3.7 pins transport failures to
-  `urllib.error.HTTPError`/`URLError` propagating unwrapped, but content negotiation,
-  redirects (beyond 308), timeouts, and retry policy remain unspecified.
+  `urllib.error.HTTPError`/`URLError` propagating unwrapped, and §4.3–4.4 pin the
+  response contract (RDF-only, transparent conneg, non-RDF → `ValueError`); still
+  unspecified: timeouts, retry policy beyond 429, and redirect handling beyond 308.
 - **XPath regex dialect coverage** — `Replace` compiles patterns with Python's `re`.
   The common syntax is shared with XPath regular expressions, but XPath-only
   constructs (`\p{...}` category escapes, `\i`/`\c`, character-class subtraction
@@ -91,3 +92,14 @@ and the corresponding tests are un-skipped.
   (Appendix A).
 - **Strict-typing divergences observed on first run** (Str, SELECT): resolved on the
   implementation side — both validate input types before any effect (§3.7).
+- **Linked Data response contract** (§4.3–4.4): the HTTP operations are RDF-specific
+  and symmetric — they read and write RDF graphs; content negotiation is transparent
+  in the implementation; a non-RDF response (unsupported media type, missing
+  `Content-Type`, or a body that does not parse as the negotiated format) raises
+  `ValueError`.
+- **Value-domain precision** (§3.1): the former `JSON` summand split into `Object`
+  (generic-object results, members are Values) and `Data` (RDF data forms, holes are
+  Terms, the rest raw JSON), with their conversion boundaries stated.
+- **Result persistence** (§1.1): Result values are materialized and re-iterable.
+- **Value focus-item lookup** (§3.5): closed to `Binding` + mapping; the former
+  host-reflection (attribute) fallback removed.
