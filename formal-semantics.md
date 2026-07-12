@@ -237,11 +237,10 @@ The focus accessors, named after their XSLT/XPath counterparts:
   (XPath `fn:position()`).
 - `Last` yields the iteration size as an `xsd:integer` Literal (XPath
   `fn:last()`).
-- `Value` with an unprefixed name looks the name up *in* the focus item:
-  - `Binding` (SPARQL row): the term bound to that variable name;
-  - mapping (e.g. a JSON object item): the member value;
-  - any other object: the attribute of that name;
-  - a miss, or an item supporting none of these, raises `ValueError`.
+- `Value` with an unprefixed name looks the name up *in* the focus item.
+  The item shapes are **closed**: a `Binding` (SPARQL row) yields the term
+  bound to that variable name; a mapping (e.g. a JSON object item) yields
+  the member value. A miss, or any other item shape, raises `ValueError`.
 
 ### 3.6 Effects and ordering
 
@@ -382,8 +381,8 @@ rule (propagation rules are omitted below).
 
 (VALUE-CTX)  φ = (c, i, n)
              ρ, φ ⊢ ⟨Value(name: x), σ⟩ ⇓ ⟨member(c, x), ρ, σ⟩
-             member per §3.5 (Binding | mapping | attribute);
-             φ = ⊥ or miss: err ValueError
+             member per §3.5, defined only for c ∈ Binding + mapping;
+             φ = ⊥, other item shapes, or miss: err ValueError
 
 (CURRENT)    φ = (c, i, n)   ⇒   ρ, φ ⊢ ⟨Current(), σ⟩ ⇓ ⟨c, ρ, σ⟩
 (POSITION)   φ = (c, i, n)   ⇒   ρ, φ ⊢ ⟨Position(), σ⟩ ⇓ ⟨int(i), ρ, σ⟩
@@ -476,6 +475,10 @@ Abstract: String → Any
 Python:   def execute(self, name: str, context: Any, variable_stack: list) -> Any
 JSON:     name: String (plain JSON string; `$` prefix selects variable lookup)
 ```
+- Returns the value as-is, with no atomization or string conversion — the
+  semantics of `xsl:sequence`, not `xsl:value-of` (which is expressible as
+  `Str(Value(...))`).
+- Focus-item lookup is defined for `Binding` and mapping items only (§3.5).
 
 **Current** — the focus item itself, per XSLT `current()`.
 ```

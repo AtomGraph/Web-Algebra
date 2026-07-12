@@ -40,8 +40,9 @@ class Value(Operation):
             )
             return result
         else:
-            # Focus-item lookup (formal-semantics.md §3.5): Binding → bound
-            # term, mapping → member value, other object → attribute.
+            # Focus-item lookup (formal-semantics.md §3.5). The item shapes
+            # are closed: Binding → bound term, mapping → member value;
+            # anything else is an error.
             if isinstance(context, Focus):
                 context = context.item
             if isinstance(context, ResultRow):
@@ -55,11 +56,9 @@ class Value(Operation):
                     return context[name]
                 raise ValueError(f"Context member '{name}' not found in mapping")
             else:
-                # Other context types
-                if hasattr(context, name):
-                    return getattr(context, name)
                 raise ValueError(
-                    f"Context variable '{name}' not found in {type(context)}"
+                    f"Value cannot look up '{name}' in a {type(context).__name__} "
+                    "focus item (expected a Binding or a mapping)"
                 )
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> Any:

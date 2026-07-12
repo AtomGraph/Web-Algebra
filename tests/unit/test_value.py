@@ -1,10 +1,12 @@
 """Spec: formal-semantics.md §4.1 "Value" with §3.4 (variable environment)
-and §3.5 (context).
+and §3.5 (focus).
 Abstract: String → Any
 - `$name` searches variable scopes innermost to outermost; miss → ValueError.
-- Unprefixed `name` looks up in the context item: Binding → bound term,
-  mapping → member value, other object → attribute; miss → ValueError.
+- Unprefixed `name` looks up in the focus item; the item shapes are closed:
+  Binding → bound term, mapping → member value; a miss or any other item
+  shape → ValueError.
 - The `$` sigil decides the lookup domain, so the two never shadow each other.
+- Returns the value as-is (xsl:sequence semantics, no string conversion).
 """
 
 from __future__ import annotations
@@ -43,14 +45,16 @@ class TestValuePure:
         focus = Focus(item={"city": Literal("Vilnius")}, position=1, size=1)
         assert op.execute("city", focus, []) == Literal("Vilnius")
 
-    def test_attribute_context_lookup(self, settings):
-        # §3.5: any other object → the attribute of that name
+    def test_unsupported_item_shape_raises_value_error(self, settings):
+        # §3.5: the item shapes are closed (Binding + mapping) — anything
+        # else raises ValueError, even if the host object happens to carry
+        # an attribute of that name
         class Item:
             city = Literal("Kaunas")
 
         op = Operation.get("Value")(settings=settings)
-        result = op.execute("city", Item(), [])
-        assert result == Literal("Kaunas")
+        with pytest.raises(ValueError):
+            op.execute("city", Item(), [])
 
     def test_sigil_selects_lookup_domain(self, settings):
         # §3.4: `$name` reads the variable stack, plain `name` the context —
