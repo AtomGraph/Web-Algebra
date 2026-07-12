@@ -1,6 +1,6 @@
 from typing import Any, List, Union
 import logging
-from mcp import types
+from web_algebra.focus import Focus
 from web_algebra.operation import Operation
 from rdflib.query import Result
 
@@ -36,15 +36,21 @@ class ForEach(Operation):
     def execute(
         self, select_data: Union[List[Any], Result], operation: Any
     ) -> List[Any]:
-        """Pure function: apply operation to each item in sequence or SPARQL results"""
-        # This is complex because we need to execute operations with context
-        # For now, this will be handled in execute_json
+        """Interpreter-level special form — no pure form (formal-semantics.md §4.1).
+
+        `ForEach` evaluates a *quoted* operand once per item under a per-item
+        focus and variable scope; that requires the interpreter, so it has no
+        pure `execute()` and lives entirely in `execute_json`.
+        """
         raise NotImplementedError(
-            "ForEach pure function needs operation execution context"
+            "ForEach is an interpreter-level special form (formal-semantics.md "
+            "§4.1); use execute_json"
         )
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> List[Any]:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> List[Any]:
         """JSON execution: apply operations to each item in sequence or SPARQL results"""
+        if variable_stack is None:
+            variable_stack = []
         # Get the select data (sequence or Result)
         select_data = Operation.process_json(
             self.settings, arguments["select"], self.context, variable_stack
@@ -77,38 +83,50 @@ class ForEach(Operation):
             )
 
         results = []
-        for item in items:
+        size = len(items)
+        for position, item in enumerate(items, start=1):
             logging.info("Processing item: %s", item)
 
-            # Handle list of operations or single operation
-            if isinstance(operation, list):
-                # Execute operations in sequence, with item as context
-                last_result = None
+            # The focus (item, position, size) per formal-semantics.md §3.5,
+            # accessed by Current/Position/Last and focus-item Value lookups.
+            focus = Focus(item=item, position=position, size=size)
 
-                for op in operation:
+            # Each iteration runs in a fresh variable scope
+            # (formal-semantics.md §3.4): bindings made inside one iteration
+            # do not leak into the next.
+            variable_stack.append({})
+            try:
+                # Handle list of operations or single operation
+                if isinstance(operation, list):
+                    # Execute operations in sequence under the focus;
+                    # the iteration's value is the last non-Unit result.
+                    last_result = None
+
+                    for op in operation:
+                        result = Operation.process_json(
+                            self.settings,
+                            op,
+                            context=focus,
+                            variable_stack=variable_stack,
+                        )
+                        if result is not None:
+                            last_result = result
+
+                    # Only collect the last non-None result
+                    if last_result is not None:
+                        results.append(last_result)
+                else:
+                    # Single operation
                     result = Operation.process_json(
-                        self.settings, op, context=item, variable_stack=variable_stack
+                        self.settings,
+                        operation,
+                        context=focus,
+                        variable_stack=variable_stack,
                     )
+                    # Only collect non-None results
                     if result is not None:
-                        last_result = result
-
-                # Only collect the last non-None result
-                if last_result is not None:
-                    results.append(last_result)
-            else:
-                # Single operation
-                result = Operation.process_json(
-                    self.settings,
-                    operation,
-                    context=item,
-                    variable_stack=variable_stack,
-                )
-                # Only collect non-None results
-                if result is not None:
-                    results.append(result)
+                        results.append(result)
+            finally:
+                variable_stack.pop()
 
         return results
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        return [types.TextContent(type="text", text="ForEach operation completed")]

@@ -67,7 +67,7 @@ class SPARQLString(Operation, MCPTool):
         logging.info("Generated SPARQL query: %s", result)
         return Literal(result, datatype=XSD.string)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Literal:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Literal:
         """JSON execution: process arguments and delegate to execute()"""
         question_data = Operation.process_json(
             self.settings, arguments["question"], self.context, variable_stack

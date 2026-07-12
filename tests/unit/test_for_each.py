@@ -1,8 +1,12 @@
-"""Spec: formal-semantics.md "ForEach - Map operation over sequence (sequence → sequence semantics)"
-Abstract: Sequence α × Operation → Sequence β
-Python:   def execute(self, select_data: Union[List[Any], rdflib.query.Result],
-                      operation: Any) -> List[Any]
-Plus Sequence Semantics property (lines 302-306).
+"""Spec: formal-semantics.md §4.1 "ForEach — evaluate an operation once per
+item of a sequence or per row of a SPARQL result"
+Abstract: (Sequence α + Result) × Operation⟨quoted⟩ → Sequence β
+- Interpreter-level special form: execute_json only, no pure layer (§4.1).
+- Iterates a Sequence item-by-item, a Result row-by-row in result order.
+- Each iteration runs in a fresh variable scope with the item as context.
+- Operation arrays evaluate in order; the iteration's value is the last
+  non-Unit result. Unit-valued iterations are dropped; sequence-valued
+  results stay nested (no flattening).
 """
 
 from __future__ import annotations
@@ -10,21 +14,13 @@ from __future__ import annotations
 import pytest
 from rdflib import Literal
 
+from web_algebra.json_result import JSONResult
 from web_algebra.operation import Operation
-
-
-class TestForEachPure:
-    @pytest.mark.skip(reason="UNCLEAR(spec): ForEach pure execute() requires an Operation value plus dispatcher context — abstract signature is testable only via execute_json")
-    def test_pure(self, settings):
-        pass
 
 
 class TestForEachJson:
     def test_empty_sequence(self, settings):
-        # JSON arg keys derived from Python parameter names: select_data → "select" by convention.
-        # The existing fixture set has no ForEach example; flagged in SPEC_GAPS for confirmation.
         op = Operation.get("ForEach")(settings=settings)
-        # Use the JSON dispatcher: an inner Str on each item.
         result = op.execute_json(
             {
                 "select": [],
@@ -47,7 +43,7 @@ class TestForEachJson:
         assert [str(item) for item in result] == ["a", "b", "c"]
 
     def test_non_iterable_select_raises(self, settings):
-        # Strict Type Checking property: select must be a Sequence or Result.
+        # §4.1: any other `select` value raises TypeError
         op = Operation.get("ForEach")(settings=settings)
         with pytest.raises(TypeError):
             op.execute_json(
@@ -57,10 +53,96 @@ class TestForEachJson:
                 }
             )
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): output shape when inner op returns None or a sequence — flatten? filter Nones?")
-    def test_inner_op_none_handling(self, settings):
-        pass
+    def test_unit_valued_iterations_are_dropped(self, settings):
+        # §4.1: iteration values that are Unit (None) are dropped — Variable
+        # returns Unit, so an all-Variable operation yields the empty sequence.
+        op = Operation.get("ForEach")(settings=settings)
+        result = op.execute_json(
+            {
+                "select": ["a", "b"],
+                "operation": {
+                    "@op": "Variable",
+                    "args": {"name": "x", "value": {"@op": "Current", "args": {}}},
+                },
+            }
+        )
+        assert result == []
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): SPARQL Result iteration order")
-    def test_result_iteration_order(self, settings):
-        pass
+    def test_sequence_results_stay_nested(self, settings):
+        # §4.1: sequence-valued iteration results are kept nested (no
+        # flattening) — a nested ForEach yields a sequence per outer item.
+        op = Operation.get("ForEach")(settings=settings)
+        result = op.execute_json(
+            {
+                "select": [["a", "b"]],
+                "operation": {
+                    "@op": "ForEach",
+                    "args": {
+                        "select": {"@op": "Current", "args": {}},
+                        "operation": {
+                            "@op": "Str",
+                            "args": {"input": {"@op": "Current", "args": {}}},
+                        },
+                    },
+                },
+            }
+        )
+        # §4.2: Str returns simple literals
+        assert result == [[Literal("a"), Literal("b")]]
+
+    def test_operation_array_yields_last_non_unit(self, settings):
+        # §4.1: operation arrays evaluate in order within the iteration's
+        # scope; the iteration's value is the last non-Unit result.
+        op = Operation.get("ForEach")(settings=settings)
+        result = op.execute_json(
+            {
+                "select": ["a"],
+                "operation": [
+                    {
+                        "@op": "Variable",
+                        "args": {"name": "x", "value": {"@op": "Current", "args": {}}},
+                    },
+                    {"@op": "Str", "args": {"input": {"@op": "Value", "args": {"name": "$x"}}}},
+                ],
+            }
+        )
+        assert result == [Literal("a")]
+
+    def test_iteration_scope_does_not_leak(self, settings):
+        # §3.4: each iteration runs in a fresh scope — bindings made inside
+        # do not survive the ForEach.
+        op = Operation.get("ForEach")(settings=settings)
+        stack = [{}]
+        op.execute_json(
+            {
+                "select": ["a"],
+                "operation": [
+                    {"@op": "Variable", "args": {"name": "x", "value": "v"}},
+                    {"@op": "Current", "args": {}},
+                ],
+            },
+            stack,
+        )
+        assert stack == [{}]
+
+    def test_result_rows_iterate_in_result_order(self, settings):
+        # §4.1: a Result iterates row-by-row in result order
+        op = Operation.get("ForEach")(settings=settings)
+        table = JSONResult.from_json(
+            {
+                "head": {"vars": ["x"]},
+                "results": {
+                    "bindings": [
+                        {"x": {"type": "literal", "value": v}}
+                        for v in ("a", "b", "c")
+                    ]
+                },
+            }
+        )
+        result = op.execute_json(
+            {
+                "select": table,
+                "operation": {"@op": "Value", "args": {"name": "x"}},
+            }
+        )
+        assert [str(v) for v in result] == ["a", "b", "c"]

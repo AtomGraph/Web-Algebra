@@ -43,12 +43,22 @@ class TestResolveURIPure:
         with pytest.raises(TypeError):
             op.execute(URIRef("http://example.org/base/"), URIRef("foo"))
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): behavior when relative is itself an absolute URI")
-    def test_absolute_relative(self, settings):
-        pass
+    def test_absolute_relative_returns_itself(self, settings):
+        # §4.2: RFC 3986 §5 — if `relative` is itself an absolute URI, the
+        # result is `relative`
+        op = Operation.get("ResolveURI")(settings=settings)
+        result = op.execute(
+            URIRef("http://example.org/base/"), Literal("https://other.example/x")
+        )
+        assert str(result) == "https://other.example/x"
 
 
 class TestResolveURIJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): JSON arg key names for ResolveURI not given by spec or existing fixtures")
     def test_json_dispatch(self, settings):
-        pass
+        # §4.2 JSON: base: URI · relative: string-compatible Literal
+        op = Operation.get("ResolveURI")(settings=settings)
+        result = op.execute_json(
+            {"base": {"@id": "http://example.org/base/"}, "relative": "foo"}
+        )
+        assert isinstance(result, URIRef)
+        assert str(result) == "http://example.org/base/foo"

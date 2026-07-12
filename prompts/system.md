@@ -9,6 +9,7 @@ Your output must be a **JSON-formatted structure** of operation calls, where **o
 - **Operations must be represented as JSON objects**. Each operation corresponds to a function call with a specific signature.
 - **Operations may be nested inside arguments** to indicate dependencies.
 - **A result can be used directly as an argument in another operation** instead of requiring explicit intermediate variables.
+- **URIs are written with the URI reference form** `{"@id": "https://..."}` — an object whose only member is `@id`. A plain JSON string is **always a string literal, never a URI**. To produce a URI from a computed value, use `URI` or `ResolveURI`.
 - **ForEach supports executing multiple operations sequentially** when provided with a list of operations. Each operation in the list is executed for every row in the table before moving to the next row.
 - **Where an operation returns or expects RDF data, it is handled internally as an `rdflib.Graph`, but is represented as JSON-LD in the JSON structure.**
 - **SPARQL tabular data** (e.g., from `SELECT`) can be provided inline as a list of bindings, while **RDF Graph data** (e.g., from `GET`, `CONSTRUCT`, or merges) can be provided inline as JSON-LD objects.
@@ -28,7 +29,9 @@ would produce this JSON output:
     "select": {
       "@op": "SELECT",
       "args": {
-        "endpoint": "https://dbpedia.org/sparql",
+        "endpoint": {
+          "@id": "https://dbpedia.org/sparql"
+        },
         "query": {
           "@op": "SPARQLString",
           "args": {
@@ -43,7 +46,9 @@ would produce this JSON output:
         "url": {
           "@op": "ResolveURI",
           "args": {
-            "base": "http://localhost/denmark/",
+            "base": {
+              "@id": "http://localhost/denmark/"
+            },
             "relative": {
               "@op": "Value",
               "args": {
@@ -56,7 +61,7 @@ would produce this JSON output:
           "@op": "GET",
           "args": {
             "url": {
-              "@op": "Str",
+              "@op": "URI",
               "args": {
                 "input": {
                   "@op": "Value",
@@ -821,6 +826,71 @@ Result (example):
   "monarchLabel": {"xml:lang": "en", "type": "literal", "value": "Ambiorix"}
 }
 ```
+
+## Iterate(params: Dict, operation: Union[Callable, List[Callable]], next-iteration: Dict, break: Dict) -> List
+
+Stateful iteration with parameter passing between iterations, inspired by XSLT 3.0's `xsl:iterate`. Use it for cursor- or URL-driven pagination, where the next request depends on the previous response.
+
+- `params`: initial parameters (name → value/operation), bound as variables and read via `{"@op": "Value", "args": {"name": "$name"}}`.
+- `operation`: evaluated once per iteration; may be a list (executed in order, last non-null result is the iteration's value).
+- `next-iteration` (optional): name → operation, evaluated after each iteration — it sees the loop parameters *and* any `Variable` bindings the body made — and rebinds the parameters. Without it, exactly one iteration runs.
+- `break` (optional): `{"name": "param", "equals": "value"}` or `{"name": "param", "not-equals": "value"}`, tested after rebinding.
+
+Returns the list of iteration results. The iteration count is capped at 1000.
+
+### Example JSON
+
+```json
+{
+  "@op": "Iterate",
+  "args": {
+    "params": {
+      "url": {"@id": "https://api.example.com/items"}
+    },
+    "operation": [
+      {
+        "@op": "Variable",
+        "args": {"name": "page", "value": {"@op": "GET", "args": {"url": {"@op": "URI", "args": {"input": {"@op": "Value", "args": {"name": "$url"}}}}}}}
+      },
+      {"@op": "Value", "args": {"name": "$page"}}
+    ],
+    "next-iteration": {
+      "url": {"@op": "Value", "args": {"name": "$nextPageUrl"}}
+    },
+    "break": {"name": "url", "equals": ""}
+  }
+}
+```
+
+Result: a list with one RDF graph per fetched page (merge them with `Merge` if a single graph is needed).
+
+## Position() -> int
+
+Returns the 1-based position of the current iteration item, like XPath's `fn:position()`. Only meaningful inside `ForEach`, which establishes the focus (item, position, size).
+
+### Example JSON
+
+```json
+{
+  "@op": "Position"
+}
+```
+
+Result (example): `2` (an `xsd:integer` literal) while processing the second row.
+
+## Last() -> int
+
+Returns the size of the sequence being iterated, like XPath's `fn:last()`. Only meaningful inside `ForEach`. Combine with `Position` for progress-style values, e.g. "item 2 of 10".
+
+### Example JSON
+
+```json
+{
+  "@op": "Last"
+}
+```
+
+Result (example): `10` (an `xsd:integer` literal) while iterating ten rows.
 
 ## ExtractClasses(endpoint: str) -> Graph
 

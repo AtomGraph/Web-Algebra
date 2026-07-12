@@ -114,16 +114,27 @@ class LinkedDataClient:
 
         # Read and decode the response data
         data = response.read().decode("utf-8")
-        content_type = response.headers.get("Content-Type").split(";")[0]
+        # Non-RDF responses are errors (formal-semantics.md §4.4): the
+        # Linked Data operations read and write RDF graphs only.
+        content_type_header = response.headers.get("Content-Type")
+        content_type = (
+            content_type_header.split(";")[0].strip() if content_type_header else None
+        )
         rdf_format = MEDIA_TYPES.get(content_type)
         if not rdf_format:
             raise ValueError(
-                f"Unsupported Content-Type: {content_type}. Supported types are: {', '.join(MEDIA_TYPES.keys())}"
+                f"Non-RDF response from {url}: Content-Type {content_type!r} is not "
+                f"an RDF media type (supported: {', '.join(MEDIA_TYPES.keys())})"
             )
 
         # Parse the RDF data into an RDFLib Graph
         g = Graph()
-        g.parse(data=data, format=rdf_format, publicID=url)
+        try:
+            g.parse(data=data, format=rdf_format, publicID=url)
+        except Exception as e:
+            raise ValueError(
+                f"Non-RDF response from {url}: body does not parse as {content_type}: {e}"
+            ) from None
         return g
 
     def post(self, url: str, graph: Graph) -> HTTPResponse:
@@ -384,11 +395,19 @@ class SPARQLClient:
 
         if accept == "application/n-triples":
             g = Graph()
-            # convert N-Triples to JSON-LD
-            g.parse(data=data.decode("utf-8"), format="nt")
+            # convert N-Triples to JSON-LD; a body that does not parse as the
+            # negotiated format is an error (formal-semantics.md §4.3)
+            try:
+                g.parse(data=data.decode("utf-8"), format="nt")
+            except Exception as e:
+                raise ValueError(
+                    f"Non-RDF response from {endpoint_url}: body does not parse "
+                    f"as N-Triples: {e}"
+                ) from None
             jsonld_str = g.serialize(format="json-ld")
             jsonld_data = json.loads(jsonld_str)
             return jsonld_data
         else:
-            # return SPARQL JSON results as a dict
+            # SPARQL JSON results as a dict; json.JSONDecodeError is a
+            # ValueError subclass, satisfying the §4.3 error contract
             return json.loads(data.decode("utf-8"))

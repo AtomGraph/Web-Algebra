@@ -1,7 +1,7 @@
-"""Spec: formal-semantics.md "Current - Return current context item"
-Abstract: Any → Any
-Python:   def execute(self, current_item: Any) -> Any
-Plus Context System property: "Current Operation: Returns the current context item unchanged" (line 317).
+"""Spec: formal-semantics.md §4.1 "Current — the context item itself"
+Abstract: () → Context
+- Yields the context item; raises ValueError when no context is
+  established (§3.5: only ForEach establishes one).
 """
 
 from __future__ import annotations
@@ -19,9 +19,11 @@ class TestCurrentPure:
         result = op.execute(sentinel)
         assert result is sentinel or result == sentinel
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): behavior when context is unset (default `{}` per the abstract type signature)")
-    def test_unset_context(self, settings):
-        pass
+    def test_unset_context_raises_value_error(self, settings):
+        # §3.5/§3.7: no context established → ValueError
+        op = Operation.get("Current")(settings=settings)
+        with pytest.raises(ValueError):
+            op.execute_json({})
 
 
 class TestCurrentJson:
@@ -32,3 +34,13 @@ class TestCurrentJson:
         op = op_cls(settings=settings, context=ctx_value)
         result = op.execute_json({})
         assert result == ctx_value
+
+    def test_yields_the_focus_item(self, settings):
+        # §3.5: Current yields the focus item itself, not the focus triple
+        from web_algebra.focus import Focus
+
+        op = Operation.get("Current")(
+            settings=settings,
+            context=Focus(item=Literal("the-item"), position=2, size=3),
+        )
+        assert op.execute_json({}) == Literal("the-item")

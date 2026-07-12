@@ -216,7 +216,7 @@ WHERE {{
 
         return g
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments with type checking"""
         # Process ontology graph — accept a Graph (e.g. from CONSTRUCT) or a
         # JSON-LD document, converting the latter to a Graph

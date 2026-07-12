@@ -164,7 +164,7 @@ ORDER BY ?label"""
 
         return sparql
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Graph:
         """JSON execution: process arguments with type checking"""
         # Process ontology graph — accept a Graph (e.g. from CONSTRUCT) or a
         # JSON-LD document, converting the latter to a Graph

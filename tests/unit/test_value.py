@@ -1,7 +1,12 @@
-"""Spec: formal-semantics.md "Value - Access variables and context values"
-Abstract: String × Context × VariableStack → Any
-Python:   def execute(self, name: str, context: Any, variable_stack: List[Dict[str, Any]]) -> Any
-Plus Variable System property (lines 308-311) and Context System property (lines 314-318).
+"""Spec: formal-semantics.md §4.1 "Value" with §3.4 (variable environment)
+and §3.5 (focus).
+Abstract: String → Any
+- `$name` searches variable scopes innermost to outermost; miss → ValueError.
+- Unprefixed `name` looks up in the focus item; the item shapes are closed:
+  Binding → bound term, mapping → member value; a miss or any other item
+  shape → ValueError.
+- The `$` sigil decides the lookup domain, so the two never shadow each other.
+- Returns the value as-is (xsl:sequence semantics, no string conversion).
 """
 
 from __future__ import annotations
@@ -26,20 +31,58 @@ class TestValuePure:
         result = op.execute("$x", {}, stack)
         assert result == Literal("outer")
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): which context container shapes does Value support? Context type is `Any` (line 315) and the narrative names ResultRow but doesn't enumerate other shapes (dict? attribute-bearing object? both?)")
-    def test_context_lookup(self, settings):
-        pass
+    def test_mapping_context_lookup(self, settings):
+        # §3.5: mapping focus item → member value
+        op = Operation.get("Value")(settings=settings)
+        result = op.execute("city", {"city": Literal("Vilnius")}, [])
+        assert result == Literal("Vilnius")
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): precedence when same name appears in both context and stack")
-    def test_context_vs_stack_precedence(self, settings):
-        pass
+    def test_lookup_unwraps_the_focus(self, settings):
+        # §3.5: the unprefixed lookup targets the focus *item*
+        from web_algebra.focus import Focus
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): behavior on missing name — error class unspecified")
-    def test_missing_name(self, settings):
-        pass
+        op = Operation.get("Value")(settings=settings)
+        focus = Focus(item={"city": Literal("Vilnius")}, position=1, size=1)
+        assert op.execute("city", focus, []) == Literal("Vilnius")
+
+    def test_unsupported_item_shape_raises_value_error(self, settings):
+        # §3.5: the item shapes are closed (Binding + mapping) — anything
+        # else raises ValueError, even if the host object happens to carry
+        # an attribute of that name
+        class Item:
+            city = Literal("Kaunas")
+
+        op = Operation.get("Value")(settings=settings)
+        with pytest.raises(ValueError):
+            op.execute("city", Item(), [])
+
+    def test_sigil_selects_lookup_domain(self, settings):
+        # §3.4: `$name` reads the variable stack, plain `name` the context —
+        # the same name in both never shadows.
+        op = Operation.get("Value")(settings=settings)
+        context = {"x": Literal("from-context")}
+        stack = [{"x": Literal("from-stack")}]
+        assert op.execute("$x", context, stack) == Literal("from-stack")
+        assert op.execute("x", context, stack) == Literal("from-context")
+
+    def test_missing_variable_raises_value_error(self, settings):
+        # §3.7: unknown variable in `$name` lookup → ValueError
+        op = Operation.get("Value")(settings=settings)
+        with pytest.raises(ValueError):
+            op.execute("$missing", {}, [])
+
+    def test_missing_context_member_raises_value_error(self, settings):
+        # §3.7: context lookup miss → ValueError
+        op = Operation.get("Value")(settings=settings)
+        with pytest.raises(ValueError):
+            op.execute("missing", {"other": Literal("v")}, [])
 
 
 class TestValueJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): JSON arg key for Value not given by spec or existing fixtures")
     def test_json_dispatch(self, settings):
-        pass
+        # §4.1 JSON: name: String (plain JSON string, `$` prefix for variables)
+        op = Operation.get("Value")(settings=settings)
+        result = op.execute_json(
+            {"name": "$x"}, [{"x": Literal("bound")}]
+        )
+        assert result == Literal("bound")

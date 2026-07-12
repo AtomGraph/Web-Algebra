@@ -1,25 +1,22 @@
-from typing import Any
+from typing import Any, ClassVar, Type
 import logging
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from rdflib.query import Result
 from mcp import types
 from web_algebra.mcp_tool import MCPTool
+from web_algebra.client_operation import ClientOperation
 from web_algebra.operation import Operation
 from web_algebra.client import SPARQLClient
 
 
-class SELECT(Operation, MCPTool):
+class SELECT(ClientOperation, Operation, MCPTool):
     """
     Executes SPARQL SELECT queries against endpoints
     """
 
-    def model_post_init(self, __context: Any) -> None:
-        self.client = SPARQLClient(
-            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
-            cert_password=getattr(self.settings, "cert_password", None),
-            verify_ssl=False,
-        )
+    client_class: ClassVar[Type] = SPARQLClient
+
 
     @classmethod
     def description(cls) -> str:
@@ -67,7 +64,7 @@ class SELECT(Operation, MCPTool):
 
         return JSONResult.from_json(sparql_json)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments with strict type checking"""
         # Process endpoint
         endpoint_data = Operation.process_json(
@@ -82,7 +79,7 @@ class SELECT(Operation, MCPTool):
         query_data = Operation.process_json(
             self.settings, arguments["query"], self.context, variable_stack
         )
-        if not isinstance(query_data, Literal) or query_data.datatype != XSD.string:
+        if not Operation.is_string_literal(query_data):
             raise TypeError(
                 f"SELECT operation expects 'query' to be string Literal, got {type(query_data)}"
             )

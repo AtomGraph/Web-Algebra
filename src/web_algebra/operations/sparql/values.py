@@ -115,7 +115,7 @@ class Values(Operation, MCPTool):
         # "lex"^^<dt>, and bare numeric/boolean forms.
         return term.n3()
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Literal:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Literal:
         """JSON execution: process arguments and delegate to execute()."""
         query_data = Operation.process_json(
             self.settings, arguments["query"], self.context, variable_stack

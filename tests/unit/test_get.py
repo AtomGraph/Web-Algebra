@@ -32,6 +32,9 @@ class TestGETLive:
 
 
 class TestGETJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): GET JSON arg shape not exemplified by existing fixtures (presumed `{url}`)")
-    def test_json_dispatch(self, settings):
-        pass
+    def test_wrong_url_type_raises_before_network(self, settings):
+        # §4.4 JSON: url: URI. §3.7: strict typing before any effect —
+        # a plain string coerces to a string Literal, not a URI.
+        op = Operation.get("GET")(settings=settings)
+        with pytest.raises(TypeError):
+            op.execute_json({"url": "http://example.org/x"})

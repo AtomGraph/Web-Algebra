@@ -68,7 +68,7 @@ class AddXHTMLBlock(POST):
             "required": ["url", "value"],
         }
 
-    def execute_json(self, arguments: dict[str, str], variable_stack: list = []) -> Any:
+    def execute_json(self, arguments: dict[str, str], variable_stack: list = None) -> Any:
         """JSON execution: process arguments and delegate to execute()"""
         # Process required arguments
         url_data = Operation.process_json(

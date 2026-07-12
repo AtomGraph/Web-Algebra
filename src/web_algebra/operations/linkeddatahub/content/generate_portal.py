@@ -115,7 +115,7 @@ class GeneratePortal(Operation):
 
         return JSONResult(list(all_vars), all_bindings)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments with strict type checking"""
         # Process endpoint
         endpoint_data = Operation.process_json(

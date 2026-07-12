@@ -31,6 +31,14 @@ class TestPATCHLive:
 
 
 class TestPATCHJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): PATCH JSON arg shape not exemplified by existing fixtures (presumed `{url, update}`)")
-    def test_json_dispatch(self, settings):
-        pass
+    def test_wrong_url_type_raises_before_network(self, settings):
+        # §4.4 JSON: url: URI · update: Literal (SPARQL Update string).
+        # §3.7: strict typing before any effect.
+        op = Operation.get("PATCH")(settings=settings)
+        with pytest.raises(TypeError):
+            op.execute_json(
+                {
+                    "url": "http://example.org/x",
+                    "update": "DELETE WHERE { ?s ?p ?o }",
+                }
+            )

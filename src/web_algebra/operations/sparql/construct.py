@@ -1,24 +1,21 @@
 import logging
-from typing import Any
+from typing import Any, ClassVar, Type
 from rdflib import URIRef, Literal, Graph
 from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.mcp_tool import MCPTool
+from web_algebra.client_operation import ClientOperation
 from web_algebra.operation import Operation
 from web_algebra.client import SPARQLClient
 
 
-class CONSTRUCT(Operation, MCPTool):
+class CONSTRUCT(ClientOperation, Operation, MCPTool):
     """
     Executes a SPARQL CONSTRUCT query against a specified endpoint.
     """
 
-    def model_post_init(self, __context: Any) -> None:
-        self.client = SPARQLClient(
-            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
-            cert_password=getattr(self.settings, "cert_password", None),
-            verify_ssl=False,  # Optionally disable SSL verification
-        )
+    client_class: ClassVar[Type] = SPARQLClient
+
 
     @classmethod
     def description(cls) -> str:
@@ -41,7 +38,7 @@ class CONSTRUCT(Operation, MCPTool):
             raise TypeError(
                 f"CONSTRUCT operation expects endpoint to be URIRef, got {type(endpoint)}"
             )
-        if not isinstance(query, Literal) or query.datatype != XSD.string:
+        if not Operation.is_string_literal(query):
             raise TypeError(
                 f"CONSTRUCT operation expects query to be string Literal, got {type(query)}"
             )
@@ -59,7 +56,7 @@ class CONSTRUCT(Operation, MCPTool):
         # Convert JSON-LD response to RDF Graph
         return self.to_graph(json_ld_response)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Graph:
         """JSON execution: process arguments and return Graph (same as execute)"""
         # Process endpoint
         endpoint_data = Operation.process_json(
@@ -74,7 +71,7 @@ class CONSTRUCT(Operation, MCPTool):
         query_data = Operation.process_json(
             self.settings, arguments["query"], self.context, variable_stack
         )
-        if not isinstance(query_data, Literal) or query_data.datatype != XSD.string:
+        if not Operation.is_string_literal(query_data):
             raise TypeError(
                 f"CONSTRUCT operation expects 'query' to be string Literal, got {type(query_data)}"
             )

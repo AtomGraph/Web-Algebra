@@ -1,5 +1,4 @@
 from typing import Any, Union
-from mcp import types
 from web_algebra.operation import Operation
 
 
@@ -46,9 +45,10 @@ class Filter(Operation):
             # Positional filtering (current implementation)
             filtered_items = self._apply_positional_filter(items, expression)
         else:
-            # Future: could support other expression types (boolean expressions, etc.)
-            raise NotImplementedError(
-                f"Filter expression type {type(expression)} not yet supported"
+            # formal-semantics.md §4.1: only positional (integer) expressions
+            # are defined in this version of the algebra.
+            raise TypeError(
+                f"Filter expects an integer position expression, got {type(expression)}"
             )
 
         # Return single item directly if only one result (XSLT semantics)
@@ -57,7 +57,7 @@ class Filter(Operation):
         return filtered_items
 
     def execute_json(
-        self, arguments: dict, variable_stack: list = []
+        self, arguments: dict, variable_stack: list = None
     ) -> Union[list, Any]:
         """JSON execution: process arguments with support for both Result and sequence"""
         # Process input
@@ -99,21 +99,3 @@ class Filter(Operation):
 
         # Convert to 0-based index for Python list access and return as list
         return [bindings[position - 1]]
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        # Convert plain args to RDFLib terms
-        input_json = arguments["input"]
-        from web_algebra.json_result import JSONResult
-
-        input_result = JSONResult.from_json(input_json)
-        expression = arguments["expression"]
-
-        result = self.execute(input_result, expression)
-
-        # Return summary for MCP
-        return [
-            types.TextContent(
-                type="text", text=f"Filtered to {len(result.bindings)} result(s)"
-            )
-        ]

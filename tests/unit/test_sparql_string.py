@@ -1,25 +1,23 @@
-"""Spec: formal-semantics.md "SPARQLString - Generate SPARQL queries from natural language"
+"""Spec: formal-semantics.md §4.3 "SPARQLString — generate a SPARQL query
+string from natural language via an LLM"
 Abstract: Literal → Literal
-Python:   def execute(self, question: Literal) -> Literal
-
-This operation calls an LLM and is non-deterministic — there is no testable
-invariant beyond return type, and even that requires an OpenAI client.
+- Non-deterministic; only the type contract is normative (§4.3). Exercising
+  it requires an OpenAI client, so behavior is covered by live runs only.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from web_algebra.operation import Operation
 
 
 class TestSPARQLStringPure:
-    @pytest.mark.skip(reason="UNCLEAR(spec): operation depends on an LLM; no deterministic testable invariant in spec")
+    @pytest.mark.skip(reason="§4.3: non-deterministic (LLM); type-only contract needs a live OpenAI client to exercise")
     def test_basic(self, settings):
         pass
 
 
 class TestSPARQLStringJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): same as TestSPARQLStringPure")
+    @pytest.mark.skip(reason="§4.3: same as TestSPARQLStringPure")
     def test_json_dispatch(self, settings):
         pass

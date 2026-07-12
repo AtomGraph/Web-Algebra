@@ -1,11 +1,11 @@
-"""Spec: formal-semantics.md "Merge - Merge multiple RDF graphs into one"
+"""Spec: formal-semantics.md §4.5 "Merge — union of graphs"
 Abstract: Sequence Graph → Graph
-Python:   def execute(self, graphs: List[rdflib.Graph]) -> rdflib.Graph
+- Set union of triples: duplicate triples collapse.
+- JSON: graphs: array of Graph or RDF data forms.
 """
 
 from __future__ import annotations
 
-import pytest
 from rdflib import Graph, Literal, URIRef
 
 from web_algebra.operation import Operation
@@ -44,12 +44,25 @@ class TestMergePure:
         assert t1 in result
         assert t2 in result
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): duplicate-triple semantics (set union vs multiset) not stated")
     def test_duplicate_triples_deduplicated(self, settings):
-        pass
+        # §4.5: set union — duplicate triples collapse
+        op = Operation.get("Merge")(settings=settings)
+        triple = (URIRef("http://ex/s"), URIRef("http://ex/p"), Literal("o"))
+        result = op.execute([_graph_with([triple]), _graph_with([triple])])
+        assert len(result) == 1
 
 
 class TestMergeJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): JSON arg key for Merge ('graphs'? 'input'?) not given by spec or existing fixtures")
     def test_json_dispatch(self, settings):
-        pass
+        # §4.5 JSON: graphs: array of Graph or RDF data forms
+        op = Operation.get("Merge")(settings=settings)
+        result = op.execute_json(
+            {
+                "graphs": [
+                    {"@id": "http://ex/s1", "http://ex/p": "a"},
+                    {"@id": "http://ex/s2", "http://ex/p": "b"},
+                ]
+            }
+        )
+        assert (URIRef("http://ex/s1"), URIRef("http://ex/p"), Literal("a")) in result
+        assert (URIRef("http://ex/s2"), URIRef("http://ex/p"), Literal("b")) in result
