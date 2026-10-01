@@ -25,10 +25,13 @@ Result      = SPARQL SELECT result: a variable list and an ordered sequence
               of Bindings. Result values are materialized — they hold their
               rows and may be iterated any number of times
 Binding     = one solution row: a partial mapping from variable names to Terms
-Sequence α  = ordered list of values of type α
-Position    = integer ≥ 1 (XSLT-style 1-based index; also the name of the
-              focus-accessor operation, §4.1 — context disambiguates)
-Unit        = no meaningful value (an operation executed for its effect)
+Sequence α  = ordered list of values of type α; flat, as in XDM — a sequence
+              is never an item of a sequence
+Position    = Literal with datatype xsd:integer and value ≥ 1 (XSLT-style
+              1-based index; also the name of the focus-accessor operation,
+              §4.1 — context disambiguates)
+Unit        = the empty sequence, written (): the value of an operation
+              executed for its effect
 Context     = the current iteration item (see §3.5); one of
               Binding + Term + Graph + JSON value
 Focus       = Context × Position × Position — the dynamic context of an
@@ -48,7 +51,7 @@ Graph       = rdflib.Graph
 Result      = rdflib.query.Result          # typically web_algebra.json_result.JSONResult
 Binding     = rdflib.query.ResultRow       # or Dict[str, Term] via Bindings
 Sequence    = list
-Unit        = None
+Unit        = None                            # concatenates as the empty sequence
 Environment = list[dict[str, Any]]         # the "variable stack"
 ```
 
@@ -113,8 +116,8 @@ keys are preserved. This is how, e.g., SPARQL JSON term objects (§2.4) with
 computed values are written.
 
 **Sequence.** Evaluated element-wise, in order, in a fresh variable scope
-(§3.4). The value is the Sequence of element values. At document top level
-this is the *program* shape.
+(§3.4). The value is the concatenation of the element values (§3.2). At
+document top level this is the *program* shape.
 
 **Scalar.** Coerced to a Term:
 
@@ -153,6 +156,15 @@ member values may themselves be computed by nested operation calls.
 
 ## 3. Evaluation Semantics
 
+Evaluation follows XSLT/XPath, applied to RDF. Values form flat, XDM-style
+sequences; iteration establishes XSLT's focus; variables live in XSLT's
+scopes; `ForEach` is `xsl:for-each` — unordered, with the `xsl:result-document`
+rule for the updates it contains — and `Iterate` is `xsl:iterate`. SPARQL
+contributes the data model the sequences hold — terms, graphs, result rows —
+and the term-level function library (§4.2), which is itself XPath's. SPARQL's
+own algebra (join, union, filter over solution mappings) is not re-created as
+operations; it stays inside query strings.
+
 ### 3.1 Values
 
 Evaluation maps forms to values in the domain
@@ -168,6 +180,12 @@ Data   = JSON-LD structure whose evaluated hole positions hold Terms and
          whose remaining content is raw, uncoerced JSON — the result of an
          RDF data form
 ```
+
+Sequences are flat (§1.1): constructing one concatenates, so a sequence-valued
+element contributes its items and `Unit` — the empty sequence — contributes
+none, exactly as `()` vanishes in an XPath sequence. A `Result` is a value in
+its own right, not a sequence; concatenation never dissolves it into its rows
+(`Bindings` does that, explicitly).
 
 Note the two closures differ deliberately: a generic object's members are
 forms and evaluate (§3.2), while an RDF data form's non-hole content is data
@@ -191,9 +209,11 @@ operands** (§3.3).
   yield the resulting JSON structure.
 - *Generic object*: evaluate each member value; yield the object.
 - *Sequence*: push a fresh variable scope; evaluate elements in order; pop the
-  scope; yield the Sequence of element values. Elements are evaluated for both
-  value and effect — an element that is an effectful operation call (§3.6)
-  executes even if its value is never consumed.
+  scope; yield the concatenation of the element values (§3.1). Elements are
+  evaluated for both value and effect — an element that is an effectful
+  operation call (§3.6) executes even if its value is never consumed, and a
+  `Variable` leaves no item, as `xsl:variable` leaves none in a sequence
+  constructor.
 - *Scalar*: yield the coerced Term (§2.2).
 
 ### 3.3 Quoted operands
@@ -208,7 +228,6 @@ Lisp sense, and their quoted operands are evaluated under a different regime
 | `ForEach` | `operation` | once per iteration item, under the focus *(item, position, size)* |
 | `Iterate` | `operation` | once per loop iteration, in the loop's environment |
 | `Iterate` | `next-iteration` member values | after each iteration's body, in the iteration's environment |
-| `Execute` | `operation` | once, under the current focus and environment |
 
 All other arguments of all operations are eagerly evaluated. An operation not
 in this table never sees an unevaluated form.
@@ -271,10 +290,14 @@ Ordering guarantees:
 - Sequence elements evaluate in order: all effects of element *n* happen
   before any effect of element *n+1*.
 - `ForEach` yields its result sequence in item order. Whether iterations
-  execute sequentially or concurrently is implementation-defined; a program
-  must not rely on effect ordering *across* iterations (within one iteration,
-  sequence ordering applies). The Python implementation is currently
-  sequential.
+  execute sequentially or concurrently is implementation-defined, so effects
+  *across* iterations are **unordered** (within one iteration, sequence
+  ordering applies). Updates inside a `ForEach` are allowed under the rule of
+  XSLT's `xsl:result-document`: two updates addressing the same URI within one
+  `ForEach` are an error (`ValueError`, §3.7), as two result documents with one
+  `href` are (XTDE1490). The ordered constructs are the sequence form and
+  `Iterate`, as the operations of one SPARQL Update request are. The Python
+  implementation is currently sequential.
 - `Iterate` is strictly sequential by definition: iteration *k+1*'s
   parameters are computed from iteration *k*'s environment.
 
@@ -293,6 +316,7 @@ Failures raise Python exceptions per this table (normative):
 | argument or operand of the wrong type (any layer) | `TypeError` |
 | unknown variable in `$name` lookup | `ValueError` |
 | focus-item lookup miss, or no focus established | `ValueError` |
+| two updates addressing the same URI within one `ForEach` (§3.6) | `ValueError` |
 | `Filter` position < 1 or > length | `ValueError` |
 | regular-expression errors in `Replace` — invalid pattern or flags, zero-length-matching pattern, invalid replacement (XPath `err:FORX000*`) | `ValueError` |
 | unknown `type` in SPARQL JSON term form | `ValueError` |
@@ -336,6 +360,9 @@ e ::= s                          scalar: string | integer | double | boolean
 
 ```
 v ∈ Value                        §3.1
+v ⧺ w                            sequence concatenation, XDM-style: a sequence
+                                 operand contributes its items, () none; the
+                                 result is flat (§3.1)
 ρ ∈ Env    = Scope*              stack of scopes; Scope = Name ⇀ Value
 φ ∈ Focus⊥ = (Value × ℕ⁺ × ℕ⁺) + ⊥    (item, position, size), or absent
 σ ∈ World                        external web state (graphs behind URIs,
@@ -387,7 +414,7 @@ rule (propagation rules are omitted below).
 
              ρ₀ = ρ·∅      ρᵢ₋₁, φ ⊢ ⟨eᵢ, σᵢ₋₁⟩ ⇓ ⟨vᵢ, ρᵢ, σᵢ⟩      (i = 1…n)
 (SEQ)        ─────────────────────────────────────
-             ρ, φ ⊢ ⟨[e₁,…,eₙ], σ₀⟩ ⇓ ⟨[v₁,…,vₙ], pop(ρₙ), σₙ⟩
+             ρ, φ ⊢ ⟨[e₁,…,eₙ], σ₀⟩ ⇓ ⟨v₁ ⧺ … ⧺ vₙ, pop(ρₙ), σₙ⟩
 
              op has no quoted operands
              ρᵢ₋₁, φ ⊢ ⟨eᵢ, σᵢ₋₁⟩ ⇓ ⟨vᵢ, ρᵢ, σᵢ⟩      (i = 1…n, document order)
@@ -419,35 +446,31 @@ rule (propagation rules are omitted below).
              ρ′·∅, (cᵢ, i, n) ⊢ ⟨q, σᵢ₋₁⟩ ⇓ ⟨wᵢ, _, σᵢ⟩      (i = 1…n)
 (FOREACH)    ─────────────────────────────────────
              ρ, φ ⊢ ⟨ForEach(select: e_sel, operation: q⟨quoted⟩), σ⟩
-                 ⇓ ⟨[wᵢ | wᵢ ≠ unit], ρ′, σₙ⟩
+                 ⇓ ⟨w₁ ⧺ … ⧺ wₙ, ρ′, σₙ⟩
              items(Sequence) = its elements; items(Result) = its rows in
              result order; other C: err TypeError. If q is an array
              [q₁,…,q_m], the premise evaluates it as a sequence within the
-             iteration's scope and wᵢ is the last non-unit element value.
+             iteration's scope and wᵢ is its value (SEQ).
 
              ρ, φ ⊢ params member forms (document order) ⇓ P, ρ′, σ₀   (eager)
-             loop(ρ′·{P}, σ₀, 1) = ⟨[w₁ … w_m], σ′⟩
+             loop(ρ′·{P}, σ₀, 1) = ⟨w₁ ⧺ … ⧺ w_m, σ′⟩
 (ITERATE)    ─────────────────────────────────────
              ρ, φ ⊢ ⟨Iterate(params, operation: q⟨quoted⟩,
                             next-iteration: N⟨quoted⟩, break: b), σ⟩
-                 ⇓ ⟨[wᵢ | wᵢ ≠ unit], ρ′, σ′⟩
+                 ⇓ ⟨w₁ ⧺ … ⧺ w_m, ρ′, σ′⟩
 
              where loop(ρ_it, σ, k) is defined by:
                1. ρ_it·∅, φ ⊢ ⟨q, σ⟩ ⇓ ⟨w, ρ_b, σ₁⟩   (array operand as in FOREACH)
-               2. if N is absent or k = CAP: ⟨[w], σ₁⟩
+               2. if N is absent or k = CAP: ⟨w, σ₁⟩
                3. ρ_b, φ ⊢ N's member forms in document order ⇓ v₁ … vⱼ, σ₂
                   (each binding nᵢ ↦ vᵢ before the next evaluates)
                4. ρ_it ← ρ_it with each nᵢ ↦ vᵢ rebound in the loop scope;
                   the body scope is dropped
-               5. if b holds of ρ_it: ⟨[w], σ₂⟩
-               6. else ⟨W, σ″⟩ = loop(ρ_it, σ₂, k+1); ⟨w·W, σ″⟩
+               5. if b holds of ρ_it: ⟨w, σ₂⟩
+               6. else ⟨W, σ″⟩ = loop(ρ_it, σ₂, k+1); ⟨w ⧺ W, σ″⟩
              CAP = 1000 (normative). b holds iff the lexical form of the
              named loop variable equals (resp. differs from) the eagerly
              evaluated comparison value; a missing variable compares as "".
-
-             q is an operation-call form      ρ, φ ⊢ ⟨q, σ⟩ ⇓ ⟨v, ρ′, σ′⟩
-(EXECUTE)    ─────────────────────────────────────
-             ρ, φ ⊢ ⟨Execute(operation: q⟨quoted⟩), σ⟩ ⇓ ⟨v, ρ′, σ′⟩
 ```
 
 **Metatheory.** Because forms are finite terms, there is no recursion,
@@ -457,9 +480,10 @@ by its normative iteration cap, every evaluation terminates provided every
 size of `items(C)` and (ITERATE) by `CAP − k`). Evaluation is deterministic
 up to the declared non-deterministic operators and the World's own behavior. In
 (FOREACH), each iteration's environment writes are confined to its fresh
-scope and results are indexed by position, so evaluating iterations
-concurrently is observationally equivalent for programs that do not rely on
-cross-iteration effect ordering — the license granted in §3.6.
+scope and results are concatenated in item order, so evaluating iterations
+concurrently is observationally equivalent for programs whose iterations do
+not update one and the same resource — and §3.6 makes those the only valid
+programs, by making the same target twice an error.
 
 ## 4. Operation Catalog (normative)
 
@@ -482,10 +506,12 @@ JSON:     select: Sequence α + Result · operation⟨quoted⟩: form or array o
 - Each iteration runs in a fresh variable scope under the focus
   *(item i, i, n)*.
 - If `operation` is an array, its forms evaluate in order within the
-  iteration's scope and the iteration's value is the *last* non-Unit value.
-- Iteration values that are Unit (`None`) are dropped from the output;
-  sequence-valued iteration results are kept nested (no flattening). Output
-  length therefore equals input length minus Unit-valued iterations.
+  iteration's scope and the iteration's value is the array's value as a
+  sequence form: the concatenation of its element values (§3.2).
+- The result is the concatenation of the iteration values in item order
+  (§3.1): a sequence-valued iteration contributes its items and a Unit-valued
+  one (`None`) contributes nothing, exactly as `xsl:for-each` builds its
+  result sequence.
 
 **Iterate** — stateful iteration with parameter passing between iterations,
 inspired by XSLT 3.0's `xsl:iterate`; shared with the REST-VKG (XML)
@@ -503,9 +529,8 @@ JSON:     params: Maybe object of name → form (eager)
 - `params` members are evaluated once, eagerly, in the enclosing environment
   and bound as variables in a fresh loop scope (read via `$name`).
 - Each iteration evaluates `operation` in a fresh scope inside the loop scope
-  (array operands as in `ForEach`: the last non-Unit value). Unit-valued
-  iterations are dropped from the output; the result is the sequence of
-  iteration values, in order.
+  (array operands as in `ForEach`: the concatenation of the element values).
+  The result is the concatenation of the iteration values, in order (§3.1).
 - After the body, each `next-iteration` member is evaluated *in the
   iteration's environment* — the loop parameters plus any bindings the body
   made — in document order, each visible to the ones after it; the results
@@ -523,16 +548,23 @@ JSON:     params: Maybe object of name → form (eager)
 - `Iterate` does not establish a focus; the enclosing focus, if any, remains
   visible to the body.
 
-**Filter** — positional selection from a sequence, XSLT-style.
+**Filter** — selection by position from a sequence, or by name from a row,
+XPath-style.
 ```
-Abstract: (Sequence α + Result) × Position → α
+Abstract: (Sequence α + Result + Binding) × (Position + Literal) → α
 Python:   def execute(self, input_data: Any, expression: Any) -> Any
-JSON:     input: Sequence α + Result · expression: Position
+JSON:     input: Sequence α + Result + Binding · expression: Position or Literal
 ```
-- 1-based. A `Result` input is treated as its row sequence (yields a
-  `Binding`). Position < 1 or > length raises `ValueError`; a non-integer
-  expression raises `TypeError`. Only positional expressions are defined in
-  this version of the algebra.
+- With a `Position`, like a positional predicate (`$seq[2]`): 1-based; a
+  `Result` input is treated as its row sequence (yields a `Binding`).
+  Position < 1 or > length raises `ValueError`.
+- With a string Literal on a `Binding`, like the lookup operator (`$row?url`):
+  yields the term bound to that variable name (given with or without `?`); a
+  miss raises `ValueError`, as the focus lookup of §3.5 does.
+- Any other pairing — a Literal on a sequence or result, a Position on a
+  Binding, an expression that is neither integer nor string — raises
+  `TypeError`. `Filter(Filter(PUT(…), 1), "url")` is the URI a write reports
+  (§4.4).
 
 **Bindings** — project a SPARQL result to its row sequence.
 ```
@@ -548,9 +580,9 @@ Abstract: String × Any → Unit
 Python:   def execute(self, name: str, value: Any, variable_stack: list) -> None
 JSON:     name: String (plain JSON string, not a form) · value: any form
 ```
-- Binds in the innermost scope (§3.4). The JSON layer returns Unit (`None`);
-  in a `ForEach` operation array, Unit values do not become the iteration's
-  value.
+- Binds in the innermost scope (§3.4). Returns Unit — the empty sequence — and
+  so contributes no item wherever it stands (§3.1), as `xsl:variable` does;
+  the Python layer's `None` is that value.
 
 **Value** — read a variable (`$name`) or a focus-item member (`name`). §3.4–3.5.
 ```
@@ -589,17 +621,6 @@ JSON:     (no arguments)
 ```
 - An `xsd:integer` Literal. Raises `ValueError` when no focus is established
   (§3.5).
-
-**Execute** — evaluate a quoted operation form under the current focus and
-environment.
-```
-Abstract: Operation⟨quoted⟩ → Any
-Python:   def execute(self, operation: Any) -> Any
-JSON:     operation⟨quoted⟩: an operation-call form
-```
-- The operand must be an operation-call object (`TypeError` otherwise). Its
-  purpose is indirection: the operand may be assembled or selected at runtime
-  (e.g. read from a variable) before being evaluated.
 
 ### 4.2 String and term operations
 
@@ -706,32 +727,44 @@ JSON:     base: URI · relative: string-compatible Literal
 
 ### 4.3 SPARQL operations
 
-The query operations negotiate their response formats transparently (SPARQL
-Results for `SELECT`, an RDF serialization for `CONSTRUCT`/`DESCRIBE`); a
-response that does not parse as the negotiated format raises `ValueError`
-(§3.7).
+`SELECT`, `CONSTRUCT` and `DESCRIBE` run a query over a dataset given either
+as `endpoint` — the URI of a SPARQL endpoint — or as `graph` — a `Graph` in
+hand: the output of `GET`, `Merge` or an extraction, or an RDF data form. A
+SPARQL query runs over a dataset wherever it lives, as `xsl:apply-templates`
+runs over a tree in hand as readily as over `doc()`. Exactly one of the two is
+given: neither raises `KeyError`, both `TypeError`. With `graph` the operation
+is *pure* and local; with `endpoint` it is a *query* effect, and the response
+format is negotiated transparently (SPARQL Results for `SELECT`, an RDF
+serialization for `CONSTRUCT`/`DESCRIBE`) — a response that does not parse as
+the negotiated format raises `ValueError` (§3.7).
 
-**SELECT** — execute a SPARQL SELECT query against an endpoint. *Query* effect.
+**SELECT** — execute a SPARQL SELECT query over an endpoint or a graph.
 ```
-Abstract: URI × Literal → Result
+Abstract: (URI + Graph) × Literal → Result
 Python:   def execute(self, endpoint: URIRef, query: Literal) -> Result
-JSON:     endpoint: URI · query: string Literal (simple or xsd:string)
+JSON:     endpoint: URI or graph: Graph (exactly one)
+          · query: string Literal (simple or xsd:string)
 ```
-- Types are validated before any network I/O.
+- Types are validated before any network I/O. The `graph` case is implemented
+  in the XML serialization and slated for the Python one (§5).
 
-**CONSTRUCT** — execute a SPARQL CONSTRUCT query. *Query* effect.
+**CONSTRUCT** — execute a SPARQL CONSTRUCT query over an endpoint or a graph.
 ```
-Abstract: URI × Literal → Graph
+Abstract: (URI + Graph) × Literal → Graph
 Python:   def execute(self, endpoint: URIRef, query: Literal) -> Graph
-JSON:     endpoint: URI · query: string Literal (simple or xsd:string)
+JSON:     endpoint: URI or graph: Graph (exactly one)
+          · query: string Literal (simple or xsd:string)
 ```
+- The `graph` case is slated in both serializations (§5).
 
-**DESCRIBE** — execute a SPARQL DESCRIBE query. *Query* effect.
+**DESCRIBE** — execute a SPARQL DESCRIBE query over an endpoint or a graph.
 ```
-Abstract: URI × Literal → Graph
+Abstract: (URI + Graph) × Literal → Graph
 Python:   def execute(self, endpoint: URIRef, query: Literal) -> Graph
-JSON:     endpoint: URI · query: string Literal (simple or xsd:string)
+JSON:     endpoint: URI or graph: Graph (exactly one)
+          · query: string Literal (simple or xsd:string)
 ```
+- The `graph` case is slated in both serializations (§5).
 
 **Substitute** — textually substitute one SPARQL variable with a Term.
 ```
@@ -751,10 +784,10 @@ JSON:     query: Literal · var: Literal (variable name, with or without `?`)
 
 **Values** — append a SPARQL `VALUES` data block built from a result set.
 ```
-Abstract: Literal × Result × Maybe (Sequence String) → Literal
+Abstract: Literal × Result × Maybe (Sequence Literal) → Literal
 Python:   def execute(self, query: Literal, data: Result,
                       vars: Optional[List[str]] = None) -> Literal
-JSON:     query: Literal · data: Result · vars: Maybe (array of String)
+JSON:     query: Literal · data: Result · vars: Maybe (array of string Literals)
 ```
 - Columns default to the result's variables; `vars` selects/reorders them
   (names given with or without `?`). Missing values render as `UNDEF`. Terms
@@ -784,6 +817,12 @@ declared RDF type — raises `ValueError` (§3.7).
 `POST`, `PUT` and `PATCH` return a single-row `Result` with variables
 `status` (`xsd:integer` HTTP status) and `url` (the effective request URI).
 Transport failures propagate per §3.7.
+
+The reported `url` is reached by lookup, `Filter(Filter(PUT(…), 1), "url")` —
+the first row, then its `url` (§4.1). Where the written document is wanted as
+a graph, `ForEach(select: PUT(…), operation: GET(url: Value(name: url)))`
+makes the row the focus and dereferences it, as `xsl:for-each` over a single
+item is used to make it the context item.
 
 **GET** — dereference a URI to an RDF graph. *Query* effect.
 ```
@@ -857,6 +896,14 @@ JSON: `endpoint: URI`.
   as its `ForEach`) and additionally honors a `totalLimit` parameter capping
   the merged graph's distinct subjects; the JSON serialization returns the
   iteration-value sequence, and `Merge(Iterate(…))` expresses the fusion.
+- The `graph` operand of §4.3 exists for `SELECT` in the XML serialization;
+  `CONSTRUCT`/`DESCRIBE` there and all three in the JSON serialization are
+  slated.
+- The XML serialization has no sequence form and does not thread the variable
+  environment between sibling operands (§3.8 SEQ, CALL); both are slated, as
+  are the flat-sequence rule (§3.1), `Filter`'s lookup by name (§4.1) and the
+  same-target rule (§3.6) in both serializations, and the removal of the
+  former `Execute` operation, which both still carry.
 - MCP exposure (`mcp_run`) is an interface adapter, not part of the algebra;
   its plain-JSON conversions are implementation detail.
 
@@ -865,10 +912,12 @@ JSON: `endpoint: URI`.
 ## Appendix A — LinkedDataHub extension operations (informative)
 
 The `ldh-*` operations target a LinkedDataHub instance and compose the core
-operations above (mostly `PUT`/`POST`/`PATCH` with LDH vocabularies). Their
-return contracts are intentionally loose in this revision and are *not*
-normative; they will be pinned in a later revision. All are *update* effects
-unless noted.
+operations above (mostly `PUT`/`POST`/`PATCH` with LDH vocabularies). The
+update operations return the single-row `Result` of §4.4 (`status`, `url`),
+so they compose exactly as `PUT` does; `ldh-List` *(query)* returns a `Result`
+with one row per child document, variables `child` (URI) and `thing`
+(`Maybe URI`, its `foaf:primaryTopic`). All are *update* effects unless
+noted.
 
 | Operation | JSON args (`Maybe` = optional) |
 |-----------|--------------------------------|
