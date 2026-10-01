@@ -317,6 +317,7 @@ Failures raise Python exceptions per this table (normative):
 | unknown variable in `$name` lookup | `ValueError` |
 | focus-item lookup miss, or no focus established | `ValueError` |
 | two updates addressing the same URI within one `ForEach` (§3.6) | `ValueError` |
+| a write answered outside 2xx (§4.4) | `ValueError` |
 | `Filter` position < 1 or > length | `ValueError` |
 | regular-expression errors in `Replace` — invalid pattern or flags, zero-length-matching pattern, invalid replacement (XPath `err:FORX000*`) | `ValueError` |
 | unknown `type` in SPARQL JSON term form | `ValueError` |
@@ -816,7 +817,14 @@ declared RDF type — raises `ValueError` (§3.7).
 
 `POST`, `PUT` and `PATCH` return a single-row `Result` with variables
 `status` (`xsd:integer` HTTP status) and `url` (the effective request URI).
-Transport failures propagate per §3.7.
+A response outside the 2xx range is an error (`ValueError`, §3.7), as an
+`xsl:result-document` that cannot be written is: the status and the server's
+reason are reported, and nothing after the write runs. Transport failures
+propagate per §3.7. Where the server requires a write to an existing resource
+to say which state it was written against, the implementation reads the
+resource's entity tag and sends it as `If-Match`; a resource that does not
+exist is created unconditionally. That is transport, like content negotiation,
+and not visible in the algebra.
 
 The reported `url` is reached by lookup, `Filter(Filter(PUT(…), 1), "url")` —
 the first row, then its `url` (§4.1). Where the written document is wanted as
