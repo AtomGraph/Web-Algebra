@@ -293,9 +293,10 @@ Ordering guarantees:
   execute sequentially or concurrently is implementation-defined, so effects
   *across* iterations are **unordered** (within one iteration, sequence
   ordering applies). Updates inside a `ForEach` are allowed under the rule of
-  XSLT's `xsl:result-document`: two updates addressing the same URI within one
-  `ForEach` are an error (`ValueError`, §3.7), as two result documents with one
-  `href` are (XTDE1490). The ordered constructs are the sequence form and
+  XSLT's `xsl:result-document`: two iterations updating the same URI are an
+  error (`ValueError`, §3.7), as two result documents with one `href` are
+  (XTDE1490); within one iteration the sequence form orders the writes, so a
+  document may be created and then added to. The ordered constructs are the sequence form and
   `Iterate`, as the operations of one SPARQL Update request are. The Python
   implementation is currently sequential.
 - `Iterate` is strictly sequential by definition: iteration *k+1*'s
@@ -316,7 +317,7 @@ Failures raise Python exceptions per this table (normative):
 | argument or operand of the wrong type (any layer) | `TypeError` |
 | unknown variable in `$name` lookup | `ValueError` |
 | focus-item lookup miss, or no focus established | `ValueError` |
-| two updates addressing the same URI within one `ForEach` (§3.6) | `ValueError` |
+| two iterations of one `ForEach` updating the same URI (§3.6) | `ValueError` |
 | a write answered outside 2xx (§4.4) | `ValueError` |
 | `Filter` position < 1 or > length | `ValueError` |
 | regular-expression errors in `Replace` — invalid pattern or flags, zero-length-matching pattern, invalid replacement (XPath `err:FORX000*`) | `ValueError` |
@@ -899,6 +900,10 @@ JSON: `endpoint: URI`.
   abstract signatures are shared. Operations currently exclusive to one
   implementation (`PATCH`, `Values`, `Filter`, `Bindings`, `URI`, `Position`,
   `Last` and the schema operations here) are slated for parity.
+- An extension family's operations are, in the XML serialization, elements in
+  the family's own namespace with its own prefix (Appendix A); the executor
+  dispatches on the expanded name, and argument elements stay in the algebra's.
+  The JSON serialization has no namespaces and keeps the `ldh-` prefixed names.
 - `Iterate` is shared with REST-VKG, whose implementation returns the merged
   graph of the iteration results (the same fused `Merge ∘ …` specialization
   as its `ForEach`) and additionally honors a `totalLimit` parameter capping
@@ -926,6 +931,16 @@ so they compose exactly as `PUT` does; `ldh-List` *(query)* returns a `Result`
 with one row per child document, variables `child` (URI) and `thing`
 (`Maybe URI`, its `foaf:primaryTopic`). All are *update* effects unless
 noted.
+
+They are an extension family, as `ixsl:` extends XSLT, and the XML
+serialization names them so: elements in the namespace
+`https://w3id.org/atomgraph/web-algebra/linkeddatahub`, written with the
+prefix `waldh` (`waldh:CreateItem`), their local names the table's without
+`ldh-`. Their argument elements are in the algebra's namespace, as every
+argument is: arguments are the algebra's structure, the family names only what
+is done with them. The JSON serialization, which has no namespaces, keeps the
+`ldh-` names below until the spec gives JSON a way to name a family's
+namespace; the two spellings denote the same operations.
 
 | Operation | JSON args (`Maybe` = optional) |
 |-----------|--------------------------------|
