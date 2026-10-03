@@ -31,9 +31,25 @@ class TestEncodeForURIPure:
         with pytest.raises(TypeError):
             op.execute(URIRef("http://example.org/x"))
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): which character set / RFC — `~`, `*`, `'`, etc. differ across RFC 3986 and SPARQL ENCODE_FOR_URI")
-    def test_reserved_character_set(self, settings):
-        pass
+    def test_rfc3986_unreserved_set_passes_through(self, settings):
+        # §4.2: everything except A–Z a–z 0–9 - . _ ~ is percent-encoded
+        op = Operation.get("EncodeForURI")(settings=settings)
+        result = op.execute(Literal("AZaz09-._~"))
+        assert str(result) == "AZaz09-._~"
+
+    def test_result_is_simple_literal(self, settings):
+        # §4.2: simple literal per `simple literal ENCODE_FOR_URI(string literal)`
+        op = Operation.get("EncodeForURI")(settings=settings)
+        result = op.execute(Literal("hello world", lang="en"))
+        assert result.datatype is None and result.language is None
+
+    def test_reserved_characters_are_encoded(self, settings):
+        # §4.2: reserved characters like / : * ' are encoded (UTF-8)
+        op = Operation.get("EncodeForURI")(settings=settings)
+        assert str(op.execute(Literal("a/b"))) == "a%2Fb"
+        assert str(op.execute(Literal("a:b"))) == "a%3Ab"
+        assert str(op.execute(Literal("a*b"))) == "a%2Ab"
+        assert str(op.execute(Literal("a'b"))) == "a%27b"
 
 
 class TestEncodeForURIJson:

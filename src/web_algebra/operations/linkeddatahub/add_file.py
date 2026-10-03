@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, ClassVar, Type
 import logging
 import mimetypes
 import urllib.parse
@@ -10,12 +10,12 @@ from rdflib.namespace import XSD
 from rdflib.query import Result
 
 from web_algebra.client import FileClient
-from web_algebra.json_result import JSONResult
 from web_algebra.mcp_tool import MCPTool
-from web_algebra.operation import Operation
+from web_algebra.client_operation import ClientOperation
+from web_algebra.operation import Operation, OperationKind
 
 
-class AddFile(Operation, MCPTool):
+class AddFile(ClientOperation, Operation, MCPTool):
     """RDF/POST a file to a LinkedDataHub document, returning the minted upload URI.
 
     The file's RDF description (`nfo:FileDataObject` + filename + MIME type +
@@ -29,12 +29,11 @@ class AddFile(Operation, MCPTool):
     `FileClient` instance instead of inheriting `LinkedDataClient` plumbing.
     """
 
-    def model_post_init(self, __context: Any) -> None:
-        self.client = FileClient(
-            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
-            cert_password=getattr(self.settings, "cert_password", None),
-            verify_ssl=False,
-        )
+    # uploads a file and appends its description to the target document
+    kind: ClassVar[OperationKind] = OperationKind.WRITE
+
+    client_class: ClassVar[Type] = FileClient
+
 
     @classmethod
     def name(cls):
@@ -155,17 +154,9 @@ class AddFile(Operation, MCPTool):
 
         logging.info("AddFile status %s → <%s>", response.status, file_uri)
 
-        return JSONResult(
-            vars=["status", "url"],
-            bindings=[
-                {
-                    "status": Literal(response.status, datatype=XSD.integer),
-                    "url": URIRef(file_uri),
-                }
-            ],
-        )
+        return self.written(response.status, file_uri)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments with strict type checking."""
         url_data = Operation.process_json(
             self.settings, arguments["url"], self.context, variable_stack

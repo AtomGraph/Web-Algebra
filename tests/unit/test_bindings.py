@@ -1,10 +1,8 @@
-"""Spec: formal-semantics.md "Bindings - Extract binding sequence from SPARQL results"
-Abstract: Result → Sequence ResultRow
-Python:   def execute(self, table: rdflib.query.Result) -> List[Dict[str, Any]]
-
-Note: the abstract signature says `Sequence ResultRow`, but the Python signature
-returns `List[Dict[str, Any]]`. The spec is internally inconsistent here; tests
-assert only the abstract sequence shape (length / non-empty / iterable).
+"""Spec: formal-semantics.md §4.1 "Bindings — project a SPARQL result to its
+row sequence"
+Abstract: Result → Sequence Binding
+- Order-preserving; an empty result yields the empty sequence.
+- A Binding is a partial mapping from variable names to Terms (§1.1).
 """
 
 from __future__ import annotations
@@ -47,12 +45,38 @@ class TestBindingsPure:
         with pytest.raises(TypeError):
             op.execute([1, 2, 3])
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): order preservation not stated")
     def test_order_preserved(self, settings):
-        pass
+        # §4.1: order-preserving
+        from web_algebra.json_result import JSONResult
+
+        op = Operation.get("Bindings")(settings=settings)
+        table = JSONResult.from_json(
+            {
+                "head": {"vars": ["x"]},
+                "results": {
+                    "bindings": [
+                        {"x": {"type": "literal", "value": v}}
+                        for v in ("a", "b", "c")
+                    ]
+                },
+            }
+        )
+        rows = op.execute(table)
+        assert [str(row["x"]) for row in rows] == ["a", "b", "c"]
 
 
 class TestBindingsJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): JSON arg key for Bindings not given by spec or existing fixtures")
     def test_json_dispatch(self, settings):
-        pass
+        # §4.1 JSON: table: Result
+        from web_algebra.json_result import JSONResult
+
+        op = Operation.get("Bindings")(settings=settings)
+        table = JSONResult.from_json(
+            {
+                "head": {"vars": ["x"]},
+                "results": {"bindings": [{"x": {"type": "literal", "value": "a"}}]},
+            }
+        )
+        rows = op.execute_json({"table": table})
+        assert len(rows) == 1
+        assert rows[0]["x"] == Literal("a")

@@ -102,7 +102,7 @@ class LDHList(Operation, MCPTool):
             return result
 
     def execute_json(
-        self, arguments: dict[str, str], variable_stack: list = []
+        self, arguments: dict[str, str], variable_stack: list = None
     ) -> list[dict]:
         """JSON execution: process arguments and delegate to execute()"""
         # Process required arguments

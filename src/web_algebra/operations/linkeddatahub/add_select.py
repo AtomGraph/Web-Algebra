@@ -59,7 +59,7 @@ class AddSelect(POST):
             "required": ["url", "query", "title"],
         }
 
-    def execute_json(self, arguments: dict[str, str], variable_stack: list = []) -> Any:
+    def execute_json(self, arguments: dict[str, str], variable_stack: list = None) -> Any:
         """JSON execution: process arguments and delegate to execute()"""
         # Process required arguments
         url_data = Operation.process_json(
@@ -129,22 +129,22 @@ class AddSelect(POST):
             raise TypeError(
                 f"AddSelect.execute expects url to be URIRef, got {type(url)}"
             )
-        if not isinstance(query, Literal) or query.datatype != XSD.string:
+        if not Operation.is_string_literal(query):
             raise TypeError(
                 f"AddSelect.execute expects query to be string Literal, got {type(query)}"
             )
-        if not isinstance(title, Literal) or title.datatype != XSD.string:
+        if not Operation.is_string_literal(title):
             raise TypeError(
                 f"AddSelect.execute expects title to be string Literal, got {type(title)}"
             )
         if description is not None and (
-            not isinstance(description, Literal) or description.datatype != XSD.string
+            not Operation.is_string_literal(description)
         ):
             raise TypeError(
                 f"AddSelect.execute expects description to be string Literal, got {type(description)}"
             )
         if fragment is not None and (
-            not isinstance(fragment, Literal) or fragment.datatype != XSD.string
+            not Operation.is_string_literal(fragment)
         ):
             raise TypeError(
                 f"AddSelect.execute expects fragment to be string Literal, got {type(fragment)}"

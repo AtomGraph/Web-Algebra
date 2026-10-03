@@ -54,7 +54,7 @@ class Merge(Operation, MCPTool):
         logging.info("Merged RDF data (%s triple(s))", len(merged_graph))
         return merged_graph
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Graph:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Graph:
         """JSON execution: process arguments and delegate to execute()"""
         # Process graphs argument - may return dicts with processed nested operations
         graphs_data = Operation.process_json(

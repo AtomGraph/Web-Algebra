@@ -1,8 +1,9 @@
+from typing import ClassVar
 import logging
 from rdflib import URIRef, Literal, Namespace, Graph
 from rdflib.namespace import RDF, RDFS, XSD, DCTERMS
 from rdflib.query import Result
-from web_algebra.operation import Operation
+from web_algebra.operation import Operation, OperationKind
 from web_algebra.operations.linkeddatahub.create_item import CreateItem
 from web_algebra.operations.linked_data.post import POST
 from web_algebra.operations.linkeddatahub.content.add_object_block import AddObjectBlock
@@ -20,6 +21,9 @@ class GenerateClassContainers(Operation):
 
     This operation orchestrates actual HTTP operations to set up the portal structure.
     """
+
+    # composes writes internally rather than through nested forms, so it declares its own kind
+    kind: ClassVar[OperationKind] = OperationKind.WRITE
 
     @classmethod
     def name(cls):
@@ -216,7 +220,7 @@ WHERE {{
 
         return g
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments with type checking"""
         # Process ontology graph — accept a Graph (e.g. from CONSTRUCT) or a
         # JSON-LD document, converting the latter to a Graph

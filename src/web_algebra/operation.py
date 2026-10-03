@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 import json
 import logging
 from typing import Type, Dict, Optional, Any, List, ClassVar, Union
@@ -8,6 +9,11 @@ from rdflib.term import Node
 from rdflib import URIRef, Literal, BNode, Graph
 from rdflib.namespace import XSD
 from rdflib.query import Result
+from web_algebra.exceptions import (
+    InvalidFormError,
+    UnknownOperationError,
+    VariableNotFoundError,
+)
 
 
 # JSON-LD keyword set used to recognise a dict as RDF data (a JSON-LD
@@ -15,6 +21,33 @@ from rdflib.query import Result
 # of these is a strong, unambiguous signal — they are JSON-LD reserved terms
 # with no legitimate meaning in non-RDF JSON.
 _JSONLD_KEYS = ("@context", "@graph", "@id", "@type")
+
+
+class OperationKind(str, Enum):
+    """What an operation does to the world.
+
+    The ordering is by blast radius, so a composite form (a `ForEach` whose body
+    `PATCH`es) takes the kind of the worst thing it can do — `max()` over the
+    kinds of the operations it contains.
+    """
+
+    READ = "read"
+    WRITE = "write"
+    DESTRUCTIVE = "destructive"
+
+    @property
+    def severity(self) -> int:
+        return _KIND_SEVERITY[self]
+
+    def __lt__(self, other: "OperationKind") -> bool:
+        return self.severity < other.severity
+
+
+_KIND_SEVERITY = {
+    OperationKind.READ: 0,
+    OperationKind.WRITE: 1,
+    OperationKind.DESTRUCTIVE: 2,
+}
 
 
 class Operation(ABC, BaseModel):
@@ -27,8 +60,18 @@ class Operation(ABC, BaseModel):
     """
 
     registry: ClassVar[Dict[str, Type["Operation"]]] = {}
+
+    #: What this operation does to the world, for the plan summary a client shows
+    #: before approving a document. Reading is the default because most operations
+    #: only compute; the ones that issue a mutating request say so themselves.
+    kind: ClassVar[OperationKind] = OperationKind.READ
+
     settings: BaseSettings = Field(exclude=True)
-    context: Any = {}
+    #: The iteration focus an enclosing ForEach established, empty outside one.
+    #: A `default_factory`, not a literal: a bare `{}` is one dict shared by every
+    #: instance ever constructed, so two executions in one process — which is what
+    #: the HTTP service runs — would see each other's focus.
+    context: Any = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="allow")
 
@@ -53,7 +96,7 @@ class Operation(ABC, BaseModel):
 
     @abstractmethod
     def execute_json(
-        self, arguments: dict, variable_stack: list = []
+        self, arguments: dict, variable_stack: list = None
     ) -> Union[Node, Result, Graph]:
         """JSON execution: processes JSON args, returns RDFLib objects"""
         pass
@@ -80,10 +123,14 @@ class Operation(ABC, BaseModel):
         cls,
         settings: BaseSettings,
         json_data: Any,
-        context: dict = {},
-        variable_stack: list = [],
+        context: dict = None,
+        variable_stack: list = None,
     ) -> Any:
         """Class method for processing JSON with @op structures"""
+        if context is None:
+            context = {}
+        if variable_stack is None:
+            variable_stack = []
         if isinstance(json_data, dict):
             if "@op" in json_data:
                 op_name = json_data["@op"]
@@ -91,13 +138,25 @@ class Operation(ABC, BaseModel):
 
                 operation_cls = cls.get(op_name)
                 if not operation_cls:
-                    raise ValueError(f"Unknown operation: {op_name}")
+                    raise UnknownOperationError(f"Unknown operation: {op_name}")
 
                 operation = operation_cls(settings=settings, context=context)
                 result = operation.execute_json(op_args, variable_stack)
 
                 # Return RDFLib objects as-is for operation chaining
                 return result
+
+            # URI reference form (formal-semantics.md §2.2 rule 2): an object
+            # whose ONLY member is `@id` evaluates to a URI. This is JSON-LD's
+            # node-reference syntax — a bare node reference carries no triples,
+            # so reusing it as the URI form is unambiguous. Inside an RDF data
+            # form this rule never fires: `_resolve_jsonld` walks those without
+            # re-entering this dispatch for non-`@op` objects.
+            if set(json_data.keys()) == {"@id"}:
+                inner = cls.process_json(
+                    settings, json_data["@id"], context, variable_stack
+                )
+                return URIRef(str(inner))
 
             # JSON-LD shape recognition — a dict carrying any JSON-LD reserved
             # key is RDF data (a JSON-LD document or fragment), not generic
@@ -128,25 +187,47 @@ class Operation(ABC, BaseModel):
             }
 
         elif isinstance(json_data, list):
-            # For sequential operations, share variable stack to allow accumulation
-            results = []
-            current_stack = variable_stack.copy()
-            for item in json_data:
-                result = cls.process_json(settings, item, context, current_stack)
-                results.append(result)
-            return results
+            # Sequence form (formal-semantics.md §3.2): elements evaluate in
+            # order in a fresh variable scope, so a Variable bound in step N is
+            # visible to steps N+1.. and to nested forms, and goes out of scope
+            # when the sequence ends.
+            variable_stack.append({})
+            try:
+                items: list = []
+                for item in json_data:
+                    cls.concatenate(
+                        items,
+                        cls.process_json(settings, item, context, variable_stack),
+                    )
+                return items
+            finally:
+                variable_stack.pop()
 
         else:
             # Convert plain values to RDFLib terms
             return cls.json_to_rdflib(json_data)
+
+    @staticmethod
+    def concatenate(items: list, value: Any) -> None:
+        """Append `value` to `items` as XDM concatenation does
+        (formal-semantics.md §3.1): a sequence contributes its items, Unit
+        (`None`) contributes none, anything else — a `Result` included — is
+        one item."""
+        if value is None:
+            return
+        if isinstance(value, list):
+            for item in value:
+                Operation.concatenate(items, item)
+            return
+        items.append(value)
 
     @classmethod
     def _resolve_jsonld(
         cls,
         settings: BaseSettings,
         json_data: Any,
-        context: dict = {},
-        variable_stack: list = [],
+        context: dict = None,
+        variable_stack: list = None,
     ) -> Any:
         """Resolve embedded `@op` nodes inside a JSON-LD document in place.
 
@@ -174,19 +255,6 @@ class Operation(ABC, BaseModel):
         else:
             return json_data
 
-    @staticmethod
-    def _serialize_for_json_context(obj) -> Any:
-        """Convert RDFLib objects to appropriate format for JSON consumption"""
-        if isinstance(obj, (URIRef, Literal, BNode)):
-            return str(obj)  # Convert RDFLib terms to strings for JSON-LD
-        elif hasattr(obj, "to_json") and callable(obj.to_json):
-            return obj.to_json()  # Convert Result to SPARQL JSON format
-        elif isinstance(obj, Graph):
-            # Keep graphs as-is for now - they'll be serialized by HTTP operations
-            return obj
-        else:
-            return obj
-
     # Variable stack management methods
     def push_variable_scope(self, variable_stack: list):
         """Create a new variable scope (like entering a new XSLT template)."""
@@ -208,7 +276,7 @@ class Operation(ABC, BaseModel):
         for scope in reversed(variable_stack):
             if name in scope:
                 return scope[name]
-        raise ValueError(f"Variable '{name}' not found")
+        raise VariableNotFoundError(f"Variable '{name}' not found")
 
     # Conversion helpers between different formats
     @staticmethod
@@ -244,6 +312,9 @@ class Operation(ABC, BaseModel):
     @staticmethod
     def json_to_rdflib(data) -> Node:
         """Convert JSON/binding objects to RDFLib terms"""
+        if data is None:
+            # formal-semantics.md §2.2: null is not a valid form.
+            raise InvalidFormError("null is not a valid Web Algebra form")
         if isinstance(data, dict) and "type" in data and "value" in data:
             # SPARQL binding object - values may have been processed to RDFLib terms
             type_str = str(data["type"])  # Convert potential Literal to string
@@ -275,12 +346,13 @@ class Operation(ABC, BaseModel):
         elif isinstance(data, str):
             # Plain string → always convert to string literal
             return Literal(data, datatype=XSD.string)
+        elif isinstance(data, bool):
+            # bool before int — bool is an int subclass in Python
+            return Literal(data, datatype=XSD.boolean)
         elif isinstance(data, int):
             return Literal(data, datatype=XSD.integer)
         elif isinstance(data, float):
             return Literal(data, datatype=XSD.double)
-        elif isinstance(data, bool):
-            return Literal(data, datatype=XSD.boolean)
         else:
             # Default: convert to string literal
             return Literal(str(data), datatype=XSD.string)
@@ -291,14 +363,25 @@ class Operation(ABC, BaseModel):
         if isinstance(value, str):
             # Plain string → always convert to string literal
             return Literal(value, datatype=XSD.string)
+        elif isinstance(value, bool):
+            # bool before int — bool is an int subclass in Python
+            return Literal(value, datatype=XSD.boolean)
         elif isinstance(value, int):
             return Literal(value, datatype=XSD.integer)
         elif isinstance(value, float):
             return Literal(value, datatype=XSD.double)
-        elif isinstance(value, bool):
-            return Literal(value, datatype=XSD.boolean)
         else:
             return Literal(str(value), datatype=XSD.string)
+
+    @staticmethod
+    def is_string_literal(term: Any) -> bool:
+        """True for a language-tag-free string literal — a SPARQL simple
+        literal or its RDF 1.1 equivalent, an xsd:string literal."""
+        return (
+            isinstance(term, Literal)
+            and term.language is None
+            and (term.datatype is None or term.datatype == XSD.string)
+        )
 
     @staticmethod
     def to_string_literal(term: Node) -> Literal:

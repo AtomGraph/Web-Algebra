@@ -1,6 +1,9 @@
 """Spec: formal-semantics.md "PATCH - Update RDF data via HTTP PATCH with SPARQL Update"
 Abstract: URI × Literal → Result
 Python:   def execute(self, url: URIRef, update: Literal) -> Result
+- §4.4: returns a single-row Result (status, url); the shared write
+  contract (url from Location, non-2xx → ValueError, If-Match via HEAD) is
+  covered for POST, PUT and PATCH in test_write_contract.py.
 """
 
 from __future__ import annotations
@@ -31,6 +34,14 @@ class TestPATCHLive:
 
 
 class TestPATCHJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): PATCH JSON arg shape not exemplified by existing fixtures (presumed `{url, update}`)")
-    def test_json_dispatch(self, settings):
-        pass
+    def test_wrong_url_type_raises_before_network(self, settings):
+        # §4.4 JSON: url: URI · update: Literal (SPARQL Update string).
+        # §3.7: strict typing before any effect.
+        op = Operation.get("PATCH")(settings=settings)
+        with pytest.raises(TypeError):
+            op.execute_json(
+                {
+                    "url": "http://example.org/x",
+                    "update": "DELETE WHERE { ?s ?p ?o }",
+                }
+            )

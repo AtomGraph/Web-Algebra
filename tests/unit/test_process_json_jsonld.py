@@ -18,7 +18,6 @@ which they all already do — and with the correct base IRI.
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 
 from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.namespace import RDF
@@ -159,15 +158,16 @@ class TestEmbeddedOpsAndVariables:
         assert (DOC_URI, RDF.type, DOC_TYPE) in graph
 
     def test_variable_from_context_binding(self, settings):
-        # Bare name (no $) resolves from the context — the ForEach-row case from
-        # the original bug report.
+        # Bare name (no $) resolves from the focus item — the ForEach-row case
+        # from the original bug report. Item shapes are closed to Binding +
+        # mapping (formal-semantics.md §3.5), so the row stand-in is a mapping.
         json_data = {
             "@id": {"@op": "Value", "args": {"name": "doc"}},
             str(FOAF_PRIMARY_TOPIC): {
                 "@id": {"@op": "Value", "args": {"name": "topic"}}
             },
         }
-        context = SimpleNamespace(doc=DOC_URI, topic=MESSAGE_URI)
+        context = {"doc": DOC_URI, "topic": MESSAGE_URI}
 
         result = Operation.process_json(settings, json_data, context, [])
         graph = Operation.to_graph(result)

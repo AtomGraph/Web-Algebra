@@ -96,7 +96,7 @@ class CreateItem(PUT):
         # Call parent PUT execute method
         return super().execute(URIRef(url), graph)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments with strict type checking"""
         # Process container URI
         container_data = Operation.process_json(

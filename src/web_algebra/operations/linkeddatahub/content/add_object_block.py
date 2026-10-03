@@ -77,7 +77,7 @@ class AddObjectBlock(POST):
             "required": ["url", "value"],
         }
 
-    def execute_json(self, arguments: dict[str, str], variable_stack: list = []) -> Any:
+    def execute_json(self, arguments: dict[str, str], variable_stack: list = None) -> Any:
         """JSON execution: process arguments and delegate to execute()"""
         # Process required arguments
         url_data = Operation.process_json(
@@ -157,19 +157,19 @@ class AddObjectBlock(POST):
                 f"AddObjectBlock.execute expects value to be URIRef, got {type(value)}"
             )
         if title is not None and (
-            not isinstance(title, Literal) or title.datatype != XSD.string
+            not Operation.is_string_literal(title)
         ):
             raise TypeError(
                 f"AddObjectBlock.execute expects title to be string Literal, got {type(title)}"
             )
         if description is not None and (
-            not isinstance(description, Literal) or description.datatype != XSD.string
+            not Operation.is_string_literal(description)
         ):
             raise TypeError(
                 f"AddObjectBlock.execute expects description to be string Literal, got {type(description)}"
             )
         if fragment is not None and (
-            not isinstance(fragment, Literal) or fragment.datatype != XSD.string
+            not Operation.is_string_literal(fragment)
         ):
             raise TypeError(
                 f"AddObjectBlock.execute expects fragment to be string Literal, got {type(fragment)}"

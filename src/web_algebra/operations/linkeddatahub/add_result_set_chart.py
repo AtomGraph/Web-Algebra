@@ -86,7 +86,7 @@ class AddResultSetChart(POST):
             ],
         }
 
-    def execute_json(self, arguments: dict[str, str], variable_stack: list = []) -> Any:
+    def execute_json(self, arguments: dict[str, str], variable_stack: list = None) -> Any:
         """JSON execution: process arguments and delegate to execute()"""
         # Process required arguments
         url_data = Operation.process_json(
@@ -174,7 +174,7 @@ class AddResultSetChart(POST):
             raise TypeError(
                 f"AddResultSetChart.execute expects query to be URIRef, got {type(query)}"
             )
-        if not isinstance(title, Literal) or title.datatype != XSD.string:
+        if not Operation.is_string_literal(title):
             raise TypeError(
                 f"AddResultSetChart.execute expects title to be string Literal, got {type(title)}"
             )
@@ -183,27 +183,25 @@ class AddResultSetChart(POST):
                 f"AddResultSetChart.execute expects chart_type to be URIRef, got {type(chart_type)}"
             )
         if (
-            not isinstance(category_var_name, Literal)
-            or category_var_name.datatype != XSD.string
+            not Operation.is_string_literal(category_var_name)
         ):
             raise TypeError(
                 f"AddResultSetChart.execute expects category_var_name to be string Literal, got {type(category_var_name)}"
             )
         if (
-            not isinstance(series_var_name, Literal)
-            or series_var_name.datatype != XSD.string
+            not Operation.is_string_literal(series_var_name)
         ):
             raise TypeError(
                 f"AddResultSetChart.execute expects series_var_name to be string Literal, got {type(series_var_name)}"
             )
         if description is not None and (
-            not isinstance(description, Literal) or description.datatype != XSD.string
+            not Operation.is_string_literal(description)
         ):
             raise TypeError(
                 f"AddResultSetChart.execute expects description to be string Literal, got {type(description)}"
             )
         if fragment is not None and (
-            not isinstance(fragment, Literal) or fragment.datatype != XSD.string
+            not Operation.is_string_literal(fragment)
         ):
             raise TypeError(
                 f"AddResultSetChart.execute expects fragment to be string Literal, got {type(fragment)}"

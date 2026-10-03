@@ -1,5 +1,4 @@
 from typing import Any
-from mcp import types
 from web_algebra.operation import Operation
 
 
@@ -35,8 +34,10 @@ class Variable(Operation):
         self.set_variable(name, value, variable_stack)
         return None
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> None:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> None:
         """JSON execution: evaluate value expression and store variable"""
+        if variable_stack is None:
+            variable_stack = []
         name: str = arguments["name"]
         value_expr = arguments["value"]
 
@@ -47,7 +48,3 @@ class Variable(Operation):
 
         # Call pure function to store the variable
         return self.execute(name, value, variable_stack)
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → confirmation"""
-        return [types.TextContent(type="text", text="Variable set successfully")]

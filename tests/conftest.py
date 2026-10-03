@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,8 @@ import web_algebra.operations
 from web_algebra.json_result import JSONResult
 from web_algebra.main import LinkedDataHubSettings, list_operation_subclasses
 from web_algebra.operation import Operation
+
+from tests.http_stub import StubWeb
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -51,6 +54,25 @@ def settings_with_auth() -> LinkedDataHubSettings:
 def fixture_dir() -> Path:
     """Absolute path to tests/fixtures/, independent of pytest's cwd."""
     return Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture
+def http_stub(monkeypatch) -> StubWeb:
+    """Answer every urllib request offline and record it.
+
+    Patches ``OpenerDirector.open`` (the urllib boundary every client goes
+    through), so clients built by operations nested inside other operations
+    are stubbed too. Set ``http_stub.handler`` to a ``request -> StubResponse``
+    callable to script the answers; a non-2xx answer raises ``HTTPError`` as a
+    real opener does.
+    """
+    web = StubWeb()
+
+    def _open(self, request, data=None, *args, **kwargs):
+        return web.open(request, data)
+
+    monkeypatch.setattr(urllib.request.OpenerDirector, "open", _open)
+    return web
 
 
 @pytest.fixture

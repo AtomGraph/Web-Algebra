@@ -1,19 +1,17 @@
-from typing import Any
 from rdflib.term import Node
-from rdflib import BNode, Literal, URIRef
-from rdflib.namespace import XSD
-from mcp import types
+from rdflib import Literal, URIRef
 from web_algebra.operation import Operation
 
 
 class Str(Operation):
     """
-    Converts any RDF term to a string literal
+    Returns the lexical form of a Literal or the codepoint representation of
+    a URI as a simple literal, per SPARQL 1.1 STR().
     """
 
     @classmethod
     def description(cls) -> str:
-        return "Converts any RDF term to a string literal"
+        return "Returns the lexical form of a Literal or the string representation of a URI, per SPARQL's STR() function. The language tag, if any, is not carried over."
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -27,26 +25,19 @@ class Str(Operation):
 
     def execute(self, term: Node) -> Literal:
         """Pure function: RDFLib term → string literal"""
-        # Strict Type Checking: spec defines Str as Term → Literal where Term = URI + Literal + BNode.
-        if not isinstance(term, (URIRef, Literal, BNode)):
+        # SPARQL 1.1 STR() accepts a literal or an IRI; a blank node is a
+        # type error (formal-semantics.md §4.2).
+        if not isinstance(term, (URIRef, Literal)):
             raise TypeError(
-                f"Str expects a Term (URIRef, Literal, BNode), got {type(term).__name__}"
+                f"Str expects a URI or Literal (SPARQL STR), got {type(term).__name__}"
             )
-        # Check if already string-compatible
-        if isinstance(term, Literal):
-            if term.datatype == XSD.string:
-                return term  # Already xsd:string, return as-is
-            elif term.language is not None:
-                return term  # rdf:langString (datatype=None, language=xx), return as-is (compatible)
-            elif term.datatype is None and term.language is None:
-                # Plain literal without datatype or language - treat as string
-                return term
 
-        # Convert any other term to xsd:string
-        return Literal(str(term), datatype=XSD.string)
+        # The lexical form / codepoint representation as a simple literal
+        # (no datatype, no language tag) — as rdflib's SPARQL engine does.
+        return Literal(str(term))
 
     def execute_json(
-        self, arguments: dict, variable_stack: list = []
+        self, arguments: dict, variable_stack: list = None
     ) -> Literal:
         """JSON execution: processes JSON args, returns RDFLib string literal"""
         # Process the input argument through the JSON system
@@ -62,14 +53,3 @@ class Str(Operation):
 
         # Call pure function
         return self.execute(input_data)
-
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        # Convert plain input to RDFLib term
-        rdflib_term = Operation.plain_to_rdflib(arguments["input"])
-
-        # Call pure function
-        result = self.execute(rdflib_term)
-
-        # Convert result to plain string for MCP
-        return [types.TextContent(type="text", text=str(result))]

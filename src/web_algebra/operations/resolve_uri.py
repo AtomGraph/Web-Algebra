@@ -51,7 +51,7 @@ class ResolveURI(Operation, MCPTool):
         resolved_uri = urljoin(base_str, relative_str)
         return URIRef(resolved_uri)
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> URIRef:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> URIRef:
         """JSON execution: process arguments and call pure function"""
         # Process base URI
         base_data = Operation.process_json(

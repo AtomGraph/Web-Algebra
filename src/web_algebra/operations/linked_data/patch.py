@@ -1,15 +1,15 @@
-from typing import Any
+from typing import ClassVar, Any
 import logging
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.mcp_tool import MCPTool
-from web_algebra.operation import Operation
+from web_algebra.client_operation import ClientOperation
+from web_algebra.operation import Operation, OperationKind
 from rdflib.query import Result
-from web_algebra.client import LinkedDataClient
 
 
-class PATCH(Operation, MCPTool):
+class PATCH(ClientOperation, Operation, MCPTool):
     """
     Updates RDF data in a named graph using HTTP PATCH with SPARQL Update.
     The URL serves as both the resource identifier and the named graph address in systems with direct graph identification.
@@ -20,12 +20,9 @@ class PATCH(Operation, MCPTool):
     Note: This operation does not return the updated graph, it only confirms the success of the operation.
     """
 
-    def model_post_init(self, __context: Any) -> None:
-        self.client = LinkedDataClient(
-            cert_pem_path=getattr(self.settings, "cert_pem_path", None),
-            cert_password=getattr(self.settings, "cert_password", None),
-            verify_ssl=False,  # Optionally disable SSL verification
-        )
+    # a SPARQL Update whose DELETE selects triples by pattern - what it removes is not visible in the plan, only the target is
+    kind: ClassVar[OperationKind] = OperationKind.DESTRUCTIVE
+
 
     @classmethod
     def description(cls) -> str:
@@ -76,20 +73,9 @@ class PATCH(Operation, MCPTool):
         response = self.client.patch(url_str, update_str)
         logging.info("PATCH operation status: %s", response.status)
 
-        # Return SPARQL results format
-        from web_algebra.json_result import JSONResult
+        return self.written_response(response)
 
-        return JSONResult(
-            vars=["status", "url"],
-            bindings=[
-                {
-                    "status": Literal(response.status, datatype=XSD.integer),
-                    "url": URIRef(response.geturl()),
-                }
-            ],
-        )
-
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> Result:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments and call pure function"""
         # Process URL
         url_data = Operation.process_json(

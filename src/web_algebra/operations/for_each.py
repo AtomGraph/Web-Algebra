@@ -1,6 +1,7 @@
-from typing import Any, List, Union
+from typing import Any, Callable, Dict, List, Union
 import logging
-from mcp import types
+from web_algebra.exceptions import SameTargetError
+from web_algebra.focus import Focus, report_write
 from web_algebra.operation import Operation
 from rdflib.query import Result
 
@@ -18,7 +19,7 @@ class ForEach(Operation):
         - Sequences: Each item becomes the context for the operation
         - Result (SPARQL results): Each result row (ResultRow) becomes the context
         
-        Returns a sequence of operation results."""
+        Returns the concatenation of the iteration values, in item order."""
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -36,15 +37,21 @@ class ForEach(Operation):
     def execute(
         self, select_data: Union[List[Any], Result], operation: Any
     ) -> List[Any]:
-        """Pure function: apply operation to each item in sequence or SPARQL results"""
-        # This is complex because we need to execute operations with context
-        # For now, this will be handled in execute_json
+        """Interpreter-level special form — no pure form (formal-semantics.md §4.1).
+
+        `ForEach` evaluates a *quoted* operand once per item under a per-item
+        focus and variable scope; that requires the interpreter, so it has no
+        pure `execute()` and lives entirely in `execute_json`.
+        """
         raise NotImplementedError(
-            "ForEach pure function needs operation execution context"
+            "ForEach is an interpreter-level special form (formal-semantics.md "
+            "§4.1); use execute_json"
         )
 
-    def execute_json(self, arguments: dict, variable_stack: list = []) -> List[Any]:
+    def execute_json(self, arguments: dict, variable_stack: list = None) -> List[Any]:
         """JSON execution: apply operations to each item in sequence or SPARQL results"""
+        if variable_stack is None:
+            variable_stack = []
         # Get the select data (sequence or Result)
         select_data = Operation.process_json(
             self.settings, arguments["select"], self.context, variable_stack
@@ -76,39 +83,61 @@ class ForEach(Operation):
                 f"ForEach expects 'select' to be sequence (list) or Result, got {type(select_data)}"
             )
 
-        results = []
-        for item in items:
+        results: List[Any] = []
+        size = len(items)
+        # §3.6: the iterations' writes go through one gate, which refuses a
+        # URI that two iterations write (XSLT's XTDE1490). Within one
+        # iteration the sequence form orders the writes, so repeats are fine.
+        writers: Dict[str, int] = {}
+        for position, item in enumerate(items, start=1):
             logging.info("Processing item: %s", item)
 
-            # Handle list of operations or single operation
-            if isinstance(operation, list):
-                # Execute operations in sequence, with item as context
-                last_result = None
+            # The focus (item, position, size) per formal-semantics.md §3.5,
+            # accessed by Current/Position/Last and focus-item Value lookups.
+            focus = Focus(
+                item=item,
+                position=position,
+                size=size,
+                written=self._gate(writers, position),
+            )
 
-                for op in operation:
-                    result = Operation.process_json(
-                        self.settings, op, context=item, variable_stack=variable_stack
+            # Each iteration runs in a fresh variable scope
+            # (formal-semantics.md §3.4): bindings made inside one iteration
+            # do not leak into the next.
+            variable_stack.append({})
+            try:
+                # An array operand is a sequence constructor evaluated within
+                # the iteration's scope; either way the iteration's value is
+                # concatenated into the result (§3.1, §4.1).
+                forms = operation if isinstance(operation, list) else [operation]
+                for form in forms:
+                    Operation.concatenate(
+                        results,
+                        Operation.process_json(
+                            self.settings,
+                            form,
+                            context=focus,
+                            variable_stack=variable_stack,
+                        ),
                     )
-                    if result is not None:
-                        last_result = result
-
-                # Only collect the last non-None result
-                if last_result is not None:
-                    results.append(last_result)
-            else:
-                # Single operation
-                result = Operation.process_json(
-                    self.settings,
-                    operation,
-                    context=item,
-                    variable_stack=variable_stack,
-                )
-                # Only collect non-None results
-                if result is not None:
-                    results.append(result)
+            finally:
+                variable_stack.pop()
 
         return results
 
-    def mcp_run(self, arguments: dict, context: Any = None) -> Any:
-        """MCP execution: plain args → plain results"""
-        return [types.TextContent(type="text", text="ForEach operation completed")]
+    def _gate(self, writers: Dict[str, int], position: int) -> Callable[[str], None]:
+        """The write gate of iteration `position`. An update inside a nested
+        ForEach counts for every enclosing iteration too, so the report is
+        passed on to the gate of the focus this ForEach runs under."""
+
+        def written(url: str) -> None:
+            other = writers.setdefault(url, position)
+            if other != position:
+                raise SameTargetError(
+                    f"ForEach wrote {url} from iterations {other} and {position}: "
+                    "two iterations updating one URI are an error "
+                    "(formal-semantics.md §3.6)"
+                )
+            report_write(self.context, url)
+
+        return written

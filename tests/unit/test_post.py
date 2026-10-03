@@ -1,6 +1,9 @@
 """Spec: formal-semantics.md "POST - Submit RDF data via HTTP POST"
 Abstract: URI × Graph → Result
 Python:   def execute(self, url: rdflib.URIRef, data: rdflib.Graph) -> Result
+- §4.4: returns a single-row Result (status, url); the shared write
+  contract (url from Location, non-2xx → ValueError, If-Match via HEAD) is
+  covered for POST, PUT and PATCH in test_write_contract.py.
 """
 
 from __future__ import annotations
@@ -31,6 +34,14 @@ class TestPOSTLive:
 
 
 class TestPOSTJson:
-    @pytest.mark.skip(reason="UNCLEAR(spec): POST JSON arg shape not exemplified by existing fixtures (presumed `{url, data}`)")
-    def test_json_dispatch(self, settings):
-        pass
+    def test_wrong_url_type_raises_before_network(self, settings):
+        # §4.4 JSON: url: URI · data: Graph or RDF data form.
+        # §3.7: strict typing before any effect.
+        op = Operation.get("POST")(settings=settings)
+        with pytest.raises(TypeError):
+            op.execute_json(
+                {
+                    "url": "http://example.org/x",
+                    "data": {"@id": "http://ex/s", "@type": "http://ex/T"},
+                }
+            )

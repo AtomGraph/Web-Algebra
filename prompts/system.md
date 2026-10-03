@@ -9,6 +9,7 @@ Your output must be a **JSON-formatted structure** of operation calls, where **o
 - **Operations must be represented as JSON objects**. Each operation corresponds to a function call with a specific signature.
 - **Operations may be nested inside arguments** to indicate dependencies.
 - **A result can be used directly as an argument in another operation** instead of requiring explicit intermediate variables.
+- **URIs are written with the URI reference form** `{"@id": "https://..."}` — an object whose only member is `@id`. A plain JSON string is **always a string literal, never a URI**. To produce a URI from a computed value, use `URI` or `ResolveURI`.
 - **ForEach supports executing multiple operations sequentially** when provided with a list of operations. Each operation in the list is executed for every row in the table before moving to the next row.
 - **Where an operation returns or expects RDF data, it is handled internally as an `rdflib.Graph`, but is represented as JSON-LD in the JSON structure.**
 - **SPARQL tabular data** (e.g., from `SELECT`) can be provided inline as a list of bindings, while **RDF Graph data** (e.g., from `GET`, `CONSTRUCT`, or merges) can be provided inline as JSON-LD objects.
@@ -28,11 +29,17 @@ would produce this JSON output:
     "select": {
       "@op": "SELECT",
       "args": {
-        "endpoint": "https://dbpedia.org/sparql",
+        "endpoint": {
+          "@id": "https://dbpedia.org/sparql"
+        },
         "query": {
           "@op": "SPARQLString",
           "args": {
-            "question": "10 biggest cities in Denmark"
+            "endpoint": {
+              "@id": "https://dbpedia.org/sparql"
+            },
+            "question": "10 biggest cities in Denmark",
+            "projection": ["city", "cityName"]
           }
         }
       }
@@ -43,7 +50,9 @@ would produce this JSON output:
         "url": {
           "@op": "ResolveURI",
           "args": {
-            "base": "http://localhost/denmark/",
+            "base": {
+              "@id": "http://localhost/denmark/"
+            },
             "relative": {
               "@op": "Value",
               "args": {
@@ -56,7 +65,7 @@ would produce this JSON output:
           "@op": "GET",
           "args": {
             "url": {
-              "@op": "Str",
+              "@op": "URI",
               "args": {
                 "input": {
                   "@op": "Value",
@@ -233,12 +242,14 @@ Creates or replaces a document with RDF content, represented as JSON-LD.
 
 ---
 
-## SPARQLString(question: str) -> Union[Select, Ask, Describe, Construct]
+## SPARQLString(endpoint: URL, question: str, projection?: List[str], context?: List[Callable]) -> str
 
-This function accepts a natural language question and returns a valid SPARQL query string (either `Select` or `Describe` form) that provides a result which answers the query. Uses OpenAI's API to generate a structured SPARQL query based on the provided question.
+Writes a SPARQL query for the given endpoint that answers the natural language question, using OpenAI's API. Returns the query string.
 Use the `Select` form when you want to list resources and their property values and get a tabular result.
 Use the `Describe` form when you want to get RDF graph descriptions of one or more resources.
-Do not return `SELECT *` or `DESCRIBE *`. The query must explicitly list all variables projected in the result.
+
+- `projection` names the variables the query must project. **Always give it when the result is read by name** — e.g. by `Value` inside a `ForEach` body, or by `Filter` on a row — listing exactly those names. The query is then a `SELECT` that projects them.
+- `context` holds operations, run first, whose results are shown to the model as what the endpoint holds: e.g. a `SELECT` that lists the predicates of a class, or looks an entity up by its label. Use it to explore an endpoint whose vocabulary you do not know, so the query uses terms the endpoint actually has. An exploration that returns nothing is an error.
 
 ### Example JSON
 
@@ -246,19 +257,21 @@ Do not return `SELECT *` or `DESCRIBE *`. The query must explicitly list all var
 {
   "@op": "SPARQLString",
   "args": {
-    "question": "Provide the description of the City of Copenhagen"
+    "endpoint": { "@id": "https://dbpedia.org/sparql" },
+    "question": "The 10 biggest cities in Denmark with their names",
+    "projection": ["city", "cityName"]
   }
 }
 ```
 
 Result:
 ```sparql
-"DESCRIBE <http://dbpedia.org/resource/Copenhagen>"
+"PREFIX dbo: <http://dbpedia.org/ontology/> SELECT ?city ?cityName WHERE { ... } ORDER BY DESC(?population) LIMIT 10"
 ```
 
-## SELECT(endpoint: URL, query: Select) -> Dict
+## SELECT(endpoint | graph, query: Select) -> Dict
 
-This function queries the provided SPARQL endpoint using the provided `Select` query string. It returns a SPARQL results object with the structure `{"results": {"bindings": [...]}}` where each binding is a dictionary representing a table row. The dictionary keys correspond to variables projected by the query.
+This function runs the provided `Select` query string over a SPARQL endpoint (`endpoint`, a URL) or over a graph in hand (`graph`, e.g. the result of `GET`, `Merge` or `CONSTRUCT`, or inline JSON-LD). Give exactly one of `endpoint` and `graph`. It returns a SPARQL results object with the structure `{"results": {"bindings": [...]}}` where each binding is a dictionary representing a table row. The dictionary keys correspond to variables projected by the query.
 Key values are also dictionaries, with `type` field indicating the type of the value (`uri`, `bnode`, or `literal`) and `value` providing the actual value.
 In case of language-tagged literals there is also an `xml:lang` key indicating the language code, and in case of typed literals there is a "datatype" key indicating the datatype URI.
 
@@ -268,7 +281,7 @@ In case of language-tagged literals there is also an `xml:lang` key indicating t
 {
   "@op": "SELECT",
   "args": {
-    "endpoint": "https://dbpedia.org/sparql",
+    "endpoint": { "@id": "https://dbpedia.org/sparql" },
     "query": "SELECT ?city ?cityName WHERE { ?city <http://schema.org/name> ?cityName }"
   }
 }
@@ -293,9 +306,9 @@ Result (truncated for brevity):
 }
 ```
 
-## DESCRIBE(endpoint: URL, query: Describe) -> Graph
+## DESCRIBE(endpoint | graph, query: Describe) -> Graph
 
-This function queries the provided SPARQL endpoint using the provided `DESCRIBE` query string. It returns an RDF graph represented as JSON-LD.
+This function runs the provided `DESCRIBE` query string over a SPARQL endpoint (`endpoint`) or a graph in hand (`graph`); give exactly one. It returns an RDF graph represented as JSON-LD.
 
 ### Example JSON
 
@@ -303,7 +316,7 @@ This function queries the provided SPARQL endpoint using the provided `DESCRIBE`
 {
   "@op": "DESCRIBE",
   "args": {
-    "endpoint": "https://dbpedia.org/sparql",
+    "endpoint": { "@id": "https://dbpedia.org/sparql" },
     "query": "DESCRIBE <http://dbpedia.org/resource/Copenhagen>"
   }
 }
@@ -322,9 +335,9 @@ Result (truncated)
 }
 ```
 
-## CONSTRUCT(endpoint: URL, query: Construct) -> Graph
+## CONSTRUCT(endpoint | graph, query: Construct) -> Graph
 
-This function queries the provided SPARQL endpoint using the provided `CONSTRUCT` query string, returning an RDF graph internally, represented as JSON-LD in the JSON structure.
+This function runs the provided `CONSTRUCT` query string over a SPARQL endpoint (`endpoint`) or a graph in hand (`graph`; give exactly one), returning an RDF graph internally, represented as JSON-LD in the JSON structure.
 
 ### Example JSON
 
@@ -332,7 +345,7 @@ This function queries the provided SPARQL endpoint using the provided `CONSTRUCT
 {
   "@op": "CONSTRUCT",
   "args": {
-    "endpoint": "https://dbpedia.org/sparql",
+    "endpoint": { "@id": "https://dbpedia.org/sparql" },
     "query": "PREFIX dbo: <http://dbpedia.org/ontology/> CONSTRUCT { <http://dbpedia.org/resource/Copenhagen> ?p ?o } WHERE { <http://dbpedia.org/resource/Copenhagen> ?p ?o }"
   }
 }
@@ -478,6 +491,7 @@ Executes one or more operations for each row in a SPARQL results or any sequence
 
 - If a **single operation** is provided, it is applied to each row.  
 - If a **list of operations** is provided, they are executed sequentially for each row.
+- The result is the flat sequence of every iteration's values, in row order. Iterations may run in parallel: two iterations writing the same URL is an error, so give each row its own document.
 
 ---
 
@@ -494,7 +508,7 @@ This example performs an HTTP **GET** request for each city in the result set.
     "select": {
       "@op": "SELECT",
       "args": {
-        "endpoint": "https://dbpedia.org/sparql",
+        "endpoint": { "@id": "https://dbpedia.org/sparql" },
         "query": "SELECT ?city WHERE { ?city a <http://dbpedia.org/ontology/City> }"
       }
     },
@@ -539,7 +553,7 @@ This example performs both a **GET** request and a **POST** request for each cit
     "select": {
       "@op": "SELECT",
       "args": {
-        "endpoint": "https://dbpedia.org/sparql",
+        "endpoint": { "@id": "https://dbpedia.org/sparql" },
         "query": "SELECT ?city WHERE { ?city a <http://dbpedia.org/ontology/City> }"
       }
     },
@@ -585,6 +599,33 @@ GET("http://dbpedia.org/resource/Aarhus")
 POST("https://example.com/store", "http://dbpedia.org/resource/Aarhus")
 ```
 
+## Filter(input: Union[List, Result, Row], expression: Union[int, str]) -> Any
+
+Selects by position or by name, like XPath's `$seq[2]` and `$row?url`.
+
+- An integer `expression` selects the item at that 1-based position from a sequence, or the row at that position from a `SELECT` result.
+- A string `expression` on a row returns the value bound to that variable name (`"url"`, `"?url"` and `"$url"` are the same).
+
+`PUT`, `POST` and `PATCH` return a one-row result with `status` and `url` (the created document's URL when the server says where it put it), so `Filter(Filter(<write>, 1), "url")` is the URL a write produced.
+
+### Example JSON
+
+```json
+{
+  "@op": "Filter",
+  "args": {
+    "input": {
+      "@op": "Filter",
+      "args": {
+        "input": { "@op": "POST", "args": { "url": { "@id": "https://localhost:4443/" }, "data": { "@id": "#this", "http://purl.org/dc/terms/title": "New item" } } },
+        "expression": 1
+      }
+    },
+    "expression": "url"
+  }
+}
+```
+
 ## Replace(input: str, pattern: str, replacement: str) -> str
 
 This function replaces occurrences of a pattern in a string with a specified replacement value. The function follows the behavior of SPARQL’s `REPLACE()`.
@@ -627,28 +668,6 @@ Result:
 ```json
 "Malm%C3%B6%20Municipality"
 ```
-
-## Execute(operation: Dict) -> Any
-
-This operation executes a (potentially nested) operation from its JSON representation. The operation is expected to be an instance of the Operation class.
-
-### Example JSON
-
-```json
-{
-  "@op": "Execute",
-  "args": {
-    "operation": {
-      "@op": "GET",
-      "args": {
-        "url": "http://dbpedia.org/resource/Copenhagen"
-      }
-    }
-  }
-}
-```
-
-Result: Returns the result of the executed operation.
 
 ## ldh-List(url: str, endpoint?: str, base?: str) -> List[Dict[str, Any]]
 
@@ -822,9 +841,74 @@ Result (example):
 }
 ```
 
-## ExtractClasses(endpoint: str) -> Graph
+## Iterate(params: Dict, operation: Union[Callable, List[Callable]], next-iteration: Dict, break: Dict) -> List
 
-Extracts OWL classes from an RDF dataset via SPARQL endpoint.
+Stateful iteration with parameter passing between iterations, inspired by XSLT 3.0's `xsl:iterate`. Use it for cursor- or URL-driven pagination, where the next request depends on the previous response.
+
+- `params`: initial parameters (name → value/operation), bound as variables and read via `{"@op": "Value", "args": {"name": "$name"}}`.
+- `operation`: evaluated once per iteration; may be a list (executed in order, last non-null result is the iteration's value).
+- `next-iteration` (optional): name → operation, evaluated after each iteration — it sees the loop parameters *and* any `Variable` bindings the body made — and rebinds the parameters. Without it, exactly one iteration runs.
+- `break` (optional): `{"name": "param", "equals": "value"}` or `{"name": "param", "not-equals": "value"}`, tested after rebinding.
+
+Returns the list of iteration results. The iteration count is capped at 1000.
+
+### Example JSON
+
+```json
+{
+  "@op": "Iterate",
+  "args": {
+    "params": {
+      "url": {"@id": "https://api.example.com/items"}
+    },
+    "operation": [
+      {
+        "@op": "Variable",
+        "args": {"name": "page", "value": {"@op": "GET", "args": {"url": {"@op": "URI", "args": {"input": {"@op": "Value", "args": {"name": "$url"}}}}}}}
+      },
+      {"@op": "Value", "args": {"name": "$page"}}
+    ],
+    "next-iteration": {
+      "url": {"@op": "Value", "args": {"name": "$nextPageUrl"}}
+    },
+    "break": {"name": "url", "equals": ""}
+  }
+}
+```
+
+Result: a list with one RDF graph per fetched page (merge them with `Merge` if a single graph is needed).
+
+## Position() -> int
+
+Returns the 1-based position of the current iteration item, like XPath's `fn:position()`. Only meaningful inside `ForEach`, which establishes the focus (item, position, size).
+
+### Example JSON
+
+```json
+{
+  "@op": "Position"
+}
+```
+
+Result (example): `2` (an `xsd:integer` literal) while processing the second row.
+
+## Last() -> int
+
+Returns the size of the sequence being iterated, like XPath's `fn:last()`. Only meaningful inside `ForEach`. Combine with `Position` for progress-style values, e.g. "item 2 of 10".
+
+### Example JSON
+
+```json
+{
+  "@op": "Last"
+}
+```
+
+Result (example): `10` (an `xsd:integer` literal) while iterating ten rows.
+
+## ExtractClasses(endpoint: str, bindings?: Result) -> Graph
+
+Extracts OWL classes from an RDF dataset via SPARQL endpoint. Optional `bindings` is a `SELECT` result whose `?subject` column limits the extraction to those subjects (e.g. the instances of a class, or a sample) — use it on large public endpoints. The same applies to every Extract* operation.
 
 ### Example JSON
 
@@ -832,14 +916,14 @@ Extracts OWL classes from an RDF dataset via SPARQL endpoint.
 {
   "@op": "ExtractClasses",
   "args": {
-    "endpoint": "https://dbpedia.org/sparql"
+    "endpoint": { "@id": "https://dbpedia.org/sparql" }
   }
 }
 ```
 
 Result: Returns JSON-LD graph containing OWL class definitions.
 
-## ExtractObjectProperties(endpoint: str) -> Graph
+## ExtractObjectProperties(endpoint: str, bindings?: Result) -> Graph
 
 Extracts OWL object properties from an RDF dataset via SPARQL endpoint, including domain/range detection.
 
@@ -849,14 +933,14 @@ Extracts OWL object properties from an RDF dataset via SPARQL endpoint, includin
 {
   "@op": "ExtractObjectProperties",
   "args": {
-    "endpoint": "https://dbpedia.org/sparql"
+    "endpoint": { "@id": "https://dbpedia.org/sparql" }
   }
 }
 ```
 
 Result: Returns JSON-LD graph containing OWL object property definitions.
 
-## ExtractDatatypeProperties(endpoint: str) -> Graph
+## ExtractDatatypeProperties(endpoint: str, bindings?: Result) -> Graph
 
 Extracts OWL datatype properties from an RDF dataset via SPARQL endpoint, including datatype analysis.
 
@@ -866,7 +950,7 @@ Extracts OWL datatype properties from an RDF dataset via SPARQL endpoint, includ
 {
   "@op": "ExtractDatatypeProperties",
   "args": {
-    "endpoint": "https://dbpedia.org/sparql"
+    "endpoint": { "@id": "https://dbpedia.org/sparql" }
   }
 }
 ```
@@ -931,7 +1015,7 @@ The block is appended as a trailing `VALUES` clause, which joins with the query'
     "data": {
       "@op": "SELECT",
       "args": {
-        "endpoint": "https://dbpedia.org/sparql",
+        "endpoint": { "@id": "https://dbpedia.org/sparql" },
         "query": "SELECT ?city WHERE { ?city <http://dbpedia.org/ontology/country> <http://dbpedia.org/resource/Denmark> } LIMIT 2"
       }
     }
@@ -1023,7 +1107,7 @@ Result:
 }
 ```
 
-## ExtractOntology(endpoint: str) -> Graph
+## ExtractOntology(endpoint: str, bindings?: Result) -> Graph
 
 Extracts a complete ontology (classes + datatype properties + object properties) from a SPARQL endpoint as a single merged graph. Infers structure from instance data using the closed-world assumption — does not rely on a formal ontology declaration at `/ns`. Properties where the global max objects-per-subject = 1 are emitted as `owl:FunctionalProperty`.
 

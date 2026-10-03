@@ -1,7 +1,8 @@
-"""Spec: formal-semantics.md "URI - Convert term to URI reference"
-Abstract: Term → URI
-Python:   def execute(self, term: rdflib.term.Node) -> rdflib.URIRef
-Plus the Strict Type Checking property (lines 291-295).
+"""Spec: formal-semantics.md §4.2 "URI — cast a Term to a URI"
+Abstract: (URI + Literal) → URI
+- URI input returned as-is; Literal yields the URI of its lexical form.
+- BNode raises TypeError (a blank node has no IRI).
+- The lexical form is NOT validated against RFC 3986.
 """
 
 from __future__ import annotations
@@ -31,15 +32,19 @@ class TestURIPure:
         with pytest.raises(TypeError):
             op.execute(42)
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): URI(BNode) — spec lists BNode as a Term but doesn't define this case")
-    def test_bnode_input(self, settings):
+    def test_bnode_raises_type_error(self, settings):
+        # §4.2: a BNode raises TypeError — a blank node has no IRI
         op = Operation.get("URI")(settings=settings)
-        op.execute(BNode("b1"))
+        with pytest.raises(TypeError):
+            op.execute(BNode("b1"))
 
-    @pytest.mark.skip(reason="UNCLEAR(spec): URI(Literal whose lexical form is not a valid URI) unspecified")
-    def test_invalid_uri_literal(self, settings):
+    def test_invalid_uri_literal_is_not_validated(self, settings):
+        # §4.2: the lexical form is not validated against RFC 3986 —
+        # garbage in, garbage out
         op = Operation.get("URI")(settings=settings)
-        op.execute(Literal("not a uri"))
+        result = op.execute(Literal("not a uri"))
+        assert isinstance(result, URIRef)
+        assert str(result) == "not a uri"
 
 
 class TestURIJson:
