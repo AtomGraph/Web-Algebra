@@ -1,7 +1,11 @@
 """Spec: formal-semantics.md "ExtractOntology - Extract a full ontology (classes
 + datatype + object properties) from a SPARQL endpoint as a single graph"
-Abstract: URI → Graph
-Python:   def execute(self, endpoint: URIRef) -> rdflib.Graph
+Abstract: URI × Maybe Result → Graph (§4.6)
+Python:   def execute(self, endpoint: URIRef,
+                      bindings: Optional[Result] = None) -> rdflib.Graph
+- The optional `bindings` contract (subject column → VALUES block,
+  ValueError/TypeError cases) is covered for all four extractions in
+  test_extract_bindings.py.
 """
 
 from __future__ import annotations

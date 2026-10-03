@@ -1,5 +1,5 @@
 import logging
-from typing import Any, ClassVar, Type
+from typing import Any, ClassVar, Type, Union
 from rdflib import URIRef, Literal, Graph
 from rdflib.namespace import XSD
 from mcp import types
@@ -7,9 +7,10 @@ from web_algebra.mcp_tool import MCPTool
 from web_algebra.client_operation import ClientOperation
 from web_algebra.operation import Operation
 from web_algebra.client import SPARQLClient
+from web_algebra.query_source import QuerySource
 
 
-class CONSTRUCT(ClientOperation, Operation, MCPTool):
+class CONSTRUCT(QuerySource, ClientOperation, Operation, MCPTool):
     """
     Executes a SPARQL CONSTRUCT query against a specified endpoint.
     """
@@ -19,33 +20,32 @@ class CONSTRUCT(ClientOperation, Operation, MCPTool):
 
     @classmethod
     def description(cls) -> str:
-        return "Executes a SPARQL CONSTRUCT query."
+        return "Executes a SPARQL CONSTRUCT query over an endpoint or over a graph in hand."
 
     @classmethod
     def inputSchema(cls) -> dict:
         return {
             "type": "object",
             "properties": {
-                "endpoint": {"type": "string"},
+                "endpoint": {"type": "string", "description": "SPARQL endpoint URL (or give 'graph')"},
+                "graph": {"description": "A graph to query locally (or give 'endpoint')"},
                 "query": {"type": "string"},
             },
-            "required": ["endpoint", "query"],
+            "required": ["query"],
+            "oneOf": [{"required": ["endpoint"]}, {"required": ["graph"]}],
         }
 
-    def execute(self, endpoint: URIRef, query: Literal) -> Graph:
-        """Pure function: execute SPARQL CONSTRUCT query"""
-        if not isinstance(endpoint, URIRef):
-            raise TypeError(
-                f"CONSTRUCT operation expects endpoint to be URIRef, got {type(endpoint)}"
-            )
-        if not Operation.is_string_literal(query):
-            raise TypeError(
-                f"CONSTRUCT operation expects query to be string Literal, got {type(query)}"
-            )
-
-        endpoint_url = str(endpoint)
+    def execute(self, source: Union[URIRef, Graph], query: Literal) -> Graph:
+        """Pure function: execute a SPARQL CONSTRUCT query over `source`, an
+        endpoint URI or a Graph (formal-semantics.md §4.3)"""
+        self.check_source(source, query)
         query_str = str(query)
 
+        if isinstance(source, Graph):
+            logging.info("Executing SPARQL CONSTRUCT over a graph with query:\n%s", query_str)
+            return source.query(query_str).graph
+
+        endpoint_url = str(source)
         logging.info(
             "Executing SPARQL CONSTRUCT on %s with query:\n%s", endpoint_url, query_str
         )
@@ -58,26 +58,9 @@ class CONSTRUCT(ClientOperation, Operation, MCPTool):
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> Graph:
         """JSON execution: process arguments and return Graph (same as execute)"""
-        # Process endpoint
-        endpoint_data = Operation.process_json(
-            self.settings, arguments["endpoint"], self.context, variable_stack
-        )
-        if not isinstance(endpoint_data, URIRef):
-            raise TypeError(
-                f"CONSTRUCT operation expects 'endpoint' to be URIRef, got {type(endpoint_data)}"
-            )
-
-        # Process query
-        query_data = Operation.process_json(
-            self.settings, arguments["query"], self.context, variable_stack
-        )
-        if not Operation.is_string_literal(query_data):
-            raise TypeError(
-                f"CONSTRUCT operation expects 'query' to be string Literal, got {type(query_data)}"
-            )
-
-        # Return Graph directly (same as execute) - serialization only at boundaries
-        return self.execute(endpoint_data, query_data)
+        source = self.resolve_source(arguments, variable_stack)
+        query = self.resolve_query(arguments, variable_stack)
+        return self.execute(source, query)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""

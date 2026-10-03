@@ -81,19 +81,21 @@ class Values(Operation, MCPTool):
             for binding in (data.bindings or [])
         ]
 
-        block = self._render_values(columns, rows)
+        block = self.render_values(columns, rows)
         return Literal(f"{str(query)} {block}", datatype=XSD.string)
 
-    def _render_values(self, columns: List[str], rows: List[dict]) -> str:
-        """Render a SPARQL VALUES block from column names and normalised rows."""
+    @classmethod
+    def render_values(cls, columns: List[str], rows: List[dict]) -> str:
+        """Render a SPARQL VALUES block from column names and normalised rows.
+        Shared with the schema operations' `bindings` scope (§4.6)."""
         if len(columns) == 1:
             col = columns[0]
-            cells = " ".join(self._format_term(row.get(col)) for row in rows)
+            cells = " ".join(cls._format_term(row.get(col)) for row in rows)
             return f"VALUES ?{col} {{ {cells} }}"
 
         header = " ".join(f"?{col}" for col in columns)
         tuples = " ".join(
-            "( " + " ".join(self._format_term(row.get(col)) for col in columns) + " )"
+            "( " + " ".join(cls._format_term(row.get(col)) for col in columns) + " )"
             for row in rows
         )
         return f"VALUES ({header}) {{ {tuples} }}"

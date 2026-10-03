@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Protocol, Tuple
 import hashlib
 import ssl
 import json
@@ -12,6 +12,7 @@ from http.client import HTTPResponse
 from rdflib import Graph
 from rdflib.plugins.sparql.parser import parseQuery
 from urllib3.filepost import encode_multipart_formdata
+from web_algebra.exceptions import WriteRefusedError
 
 
 MEDIA_TYPES = {
@@ -20,6 +21,24 @@ MEDIA_TYPES = {
     "application/ld+json": "json-ld",
     "application/rdf+xml": "xml",
 }
+
+# HTTP methods that change the resource they address. A client reports each one
+# it completes to its recorder, and that report is the only source of an
+# execution's `affected_documents` — derived from what was actually sent, not
+# from reading the plan, so an operation that writes somewhere the plan does not
+# name outright (a `ForEach` body resolving its URL per row) is still accounted
+# for.
+MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+
+class WriteRecorder(Protocol):
+    """What a client needs of the execution it is running inside.
+
+    Kept to one method so `client.py` stays free of any dependency on the
+    service layer: the CLI passes nothing and the clients record nowhere.
+    """
+
+    def record(self, method: str, url: str) -> None: ...
 
 
 class HTTPRedirectHandler308(urllib.request.HTTPRedirectHandler):
@@ -54,12 +73,63 @@ class RetryAfterHandler(urllib.request.BaseHandler):
         return self.parent.open(req)
 
 
+def send(
+    opener: urllib.request.OpenerDirector,
+    request: urllib.request.Request,
+    recorder: Optional[WriteRecorder] = None,
+) -> HTTPResponse:
+    """Open `request`; a mutating one answered outside 2xx raises
+    `WriteRefusedError` (formal-semantics.md §4.4), and one that succeeded is
+    reported to `recorder`."""
+    method = request.get_method()
+    try:
+        response = opener.open(request)
+    except urllib.error.HTTPError as e:
+        if method not in MUTATING_METHODS:
+            raise
+        raise WriteRefusedError(method, request.full_url, e.code, http_reason(e)) from None
+    if method in MUTATING_METHODS and not 200 <= response.status < 300:
+        raise WriteRefusedError(method, request.full_url, response.status, response.reason)
+    if recorder is not None and method in MUTATING_METHODS:
+        recorder.record(method, written_url(response))
+    return response
+
+
+def http_reason(error: urllib.error.HTTPError) -> str:
+    """What a server said when it refused a request, cut to a sentence or so:
+    the body when it is text, otherwise the status line's reason phrase."""
+    content_type = (error.headers.get("Content-Type") or "") if error.headers else ""
+    textual = content_type.startswith("text/") or any(
+        marker in content_type for marker in ("json", "xml", "n-triples", "turtle")
+    )
+    if textual:
+        try:
+            body = " ".join(error.read().decode("utf-8", "replace").split())
+        except Exception:
+            body = ""
+        if body:
+            return body if len(body) <= 400 else body[:400] + "…"
+    return str(error.reason)
+
+
+def written_url(response: HTTPResponse) -> str:
+    """The URI of the resource a write produced (formal-semantics.md §4.4):
+    the response's `Location` when it has one — resolved against the request,
+    as a relative reference may be — otherwise the effective request URI."""
+    location = response.headers.get("Location") if response.headers else None
+    if location:
+        return urllib.parse.urljoin(response.geturl(), location)
+    return response.geturl()
+
+
 class LinkedDataClient:
     def __init__(
         self,
         cert_pem_path: Optional[str] = None,
         cert_password: Optional[str] = None,
         verify_ssl: bool = True,
+        ca_bundle: Optional[str] = None,
+        recorder: Optional[WriteRecorder] = None,
     ):
         """
         Initializes the LinkedDataClient with SSL configuration.
@@ -67,9 +137,13 @@ class LinkedDataClient:
         :param cert_pem_path: Path to the certificate .pem file (containing both private key and certificate).
         :param cert_password: Password for the encrypted private key in the .pem file.
         :param verify_ssl: Whether to verify the server's SSL certificate. Default is True.
+        :param ca_bundle: Path to a CA bundle that verification trusts in addition to the
+            system store — how a self-signed LinkedDataHub is reached with verification left on.
+        :param recorder: Receives every completed mutating request, or None to record nowhere.
         """
+        self.recorder = recorder
         # Always create SSL context
-        self.ssl_context = ssl.create_default_context()
+        self.ssl_context = ssl.create_default_context(cafile=ca_bundle)
 
         # Load client certificate if provided
         if cert_pem_path and cert_password:
@@ -96,6 +170,42 @@ class LinkedDataClient:
                 "Web-Algebra/1.0 (LinkedData Processing System; https://github.com/atomgraph/Web-Algebra)",
             )
         ]
+
+    def _send(self, request: urllib.request.Request) -> HTTPResponse:
+        """Open a request, reporting it to the recorder when it changed something.
+
+        Reported *after* the response arrives and against the response's own URL,
+        so a request that raised is not recorded as a change and a redirected one
+        is recorded where the write actually landed.
+
+        A write answered outside 2xx is refused (formal-semantics.md §4.4) and
+        raises `WriteRefusedError` with the status and the server's reason; a
+        read answered so is a transport failure and propagates unwrapped (§3.7).
+        """
+        return send(self.opener, request, self.recorder)
+
+    def conditional(self, url: str, accept: str) -> dict:
+        """The headers a write to `url` carries: `If-Match` with the resource's
+        current entity tag, when it has one (formal-semantics.md §4.4).
+
+        A server that applies a write as read-modify-write (LinkedDataHub)
+        requires a write to an existing document to be conditional, and answers
+        428 without. The tag is read by HEAD with the `Accept` the write itself
+        sends, since it names a negotiated variant. A resource that does not
+        exist, or cannot be read, has no tag and is written unconditionally.
+        """
+        request = urllib.request.Request(url, headers={"Accept": accept}, method="HEAD")
+        try:
+            response = self.opener.open(request)
+        except Exception:
+            # a resource that cannot be read cannot be matched against; the
+            # write answers for itself
+            return {}
+        try:
+            etag = response.headers.get("ETag")
+        finally:
+            response.close()
+        return {"If-Match": etag} if etag else {}
 
     def get(self, url: str) -> Graph:
         """
@@ -151,11 +261,12 @@ class LinkedDataClient:
             "Content-Type": "application/n-triples",
             "Accept": "application/n-triples",
         }
+        headers.update(self.conditional(url, headers["Accept"]))
         request = urllib.request.Request(
             url, data=data.encode("utf-8"), headers=headers, method="POST"
         )
 
-        return self.opener.open(request)
+        return self._send(request)
 
     def put(self, url: str, graph: Graph) -> HTTPResponse:
         """
@@ -171,11 +282,12 @@ class LinkedDataClient:
             "Content-Type": "application/n-triples",
             "Accept": "application/n-triples",
         }
+        headers.update(self.conditional(url, headers["Accept"]))
         request = urllib.request.Request(
             url, data=data.encode("utf-8"), headers=headers, method="PUT"
         )
 
-        return self.opener.open(request)
+        return self._send(request)
 
     def delete(self, url: str) -> HTTPResponse:
         """
@@ -186,7 +298,7 @@ class LinkedDataClient:
         """
         request = urllib.request.Request(url, method="DELETE")
 
-        return self.opener.open(request)
+        return self._send(request)
 
     def patch(self, url: str, sparql_update: str) -> HTTPResponse:
         """
@@ -200,11 +312,12 @@ class LinkedDataClient:
             "Content-Type": "application/sparql-update",
             "Accept": "application/n-triples",
         }
+        headers.update(self.conditional(url, headers["Accept"]))
         request = urllib.request.Request(
             url, data=sparql_update.encode("utf-8"), headers=headers, method="PATCH"
         )
 
-        return self.opener.open(request)
+        return self._send(request)
 
 
 class FileClient:
@@ -237,9 +350,12 @@ class FileClient:
         cert_pem_path: Optional[str] = None,
         cert_password: Optional[str] = None,
         verify_ssl: bool = True,
+        ca_bundle: Optional[str] = None,
+        recorder: Optional[WriteRecorder] = None,
     ):
         """Initialize TLS context + opener; mirrors `LinkedDataClient.__init__`."""
-        self.ssl_context = ssl.create_default_context()
+        self.recorder = recorder
+        self.ssl_context = ssl.create_default_context(cafile=ca_bundle)
 
         if cert_pem_path and cert_password:
             self.ssl_context.load_cert_chain(
@@ -321,7 +437,7 @@ class FileClient:
         request = urllib.request.Request(
             target_url, data=body, headers=headers, method="POST"
         )
-        response = self.opener.open(request)
+        response = send(self.opener, request, self.recorder)
         return response, sha1
 
 
@@ -331,6 +447,8 @@ class SPARQLClient:
         cert_pem_path: Optional[str] = None,
         cert_password: Optional[str] = None,
         verify_ssl: bool = True,
+        ca_bundle: Optional[str] = None,
+        recorder: Optional[WriteRecorder] = None,
     ):
         """
         Initializes the SPARQLClient with optional SSL certificate.
@@ -338,9 +456,13 @@ class SPARQLClient:
         :param cert_pem_path: Path to .pem file containing cert+key
         :param cert_password: Password for the PEM file
         :param verify_ssl: Whether to verify server SSL certificate
+        :param ca_bundle: Path to an extra CA bundle verification trusts
+        :param recorder: Unused here — queries read; the parameter keeps the three
+            clients' constructor uniform so `ClientOperation` builds any of them the same way.
         """
+        self.recorder = recorder
         # Always create SSL context
-        self.ssl_context = ssl.create_default_context()
+        self.ssl_context = ssl.create_default_context(cafile=ca_bundle)
 
         # Load client certificate if provided
         if cert_pem_path and cert_password:
@@ -366,12 +488,14 @@ class SPARQLClient:
             )
         ]
 
-    def query(self, endpoint_url: str, query_string: str) -> dict:
+    def query(self, endpoint_url: str, query_string: str, post: bool = False) -> dict:
         """
         Executes a SPARQL query. Returns Graph for CONSTRUCT/DESCRIBE, Result for SELECT/ASK.
 
         :param endpoint_url: The SPARQL endpoint URL
         :param query_string: SPARQL query string
+        :param post: Send the query as a form POST (SPARQL 1.1 Protocol §2.1.2) —
+            for a query too long for a URL, such as one scoped by a VALUES block
         :return: rdflib.Graph or rdflib.query.Result
         """
         parsed = parseQuery(query_string)
@@ -384,12 +508,19 @@ class SPARQLClient:
         else:
             raise ValueError(f"Unsupported query type: {query_type}")
 
-        # Encode URL parameters
-        params = urllib.parse.urlencode({"query": query_string})
-        url = f"{endpoint_url}?{params}"
         headers = {"Accept": accept}
-
-        request = urllib.request.Request(url, headers=headers)
+        if post:
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+            request = urllib.request.Request(
+                endpoint_url,
+                data=urllib.parse.urlencode({"query": query_string}).encode("utf-8"),
+                headers=headers,
+                method="POST",
+            )
+        else:
+            # Encode URL parameters
+            params = urllib.parse.urlencode({"query": query_string})
+            request = urllib.request.Request(f"{endpoint_url}?{params}", headers=headers)
         response = self.opener.open(request)
         data = response.read()
 
@@ -411,3 +542,23 @@ class SPARQLClient:
             # SPARQL JSON results as a dict; json.JSONDecodeError is a
             # ValueError subclass, satisfying the §4.3 error contract
             return json.loads(data.decode("utf-8"))
+
+    def takes_graph(self, endpoint_url: str) -> bool:
+        """Whether `endpoint_url` takes `GRAPH` in a query, asked once per
+        endpoint with `ASK { GRAPH ?g { ?s ?p ?o } }` and remembered for the
+        process. Blazegraph in triples mode (Wikidata's) refuses any query with
+        `GRAPH` as malformed: a 4xx says no, anything else says yes and leaves
+        the real query to report what is wrong."""
+        if endpoint_url not in _TAKES_GRAPH:
+            try:
+                self.query(endpoint_url, "ASK { GRAPH ?g { ?s ?p ?o } }", post=True)
+                _TAKES_GRAPH[endpoint_url] = True
+            except urllib.error.HTTPError as e:
+                _TAKES_GRAPH[endpoint_url] = not 400 <= e.code < 500
+            except Exception:
+                _TAKES_GRAPH[endpoint_url] = True
+        return _TAKES_GRAPH[endpoint_url]
+
+
+# Endpoints by whether they take GRAPH in a query (`SPARQLClient.takes_graph`).
+_TAKES_GRAPH: dict = {}

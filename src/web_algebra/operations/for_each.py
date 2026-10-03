@@ -1,6 +1,7 @@
-from typing import Any, List, Union
+from typing import Any, Callable, Dict, List, Union
 import logging
-from web_algebra.focus import Focus
+from web_algebra.exceptions import SameTargetError
+from web_algebra.focus import Focus, report_write
 from web_algebra.operation import Operation
 from rdflib.query import Result
 
@@ -18,7 +19,7 @@ class ForEach(Operation):
         - Sequences: Each item becomes the context for the operation
         - Result (SPARQL results): Each result row (ResultRow) becomes the context
         
-        Returns a sequence of operation results."""
+        Returns the concatenation of the iteration values, in item order."""
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -82,51 +83,61 @@ class ForEach(Operation):
                 f"ForEach expects 'select' to be sequence (list) or Result, got {type(select_data)}"
             )
 
-        results = []
+        results: List[Any] = []
         size = len(items)
+        # §3.6: the iterations' writes go through one gate, which refuses a
+        # URI that two iterations write (XSLT's XTDE1490). Within one
+        # iteration the sequence form orders the writes, so repeats are fine.
+        writers: Dict[str, int] = {}
         for position, item in enumerate(items, start=1):
             logging.info("Processing item: %s", item)
 
             # The focus (item, position, size) per formal-semantics.md §3.5,
             # accessed by Current/Position/Last and focus-item Value lookups.
-            focus = Focus(item=item, position=position, size=size)
+            focus = Focus(
+                item=item,
+                position=position,
+                size=size,
+                written=self._gate(writers, position),
+            )
 
             # Each iteration runs in a fresh variable scope
             # (formal-semantics.md §3.4): bindings made inside one iteration
             # do not leak into the next.
             variable_stack.append({})
             try:
-                # Handle list of operations or single operation
-                if isinstance(operation, list):
-                    # Execute operations in sequence under the focus;
-                    # the iteration's value is the last non-Unit result.
-                    last_result = None
-
-                    for op in operation:
-                        result = Operation.process_json(
+                # An array operand is a sequence constructor evaluated within
+                # the iteration's scope; either way the iteration's value is
+                # concatenated into the result (§3.1, §4.1).
+                forms = operation if isinstance(operation, list) else [operation]
+                for form in forms:
+                    Operation.concatenate(
+                        results,
+                        Operation.process_json(
                             self.settings,
-                            op,
+                            form,
                             context=focus,
                             variable_stack=variable_stack,
-                        )
-                        if result is not None:
-                            last_result = result
-
-                    # Only collect the last non-None result
-                    if last_result is not None:
-                        results.append(last_result)
-                else:
-                    # Single operation
-                    result = Operation.process_json(
-                        self.settings,
-                        operation,
-                        context=focus,
-                        variable_stack=variable_stack,
+                        ),
                     )
-                    # Only collect non-None results
-                    if result is not None:
-                        results.append(result)
             finally:
                 variable_stack.pop()
 
         return results
+
+    def _gate(self, writers: Dict[str, int], position: int) -> Callable[[str], None]:
+        """The write gate of iteration `position`. An update inside a nested
+        ForEach counts for every enclosing iteration too, so the report is
+        passed on to the gate of the focus this ForEach runs under."""
+
+        def written(url: str) -> None:
+            other = writers.setdefault(url, position)
+            if other != position:
+                raise SameTargetError(
+                    f"ForEach wrote {url} from iterations {other} and {position}: "
+                    "two iterations updating one URI are an error "
+                    "(formal-semantics.md §3.6)"
+                )
+            report_write(self.context, url)
+
+        return written

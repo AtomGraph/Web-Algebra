@@ -292,13 +292,28 @@ Ordering guarantees:
 - `ForEach` yields its result sequence in item order. Whether iterations
   execute sequentially or concurrently is implementation-defined, so effects
   *across* iterations are **unordered** (within one iteration, sequence
-  ordering applies). Updates inside a `ForEach` are allowed under the rule of
-  XSLT's `xsl:result-document`: two iterations updating the same URI are an
-  error (`ValueError`, §3.7), as two result documents with one `href` are
-  (XTDE1490); within one iteration the sequence form orders the writes, so a
-  document may be created and then added to. The ordered constructs are the sequence form and
-  `Iterate`, as the operations of one SPARQL Update request are. The Python
-  implementation is currently sequential.
+  ordering applies). The ordered constructs are the sequence form and
+  `Iterate`, as the operations of one SPARQL Update request are.
+- Updates inside a `ForEach` are allowed under the rule of XSLT's
+  `xsl:result-document`: two iterations updating the same URI are an error
+  (`ValueError`, §3.7), as two result documents with one `href` are
+  (XTDE1490). The URI compared is the one the write reports (§4.4). Within one
+  iteration the sequence form orders the writes, so a document may be created
+  and then added to. The error is raised when the second write is reported,
+  so that write has been performed, as the second result document has been
+  when XTDE1490 is raised. An update made inside a nested `ForEach` counts
+  for every enclosing iteration it runs in. The rule is stated on targets, not
+  methods: two appends to one graph would commute as set unions, but the
+  algebra cannot see how a server applies a write (an LDH container answers a
+  `POST` by creating a child; a block append reads a position before it
+  writes), so it does not assume that any two writes commute.
+- A query effect inside a `ForEach` that reads a URI another iteration of the
+  same `ForEach` updates has an implementation-dependent outcome: it may see
+  the resource before or after that update. This is XSLT's XTRE1500 (reading
+  a resource that the same transformation writes), and like it the case is
+  not detected. A program whose result depends on it is not portable; to
+  read what a write produced, order the read after the write in one
+  iteration, or after the `ForEach` in the enclosing sequence.
 - `Iterate` is strictly sequential by definition: iteration *k+1*'s
   parameters are computed from iteration *k*'s environment.
 
@@ -318,13 +333,15 @@ Failures raise Python exceptions per this table (normative):
 | unknown variable in `$name` lookup | `ValueError` |
 | focus-item lookup miss, or no focus established | `ValueError` |
 | two iterations of one `ForEach` updating the same URI (§3.6) | `ValueError` |
-| a write answered outside 2xx (§4.4) | `ValueError` |
+| a write (`POST`, `PUT`, `PATCH`, and the `ldh-*` updates) answered outside 2xx (§4.4) | `ValueError` |
+| `SPARQLString` produced no query of the declared shape, or one of its `context` values is empty (§4.3) | `ValueError` |
+| `bindings` of a schema operation without a `subject` variable, or with no rows (§4.6) | `ValueError` |
 | `Filter` position < 1 or > length | `ValueError` |
 | regular-expression errors in `Replace` — invalid pattern or flags, zero-length-matching pattern, invalid replacement (XPath `err:FORX000*`) | `ValueError` |
 | unknown `type` in SPARQL JSON term form | `ValueError` |
 | blank node where SPARQL syntax forbids it (`Values` data) | `ValueError` |
 | non-RDF response to a Linked Data or SPARQL operation — unsupported media type, missing `Content-Type`, or a body that does not parse as the negotiated format (§4.3–4.4) | `ValueError` |
-| HTTP/SPARQL transport failure | `urllib.error.HTTPError` / `URLError`, unwrapped |
+| HTTP/SPARQL transport failure: no response, or a read (`GET`, a SPARQL query) answered outside 2xx | `urllib.error.HTTPError` / `URLError`, unwrapped |
 
 Type checking is strict: operations validate their inputs and raise `TypeError`
 *before* performing any effect. No implicit casting is performed between Term
@@ -483,9 +500,13 @@ size of `items(C)` and (ITERATE) by `CAP − k`). Evaluation is deterministic
 up to the declared non-deterministic operators and the World's own behavior. In
 (FOREACH), each iteration's environment writes are confined to its fresh
 scope and results are concatenated in item order, so evaluating iterations
-concurrently is observationally equivalent for programs whose iterations do
-not update one and the same resource — and §3.6 makes those the only valid
-programs, by making the same target twice an error.
+concurrently is observationally equivalent to evaluating them in sequence
+for programs in which no iteration updates a resource that another iteration
+updates or reads. §3.6 makes the first condition a rule, by making the same
+target updated twice an error. The second is left to the program, as XSLT
+leaves XTRE1500: a read of a resource that another iteration updates is
+implementation-dependent, and the equivalence holds only for programs whose
+result does not depend on it.
 
 ## 4. Operation Catalog (normative)
 
@@ -561,8 +582,9 @@ JSON:     input: Sequence α + Result + Binding · expression: Position or Liter
   `Result` input is treated as its row sequence (yields a `Binding`).
   Position < 1 or > length raises `ValueError`.
 - With a string Literal on a `Binding`, like the lookup operator (`$row?url`):
-  yields the term bound to that variable name (given with or without `?`); a
-  miss raises `ValueError`, as the focus lookup of §3.5 does.
+  yields the term bound to that variable name, given bare or with either of
+  SPARQL's variable sigils (`?url`, `$url`); a miss raises `ValueError`, as
+  the focus lookup of §3.5 does.
 - Any other pairing — a Literal on a sequence or result, a Position on a
   Binding, an expression that is neither integer nor string — raises
   `TypeError`. `Filter(Filter(PUT(…), 1), "url")` is the URI a write reports
@@ -743,30 +765,32 @@ the negotiated format raises `ValueError` (§3.7).
 **SELECT** — execute a SPARQL SELECT query over an endpoint or a graph.
 ```
 Abstract: (URI + Graph) × Literal → Result
-Python:   def execute(self, endpoint: URIRef, query: Literal) -> Result
+Python:   def execute(self, source: URIRef | Graph, query: Literal) -> Result
 JSON:     endpoint: URI or graph: Graph (exactly one)
           · query: string Literal (simple or xsd:string)
 ```
-- Types are validated before any network I/O. The `graph` case is implemented
-  in the XML serialization and slated for the Python one (§5).
+- Types are validated before any network I/O.
 
 **CONSTRUCT** — execute a SPARQL CONSTRUCT query over an endpoint or a graph.
 ```
 Abstract: (URI + Graph) × Literal → Graph
-Python:   def execute(self, endpoint: URIRef, query: Literal) -> Graph
+Python:   def execute(self, source: URIRef | Graph, query: Literal) -> Graph
 JSON:     endpoint: URI or graph: Graph (exactly one)
           · query: string Literal (simple or xsd:string)
 ```
-- The `graph` case is slated in both serializations (§5).
 
 **DESCRIBE** — execute a SPARQL DESCRIBE query over an endpoint or a graph.
 ```
 Abstract: (URI + Graph) × Literal → Graph
-Python:   def execute(self, endpoint: URIRef, query: Literal) -> Graph
+Python:   def execute(self, source: URIRef | Graph, query: Literal) -> Graph
 JSON:     endpoint: URI or graph: Graph (exactly one)
           · query: string Literal (simple or xsd:string)
 ```
-- The `graph` case is slated in both serializations (§5).
+- What a description contains is the query processor's choice, as SPARQL 1.1
+  §16.4 leaves it.
+
+In the JSON serialization, `graph` takes a `Graph` value or an RDF data form;
+the form is parsed with no base IRI, so its IRIs must be absolute (§2.3).
 
 **Substitute** — textually substitute one SPARQL variable with a Term.
 ```
@@ -796,15 +820,42 @@ JSON:     query: Literal · data: Result · vars: Maybe (array of string Literal
   serialize per SPARQL syntax with correct escaping. Blank nodes raise
   `ValueError` (forbidden in `VALUES`).
 
-**SPARQLString** — generate a SPARQL query string from natural language via an
-LLM. *Non-deterministic*; external service call.
+**SPARQLString** — write a SPARQL query for an endpoint from a natural-language
+question, via an LLM. *Non-deterministic*; external service call. It is the
+`xsl:evaluate` of the algebra: the query is a string computed at run time, and
+`projection` is that instruction's `as`, the shape the result must have.
 ```
-Abstract: Literal → Literal
-Python:   def execute(self, question: Literal) -> Literal
-JSON:     question: Literal
+Abstract: URI × Literal × Maybe (Sequence Literal) × Maybe (Sequence Value)
+          → Literal
+Python:   def execute(self, endpoint: URIRef, question: Literal,
+                      projection: Optional[List[Literal]] = None,
+                      context: Optional[List[Any]] = None) -> Literal
+JSON:     endpoint: URI · question: string-compatible Literal
+          · projection: Maybe (array of string Literals — variable names,
+            given bare or with `?`/`$`)
+          · context: Maybe (array of forms)
 ```
-- Only the type contract is normative: string-compatible Literal in, Literal
-  out. The generated query text is not specified.
+- The result is a simple literal holding a SPARQL 1.1 query that parses. When
+  `projection` is given, the query is a `SELECT` that projects every named
+  variable, named exactly so (it may project others as well), because the
+  program reads those names from its rows.
+- `context` forms are evaluated eagerly, like any argument. Their values (a
+  `Result`'s rows, a `Graph`) are shown to the model as what the endpoint
+  holds, cut to a prompt-sized excerpt, before it writes the query. This is
+  how a program explores an endpoint it does not know (a predicate
+  inventory, a label lookup) with ordinary operations that are visible in
+  the program. An empty value (a `Result` with no rows, an empty `Graph`) is
+  an error (`ValueError`), raised before the model is called: what the
+  exploration assumed does not match the endpoint, and the query cannot be
+  written from it.
+- An answer that does not parse, or does not have the declared projection,
+  goes back to the model with the reason, a bounded number of times, before
+  the operation fails with `ValueError`. The implementation may also put the
+  query's pattern to `endpoint` as an `ASK`, and send a query that matches
+  nothing back too. That read decides the string and is never returned; the
+  rows are `SELECT`'s. Because an empty answer can be the true one, a query
+  that still matches nothing after the last attempt is returned.
+- The generated query text is not otherwise specified.
 
 ### 4.4 Linked Data (HTTP) operations
 
@@ -817,15 +868,27 @@ media type, a missing `Content-Type`, or a body that does not parse as its
 declared RDF type — raises `ValueError` (§3.7).
 
 `POST`, `PUT` and `PATCH` return a single-row `Result` with variables
-`status` (`xsd:integer` HTTP status) and `url` (the effective request URI).
+`status` (`xsd:integer` HTTP status) and `url`. `url` is the URI of the
+resource that the write produced: the response's `Location` when it has one,
+as when a `POST` to a container creates a child, otherwise the effective
+request URI after redirects. A relative `Location` is resolved against the
+effective request URI (RFC 3986 §5).
 A response outside the 2xx range is an error (`ValueError`, §3.7), as an
 `xsl:result-document` that cannot be written is: the status and the server's
 reason are reported, and nothing after the write runs. Transport failures
-propagate per §3.7. Where the server requires a write to an existing resource
-to say which state it was written against, the implementation reads the
-resource's entity tag and sends it as `If-Match`; a resource that does not
-exist is created unconditionally. That is transport, like content negotiation,
-and not visible in the algebra.
+propagate per §3.7.
+
+Some servers apply a write as read-modify-write and require a write to an
+existing resource to be conditional (`428 Precondition Required` without
+one). For them, the implementation reads the resource's entity tag with
+`HEAD`, sending the same `Accept` as the write since the tag names a
+negotiated variant, and sends it as `If-Match`. A resource that does not
+exist, or that has no tag, is written unconditionally. The tag is read
+immediately before the write, not when the program last read the resource,
+so this satisfies the server's precondition but does not protect against
+lost updates. A write that another client makes between the `HEAD` and the
+write is answered `412`, which is an error like any other non-2xx answer.
+This is transport, like content negotiation, and not visible in the algebra.
 
 The reported `url` is reached by lookup, `Filter(Filter(PUT(…), 1), "url")` —
 the first row, then its `url` (§4.1). Where the written document is wanted as
@@ -875,48 +938,87 @@ JSON:     graphs: array of Graph or RDF data forms
 
 ### 4.6 Schema operations
 
-All take `endpoint`, the URI of a **SPARQL endpoint**, query instance data
-there, and return an ontology `Graph`. *Query* effect.
+All take `endpoint`, the URI of a **SPARQL endpoint**, query the instance
+data there, and return an ontology `Graph`. *Query* effect.
 
-**ExtractClasses** — `URI → Graph`. Classes present in the data
-(`owl:Class` candidates), from `rdf:type` usage. JSON: `endpoint: URI`.
+```
+Abstract: URI × Maybe Result → Graph
+Python:   def execute(self, endpoint: URIRef,
+                      bindings: Optional[Result] = None) -> Graph
+JSON:     endpoint: URI · bindings: Maybe Result
+```
 
-**ExtractDatatypeProperties** — `URI → Graph`. `owl:DatatypeProperty`
-candidates from literal-valued predicates. JSON: `endpoint: URI`.
+- Without `bindings`, an extraction describes the whole endpoint. With
+  `bindings`, it describes only the subjects in the result's `subject`
+  column, which are put into the extraction query as a `VALUES` block (§4.3
+  `Values`). This is how a program says "these": the instances of a class, a
+  sample of them, or whatever an exploration found. It keeps the extraction
+  usable against a public endpoint, and as a `SPARQLString` context (§4.3).
+- `bindings` that do not bind the variable `subject`, or that have no rows,
+  raise `ValueError`. A non-`Result` raises `TypeError`.
+- The extractions read the default graph and every named graph, since an
+  endpoint (LinkedDataHub's, for one) may keep each document in a named graph
+  of its own. If an endpoint refuses `GRAPH` in a query, the implementation
+  queries the default graph only. This is transport.
+- Inferences are closed-world over the triples present.
 
-**ExtractObjectProperties** — `URI → Graph`. `owl:ObjectProperty` candidates
-from IRI-valued predicates; infers `owl:FunctionalProperty` when the maximum
-number of objects per subject is 1 (closed-world over the present triples).
-JSON: `endpoint: URI`.
+**ExtractClasses** — classes present in the data (`owl:Class` candidates),
+from `rdf:type` usage.
 
-**ExtractOntology** — `URI → Graph`. The union of the three extractions
-above: classes plus datatype and object properties, as one graph.
-JSON: `endpoint: URI`.
+**ExtractDatatypeProperties** — `owl:DatatypeProperty` candidates from
+literal-valued predicates, with `rdfs:domain` when the subjects share one
+class, `rdfs:range` from the literal datatypes, and a
+`owl:maxQualifiedCardinality 1` restriction on the domain when no subject
+has more than one value.
+
+**ExtractObjectProperties** — `owl:ObjectProperty` candidates from IRI- and
+blank-node-valued predicates, with `rdfs:domain` when the subjects share one
+class and `rdfs:range` from a sampled object's class. It infers
+`owl:FunctionalProperty` when no subject has more than one object for the
+property.
+
+**ExtractOntology** — the union of the three extractions above (classes plus
+datatype and object properties) as one graph, each scoped by the same
+`bindings`.
 
 ## 5. Conformance notes
 
 - The JSON serialization here and the XML serialization used by REST-VKG are
-  two concrete syntaxes of the same abstract algebra; operation names and
-  abstract signatures are shared. Operations currently exclusive to one
-  implementation (`PATCH`, `Values`, `Filter`, `Bindings`, `URI`, `Position`,
-  `Last` and the schema operations here) are slated for parity.
-- An extension family's operations are, in the XML serialization, elements in
-  the family's own namespace with its own prefix (Appendix A); the executor
-  dispatches on the expanded name, and argument elements stay in the algebra's.
-  The JSON serialization has no namespaces and keeps the `ldh-` prefixed names.
-- `Iterate` is shared with REST-VKG, whose implementation returns the merged
-  graph of the iteration results (the same fused `Merge ∘ …` specialization
-  as its `ForEach`) and additionally honors a `totalLimit` parameter capping
-  the merged graph's distinct subjects; the JSON serialization returns the
-  iteration-value sequence, and `Merge(Iterate(…))` expresses the fusion.
-- The `graph` operand of §4.3 exists for `SELECT` in the XML serialization;
-  `CONSTRUCT`/`DESCRIBE` there and all three in the JSON serialization are
-  slated.
-- The XML serialization has no sequence form and does not thread the variable
-  environment between sibling operands (§3.8 SEQ, CALL); both are slated, as
-  are the flat-sequence rule (§3.1), `Filter`'s lookup by name (§4.1) and the
-  same-target rule (§3.6) in both serializations, and the removal of the
-  former `Execute` operation, which both still carry.
+  two concrete syntaxes of the same abstract algebra. They share operation
+  names and abstract signatures, and both implement the whole catalog of §4.
+  The XML serialization spells the sequence form as a `Sequence` element,
+  since XML has no arrays, and keeps `StrUUID` as a deprecated alias of
+  `STRUUID`.
+- Extension families (Appendix A) are named differently in the two
+  serializations, since JSON has no namespaces: a family's XML namespace and
+  prefix correspond to a fixed JSON name prefix, given in the family's
+  appendix. The XML executor dispatches on the expanded name, and argument
+  elements stay in the algebra's namespace.
+- What the XML serialization still owes the spec:
+  - The variable environment is threaded only inside sequence constructors
+    (`Sequence`, and the `operation` of `ForEach` and `Iterate`), not across
+    the operands of a call (§3.8 CALL, OBJ). A `Variable` written as an
+    argument of another operation binds nothing for its sibling arguments.
+  - `Iterate` binds a parameter whose value is a `Result` to the lexical
+    form of its first row's first value, and one whose value is a one-item
+    sequence to that item. The algebra binds the value as it is, and
+    `Str(Filter(Filter(…, 1), "name"))` expresses the collapse. `Iterate`
+    also gives a parameter named `totalLimit` a meaning of its own (the loop
+    stops once its graph items hold that many distinct subjects), which no
+    parameter has in the algebra.
+  - `Concat`, `EncodeForURI` and `Replace`'s `input` accept any literal; per
+    SPARQL (§4.2) a non-string literal is a type error.
+  - `Replace` uses Java's regular-expression dialect and replacement syntax,
+    which accepts `${name}` where XPath raises `err:FORX0004`, rather than
+    XPath's.
+  - `ResolveURI` resolves with `java.net.URI.resolve`, which departs from
+    RFC 3986 §5 in known cases (an empty reference, dot segments in the
+    base).
+  - `Value` with a bare name that misses the focus item falls back to the
+    variables, with a deprecation warning (§3.4 keeps the two domains apart).
+- An XML text argument has no integer/string distinction, so a `Filter`
+  expression that reads as an integer is a position. A variable whose name
+  is all digits, which SPARQL allows, is looked up there as `?1`.
 - MCP exposure (`mcp_run`) is an interface adapter, not part of the algebra;
   its plain-JSON conversions are implementation detail.
 
@@ -927,20 +1029,26 @@ JSON: `endpoint: URI`.
 The `ldh-*` operations target a LinkedDataHub instance and compose the core
 operations above (mostly `PUT`/`POST`/`PATCH` with LDH vocabularies). The
 update operations return the single-row `Result` of §4.4 (`status`, `url`),
-so they compose exactly as `PUT` does; `ldh-List` *(query)* returns a `Result`
-with one row per child document, variables `child` (URI) and `thing`
-(`Maybe URI`, its `foaf:primaryTopic`). All are *update* effects unless
-noted.
+so they compose exactly as `PUT` does, and are subject to the same rules
+(§3.6, §4.4); `ldh-List` *(query)* returns a `Result` with one row per child
+document, variables `child` (URI) and `thing` (`Maybe URI`, its
+`foaf:primaryTopic`). All are *update* effects unless noted.
 
-They are an extension family, as `ixsl:` extends XSLT, and the XML
-serialization names them so: elements in the namespace
-`https://w3id.org/atomgraph/web-algebra/linkeddatahub`, written with the
-prefix `waldh` (`waldh:CreateItem`), their local names the table's without
-`ldh-`. Their argument elements are in the algebra's namespace, as every
-argument is: arguments are the algebra's structure, the family names only what
-is done with them. The JSON serialization, which has no namespaces, keeps the
-`ldh-` names below until the spec gives JSON a way to name a family's
-namespace; the two spellings denote the same operations.
+They are an extension family, as `ixsl:` extends XSLT:
+
+| Family | XML namespace | XML prefix | JSON name prefix |
+|--------|---------------|------------|------------------|
+| LinkedDataHub | `https://w3id.org/atomgraph/web-algebra/linkeddatahub` | `waldh` | `ldh-` |
+
+In XML, an operation of the family is an element in the family's namespace
+whose local name is the JSON name without the prefix (`waldh:CreateItem` is
+`ldh-CreateItem`). Its argument elements are in the algebra's namespace, as
+every argument is: arguments are the algebra's structure, and the family
+names only what is done with them. JSON has no namespaces, so the name prefix
+stands for the namespace there. A prefixed name such as `waldh:CreateItem`
+cannot serve instead: the JSON operation names are also the names of the
+operations' MCP tools, and an MCP tool name allows only ASCII letters, digits,
+`_`, `-` and `.`. The two spellings denote the same operations.
 
 | Operation | JSON args (`Maybe` = optional) |
 |-----------|--------------------------------|
@@ -951,6 +1059,7 @@ namespace; the two spellings denote the same operations.
 | `ldh-AddGenericService` | `url: URI · endpoint: URI · title: Literal · description/fragment: Maybe Literal · graph_store: Maybe URI · auth_user/auth_pwd: Maybe Literal` |
 | `ldh-AddResultSetChart` | `url: URI · query: URI · title: Literal · chart_type: URI · category_var_name: Literal · series_var_name: Literal · description/fragment: Maybe Literal` |
 | `ldh-AddSelect` | `url: URI · query: Literal · title: Literal · description/fragment: Maybe Literal · service: Maybe URI` |
+| `ldh-AddConstruct` | `url: URI · query: Literal · title: Literal · description/fragment: Maybe Literal · service: Maybe URI` |
 | `ldh-AddView` | `url: URI · query: URI · title: Literal · description/fragment: Maybe Literal · mode: Maybe URI` |
 | `ldh-AddObjectBlock` | `url: URI · value: URI · title/description/fragment: Maybe Literal · mode: Maybe URI` |
 | `ldh-AddXHTMLBlock` | `url: URI · value: Literal (XHTML) · title/description/fragment: Maybe Literal` |
@@ -958,3 +1067,10 @@ namespace; the two spellings denote the same operations.
 | `ldh-GenerateOntologyViews` | `ontology: Graph · base_uri: URI · service_uri: URI` |
 | `ldh-GenerateClassContainers` | `ontology: Graph · parent_container: URI · endpoint: URI · service_uri: Maybe URI` |
 | `ldh-GeneratePortal` | `endpoint: URI · ontology_namespace: URI · parent_container: URI` |
+
+`ldh-AddSelect` and `ldh-AddConstruct` record a stored query (`sp:Select`,
+`sp:Construct`) in the document. Two differences between the serializations
+are forced by the XML one running as a service: its `AddFile` takes `file`
+as a URL that the server fetches, since a local path would let a submitted
+program upload any file the server can read; and it leaves out the
+`Generate*` operations, which only the JSON serialization has.

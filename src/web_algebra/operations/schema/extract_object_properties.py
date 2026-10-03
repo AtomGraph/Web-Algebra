@@ -1,109 +1,63 @@
-from rdflib import URIRef, Literal, Graph
-from rdflib.namespace import XSD
-from web_algebra.operations.sparql.construct import CONSTRUCT
+from typing import ClassVar
 from web_algebra.operation import Operation
+from web_algebra.schema_extraction import SchemaExtraction
 
 
-class ExtractObjectProperties(CONSTRUCT):
-    @classmethod
-    def description(cls) -> str:
-        return "Extracts OWL object properties from an RDF dataset."
+class ExtractObjectProperties(SchemaExtraction, Operation):
+    """formal-semantics.md §4.6. The query is REST-VKG's, so the two
+    serializations extract the same schema; `%SCOPE%` is where the
+    `bindings` VALUES block goes."""
 
-    @classmethod
-    def inputSchema(cls) -> dict:
-        return {
-            "type": "object",
-            "properties": {"endpoint": {"type": "string"}},
-            "required": ["endpoint"],
-        }
-
-    def execute(self, endpoint: URIRef) -> Graph:
-        """Pure function: extract OWL object properties with RDFLib terms
-
-        Infers functional properties using closed world assumption:
-        - Counts max cardinality per property across all subjects in the dataset
-        - When global max = 1, emits ?property a owl:FunctionalProperty
-        - Note: Inference based solely on present data, not formal ontology definitions
-        """
-        query = Literal("""
+    QUERY: ClassVar[str] = """
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX owl: <http://www.w3.org/2002/07/owl#>
-
 CONSTRUCT {
-  ?property a owl:ObjectProperty ;
-            rdfs:domain ?domain ;
-            rdfs:range ?range .
+  ?property a owl:ObjectProperty ; rdfs:domain ?domain ; rdfs:range ?range .
   ?functional a owl:FunctionalProperty .
 }
 WHERE {
   {
-    SELECT ?property ?domain ?range (IF(?maxC = 1, ?property, ?UNDEF) AS ?functional)
+    SELECT ?property ?range (IF(?domains = 1, ?aDomain, ?UNDEF) AS ?domain) (IF(?maxC = 1, ?property, ?UNDEF) AS ?functional)
     WHERE {
       {
-        SELECT ?property (SAMPLE(?d) AS ?domain) (SAMPLE(?r) AS ?range) (MAX(?maxC2) AS ?maxC)
+        SELECT ?property ?domains ?aDomain ?maxC (SAMPLE(?objectType) AS ?range)
         WHERE {
           {
-            SELECT ?property ?r (SAMPLE(?d2) AS ?d) (MAX(?c) AS ?maxC2)
+            SELECT ?property (MAX(?c) AS ?maxC) (COUNT(DISTINCT ?type) AS ?domains) (SAMPLE(?type) AS ?aDomain) (SAMPLE(?anObject) AS ?sampleObject)
             WHERE {
               {
-                SELECT ?subject ?property ?r (COUNT(?object) AS ?c)
+                SELECT ?subject ?property (COUNT(?object) AS ?c) (SAMPLE(?object) AS ?anObject)
                 WHERE {
-                  {
-                    ?subject ?property ?object .
-                    FILTER(?property != rdf:type)
-                    FILTER(!isLiteral(?object))
-                    OPTIONAL {
-                      { ?object a ?r }
-                      UNION
-                      { GRAPH ?objG { ?object a ?r } }
-                      FILTER(!isBlank(?r))
-                    }
-                  } UNION {
-                    GRAPH ?g {
-                      ?subject ?property ?object .
-                      FILTER(?property != rdf:type)
-                      FILTER(!isLiteral(?object))
-                      OPTIONAL {
-                        { ?object a ?r }
-                        UNION
-                        { GRAPH ?objG { ?object a ?r } }
-                        FILTER(!isBlank(?r))
-                      }
-                    }
-                  }
+                  %SCOPE%
+                  { ?subject ?property ?object . FILTER(?property != rdf:type) FILTER(!isLiteral(?object)) }
+                  UNION
+                  { GRAPH ?g { ?subject ?property ?object . FILTER(?property != rdf:type) FILTER(!isLiteral(?object)) } }
                 }
-                GROUP BY ?subject ?property ?r
+                GROUP BY ?subject ?property
               }
               OPTIONAL {
-                { ?subject a ?d2 }
-                UNION
-                { GRAPH ?subjG { ?subject a ?d2 } }
-                FILTER(!isBlank(?d2))
+                SELECT ?subject (SAMPLE(?d) AS ?type) WHERE {
+                  %SCOPE%
+                  { ?subject a ?d } UNION { GRAPH ?subjG { ?subject a ?d } }
+                  FILTER(!isBlank(?d))
+                } GROUP BY ?subject
               }
             }
-            GROUP BY ?property ?r
-            HAVING(COUNT(DISTINCT ?d2) <= 1)
+            GROUP BY ?property
+          }
+          OPTIONAL {
+            { ?sampleObject a ?objectType } UNION { GRAPH ?objG { ?sampleObject a ?objectType } }
+            FILTER(!isBlank(?objectType))
           }
         }
-        GROUP BY ?property
-        HAVING(COUNT(DISTINCT ?r) <= 1)
+        GROUP BY ?property ?domains ?aDomain ?maxC
       }
     }
   }
 }
-""", datatype=XSD.string)
-        return super().execute(endpoint, query)
+"""
 
-    def execute_json(self, arguments: dict, variable_stack: list = None) -> Graph:
-        """JSON execution: process arguments with strict type checking"""
-        # Process endpoint
-        endpoint_data = Operation.process_json(
-            self.settings, arguments["endpoint"], self.context, variable_stack
-        )
-        if not isinstance(endpoint_data, URIRef):
-            raise TypeError(
-                f"ExtractObjectProperties operation expects 'endpoint' to be URIRef, got {type(endpoint_data)}"
-            )
-
-        return self.execute(endpoint_data)
+    @classmethod
+    def description(cls) -> str:
+        return "Extracts OWL object properties (and functional properties, closed-world) from IRI-valued predicates in an RDF dataset, optionally scoped to the subjects in 'bindings'."

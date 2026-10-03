@@ -96,9 +96,9 @@ class Iterate(Operation):
                 # if any, remains visible (Iterate establishes none).
                 variable_stack.append({})
                 try:
-                    value = self._evaluate_body(operation, variable_stack)
-                    if value is not None:
-                        results.append(value)
+                    # The iteration's value is concatenated into the result
+                    # (§3.1): a sequence contributes its items, Unit none.
+                    self._evaluate_body(operation, variable_stack, results)
 
                     if next_arg is None:
                         # No next-iteration: exactly one iteration.
@@ -132,21 +132,20 @@ class Iterate(Operation):
 
         return results
 
-    def _evaluate_body(self, operation: Any, variable_stack: list) -> Any:
-        """Evaluate the quoted operation (form or array of forms); array
-        operands yield the last non-Unit value, as in ForEach."""
-        if isinstance(operation, list):
-            last_result = None
-            for op in operation:
-                result = Operation.process_json(
-                    self.settings, op, self.context, variable_stack
-                )
-                if result is not None:
-                    last_result = result
-            return last_result
-        return Operation.process_json(
-            self.settings, operation, self.context, variable_stack
-        )
+    def _evaluate_body(
+        self, operation: Any, variable_stack: list, results: List[Any]
+    ) -> None:
+        """Evaluate the quoted operation (form or array of forms, the latter
+        a sequence constructor as in ForEach) and concatenate its value into
+        `results`."""
+        forms = operation if isinstance(operation, list) else [operation]
+        for form in forms:
+            Operation.concatenate(
+                results,
+                Operation.process_json(
+                    self.settings, form, self.context, variable_stack
+                ),
+            )
 
     def _parse_break(
         self, break_arg: Any, variable_stack: list

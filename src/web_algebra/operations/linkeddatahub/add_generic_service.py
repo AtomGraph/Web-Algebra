@@ -157,18 +157,18 @@ class AddGenericService(POST):
             raise TypeError(
                 f"AddGenericService.execute expects endpoint to be URIRef, got {type(endpoint)}"
             )
-        if not isinstance(title, Literal) or title.datatype != XSD.string:
+        if not Operation.is_string_literal(title):
             raise TypeError(
                 f"AddGenericService.execute expects title to be string Literal, got {type(title)}"
             )
         if description is not None and (
-            not isinstance(description, Literal) or description.datatype != XSD.string
+            not Operation.is_string_literal(description)
         ):
             raise TypeError(
                 f"AddGenericService.execute expects description to be string Literal, got {type(description)}"
             )
         if fragment is not None and (
-            not isinstance(fragment, Literal) or fragment.datatype != XSD.string
+            not Operation.is_string_literal(fragment)
         ):
             raise TypeError(
                 f"AddGenericService.execute expects fragment to be string Literal, got {type(fragment)}"
@@ -178,13 +178,13 @@ class AddGenericService(POST):
                 f"AddGenericService.execute expects graph_store to be URIRef, got {type(graph_store)}"
             )
         if auth_user is not None and (
-            not isinstance(auth_user, Literal) or auth_user.datatype != XSD.string
+            not Operation.is_string_literal(auth_user)
         ):
             raise TypeError(
                 f"AddGenericService.execute expects auth_user to be string Literal, got {type(auth_user)}"
             )
         if auth_pwd is not None and (
-            not isinstance(auth_pwd, Literal) or auth_pwd.datatype != XSD.string
+            not Operation.is_string_literal(auth_pwd)
         ):
             raise TypeError(
                 f"AddGenericService.execute expects auth_pwd to be string Literal, got {type(auth_pwd)}"

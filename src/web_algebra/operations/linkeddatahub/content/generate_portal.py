@@ -1,7 +1,8 @@
+from typing import ClassVar
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from rdflib.query import Result
-from web_algebra.operation import Operation
+from web_algebra.operation import Operation, OperationKind
 from web_algebra.operations.schema.extract_ontology import ExtractOntology
 from web_algebra.operations.linkeddatahub.content.generate_ontology_views import GenerateOntologyViews
 from web_algebra.operations.linkeddatahub.content.generate_class_containers import GenerateClassContainers
@@ -19,6 +20,9 @@ class GeneratePortal(Operation):
     3. POST - posts the views to the ontology namespace
     4. GenerateClassContainers - creates containers for each class with instance views
     """
+
+    # composes writes internally rather than through nested forms, so it declares its own kind
+    kind: ClassVar[OperationKind] = OperationKind.WRITE
 
     @classmethod
     def name(cls):

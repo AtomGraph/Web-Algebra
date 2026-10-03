@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 import json
 import logging
 from typing import Type, Dict, Optional, Any, List, ClassVar, Union
@@ -22,6 +23,33 @@ from web_algebra.exceptions import (
 _JSONLD_KEYS = ("@context", "@graph", "@id", "@type")
 
 
+class OperationKind(str, Enum):
+    """What an operation does to the world.
+
+    The ordering is by blast radius, so a composite form (a `ForEach` whose body
+    `PATCH`es) takes the kind of the worst thing it can do — `max()` over the
+    kinds of the operations it contains.
+    """
+
+    READ = "read"
+    WRITE = "write"
+    DESTRUCTIVE = "destructive"
+
+    @property
+    def severity(self) -> int:
+        return _KIND_SEVERITY[self]
+
+    def __lt__(self, other: "OperationKind") -> bool:
+        return self.severity < other.severity
+
+
+_KIND_SEVERITY = {
+    OperationKind.READ: 0,
+    OperationKind.WRITE: 1,
+    OperationKind.DESTRUCTIVE: 2,
+}
+
+
 class Operation(ABC, BaseModel):
     """
     Abstract base class for all operations with dual execution paths:
@@ -32,8 +60,18 @@ class Operation(ABC, BaseModel):
     """
 
     registry: ClassVar[Dict[str, Type["Operation"]]] = {}
+
+    #: What this operation does to the world, for the plan summary a client shows
+    #: before approving a document. Reading is the default because most operations
+    #: only compute; the ones that issue a mutating request say so themselves.
+    kind: ClassVar[OperationKind] = OperationKind.READ
+
     settings: BaseSettings = Field(exclude=True)
-    context: Any = {}
+    #: The iteration focus an enclosing ForEach established, empty outside one.
+    #: A `default_factory`, not a literal: a bare `{}` is one dict shared by every
+    #: instance ever constructed, so two executions in one process — which is what
+    #: the HTTP service runs — would see each other's focus.
+    context: Any = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="allow")
 
@@ -155,16 +193,33 @@ class Operation(ABC, BaseModel):
             # when the sequence ends.
             variable_stack.append({})
             try:
-                return [
-                    cls.process_json(settings, item, context, variable_stack)
-                    for item in json_data
-                ]
+                items: list = []
+                for item in json_data:
+                    cls.concatenate(
+                        items,
+                        cls.process_json(settings, item, context, variable_stack),
+                    )
+                return items
             finally:
                 variable_stack.pop()
 
         else:
             # Convert plain values to RDFLib terms
             return cls.json_to_rdflib(json_data)
+
+    @staticmethod
+    def concatenate(items: list, value: Any) -> None:
+        """Append `value` to `items` as XDM concatenation does
+        (formal-semantics.md §3.1): a sequence contributes its items, Unit
+        (`None`) contributes none, anything else — a `Result` included — is
+        one item."""
+        if value is None:
+            return
+        if isinstance(value, list):
+            for item in value:
+                Operation.concatenate(items, item)
+            return
+        items.append(value)
 
     @classmethod
     def _resolve_jsonld(

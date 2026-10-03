@@ -1,11 +1,10 @@
-from typing import Any
+from typing import ClassVar, Any
 import logging
-from rdflib import URIRef, Graph, Literal
-from rdflib.namespace import XSD
+from rdflib import URIRef, Graph
 from mcp import types
 from web_algebra.mcp_tool import MCPTool
 from web_algebra.client_operation import ClientOperation
-from web_algebra.operation import Operation
+from web_algebra.operation import Operation, OperationKind
 from rdflib.query import Result
 
 
@@ -17,6 +16,9 @@ class POST(ClientOperation, Operation, MCPTool):
     Returns True if the operation was successful, False otherwise.
     Note: This operation does not return the updated graph, it only confirms the success of the operation.
     """
+
+    # appends the supplied triples to a document; nothing already there is removed
+    kind: ClassVar[OperationKind] = OperationKind.WRITE
 
 
     @classmethod
@@ -60,18 +62,7 @@ class POST(ClientOperation, Operation, MCPTool):
         response = self.client.post(url_str, data)
         logging.info("POST operation status: %s", response.status)
 
-        # Return SPARQL results format
-        from web_algebra.json_result import JSONResult
-
-        return JSONResult(
-            vars=["status", "url"],
-            bindings=[
-                {
-                    "status": Literal(response.status, datatype=XSD.integer),
-                    "url": URIRef(response.geturl()),
-                }
-            ],
-        )
+        return self.written_response(response)
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments with strict type checking"""

@@ -1,25 +1,14 @@
-from rdflib import URIRef, Literal, Graph
-from rdflib.namespace import XSD
-from web_algebra.operations.sparql.construct import CONSTRUCT
+from typing import ClassVar
 from web_algebra.operation import Operation
+from web_algebra.schema_extraction import SchemaExtraction
 
 
-class ExtractClasses(CONSTRUCT):
-    @classmethod
-    def description(cls) -> str:
-        return "Extracts OWL classes from an RDF dataset."
+class ExtractClasses(SchemaExtraction, Operation):
+    """formal-semantics.md §4.6. The query is REST-VKG's, so the two
+    serializations extract the same schema; `%SCOPE%` is where the
+    `bindings` VALUES block goes."""
 
-    @classmethod
-    def inputSchema(cls) -> dict:
-        return {
-            "type": "object",
-            "properties": {"endpoint": {"type": "string"}},
-            "required": ["endpoint"],
-        }
-
-    def execute(self, endpoint: URIRef) -> Graph:
-        """Pure function: extract OWL classes with RDFLib terms"""
-        query = Literal("""
+    QUERY: ClassVar[str] = """
 PREFIX  owl:  <http://www.w3.org/2002/07/owl#>
 PREFIX  rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
@@ -28,28 +17,19 @@ CONSTRUCT
     ?class a owl:Class .
   }
 WHERE
-  {   { ?instance  a  ?class
+  {   %SCOPE%
+      { ?subject  a  ?class
         FILTER ( ! isBlank(?class) )
       }
     UNION
       { GRAPH ?g
-          { ?instance  a  ?class
+          { ?subject  a  ?class
             FILTER ( ! isBlank(?class) )
           }
       }
   }
-""", datatype=XSD.string)
-        return super().execute(endpoint, query)
+"""
 
-    def execute_json(self, arguments: dict, variable_stack: list = None) -> Graph:
-        """JSON execution: process arguments with strict type checking"""
-        # Process endpoint
-        endpoint_data = Operation.process_json(
-            self.settings, arguments["endpoint"], self.context, variable_stack
-        )
-        if not isinstance(endpoint_data, URIRef):
-            raise TypeError(
-                f"ExtractClasses operation expects 'endpoint' to be URIRef, got {type(endpoint_data)}"
-            )
-
-        return self.execute(endpoint_data)
+    @classmethod
+    def description(cls) -> str:
+        return "Extracts OWL classes (owl:Class candidates) from rdf:type usage in an RDF dataset, optionally scoped to the subjects in 'bindings'."

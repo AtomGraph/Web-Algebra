@@ -10,10 +10,9 @@ from rdflib.namespace import XSD
 from rdflib.query import Result
 
 from web_algebra.client import FileClient
-from web_algebra.json_result import JSONResult
 from web_algebra.mcp_tool import MCPTool
 from web_algebra.client_operation import ClientOperation
-from web_algebra.operation import Operation
+from web_algebra.operation import Operation, OperationKind
 
 
 class AddFile(ClientOperation, Operation, MCPTool):
@@ -29,6 +28,9 @@ class AddFile(ClientOperation, Operation, MCPTool):
     dialect rather than an N-triples body, so it carries its own
     `FileClient` instance instead of inheriting `LinkedDataClient` plumbing.
     """
+
+    # uploads a file and appends its description to the target document
+    kind: ClassVar[OperationKind] = OperationKind.WRITE
 
     client_class: ClassVar[Type] = FileClient
 
@@ -152,15 +154,7 @@ class AddFile(ClientOperation, Operation, MCPTool):
 
         logging.info("AddFile status %s → <%s>", response.status, file_uri)
 
-        return JSONResult(
-            vars=["status", "url"],
-            bindings=[
-                {
-                    "status": Literal(response.status, datatype=XSD.integer),
-                    "url": URIRef(file_uri),
-                }
-            ],
-        )
+        return self.written(response.status, file_uri)
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments with strict type checking."""

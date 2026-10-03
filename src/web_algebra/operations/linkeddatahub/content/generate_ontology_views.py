@@ -1,7 +1,8 @@
+from typing import ClassVar
 import hashlib
 from rdflib import URIRef, Literal, Namespace, Graph
 from rdflib.namespace import RDF, RDFS, XSD, DCTERMS
-from web_algebra.operation import Operation
+from web_algebra.operation import Operation, OperationKind
 
 
 class GenerateOntologyViews(Operation):
@@ -15,6 +16,9 @@ class GenerateOntologyViews(Operation):
     Functional properties (declared `owl:FunctionalProperty`) are skipped:
     they yield at most one value, so a table view would be redundant.
     """
+
+    # composes writes internally rather than through nested forms, so it declares its own kind
+    kind: ClassVar[OperationKind] = OperationKind.WRITE
 
     @classmethod
     def name(cls):

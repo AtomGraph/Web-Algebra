@@ -153,18 +153,18 @@ class AddView(POST):
             raise TypeError(
                 f"AddView.execute expects query to be URIRef, got {type(query)}"
             )
-        if not isinstance(title, Literal) or title.datatype != XSD.string:
+        if not Operation.is_string_literal(title):
             raise TypeError(
                 f"AddView.execute expects title to be string Literal, got {type(title)}"
             )
         if description is not None and (
-            not isinstance(description, Literal) or description.datatype != XSD.string
+            not Operation.is_string_literal(description)
         ):
             raise TypeError(
                 f"AddView.execute expects description to be string Literal, got {type(description)}"
             )
         if fragment is not None and (
-            not isinstance(fragment, Literal) or fragment.datatype != XSD.string
+            not Operation.is_string_literal(fragment)
         ):
             raise TypeError(
                 f"AddView.execute expects fragment to be string Literal, got {type(fragment)}"

@@ -74,7 +74,6 @@ The operations cover read-write Linked Data, SPARQL queries, URI manipulation, a
   - `Current`
   - `Position`
   - `Last`
-  - `Execute`
   - `Merge`
 - LinkedDataHub-specific
   - `ldh-CreateContainer`
@@ -84,6 +83,7 @@ The operations cover read-write Linked Data, SPARQL queries, URI manipulation, a
   - `ldh-AddGenericService`
   - `ldh-AddResultSetChart`
   - `ldh-AddSelect`
+  - `ldh-AddConstruct`
   - `ldh-AddView`
   - `ldh-AddObjectBlock`
   - `ldh-AddXHTMLBlock`

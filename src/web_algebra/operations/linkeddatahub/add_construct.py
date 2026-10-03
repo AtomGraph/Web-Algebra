@@ -6,21 +6,21 @@ from web_algebra.operation import Operation
 from web_algebra.operations.linked_data.post import POST
 
 
-class AddSelect(POST):
+class AddConstruct(POST):
     @classmethod
     def name(cls):
-        return "ldh-AddSelect"
+        return "ldh-AddConstruct"
 
     @classmethod
     def description(cls) -> str:
-        return """Creates a SPARQL SELECT query resource in a document.
+        return """Creates a SPARQL CONSTRUCT query resource in a document.
         
-        This tool creates a SPARQL SELECT query that can be executed and referenced within LinkedDataHub.
+        This tool creates a SPARQL CONSTRUCT query that can be executed and referenced within LinkedDataHub.
         The query can be used for charts, views, or other data processing operations.
         
         This tool:
-        - Creates a sp:Select resource with the SPARQL query text
-        - Posts the new SELECT query resource to the target document
+        - Creates a sp:Construct resource with the SPARQL query text
+        - Posts the new CONSTRUCT query resource to the target document
         - Supports optional title, description, fragment identifier, and service URI
         Note: the service URI is _not_ the SPARQL endpoint URL but an instance of `sd:Service` that describes the SPARQL service capabilities (and contains the endpoint URL).
         The service URI can be used to reference the SPARQL service in other operations.
@@ -33,19 +33,19 @@ class AddSelect(POST):
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URI of the document to append the SELECT query to.",
+                    "description": "The URI of the document to append the CONSTRUCT query to.",
                 },
                 "query": {
                     "type": "string",
-                    "description": "The SPARQL SELECT query string.",
+                    "description": "The SPARQL CONSTRUCT query string.",
                 },
                 "title": {
                     "type": "string",
-                    "description": "Title of the SELECT query.",
+                    "description": "Title of the CONSTRUCT query.",
                 },
                 "description": {
                     "type": "string",
-                    "description": "Optional description of the SELECT query.",
+                    "description": "Optional description of the CONSTRUCT query.",
                 },
                 "fragment": {
                     "type": "string",
@@ -67,7 +67,7 @@ class AddSelect(POST):
         )
         if not isinstance(url_data, URIRef):
             raise TypeError(
-                f"AddSelect operation expects 'url' to be URIRef, got {type(url_data)}"
+                f"AddConstruct operation expects 'url' to be URIRef, got {type(url_data)}"
             )
 
         query_data = Operation.process_json(
@@ -102,7 +102,7 @@ class AddSelect(POST):
             )
             if not isinstance(service_data, URIRef):
                 raise TypeError(
-                    f"AddSelect operation expects 'service' to be URIRef, got {type(service_data)}"
+                    f"AddConstruct operation expects 'service' to be URIRef, got {type(service_data)}"
                 )
             service_uri = service_data
 
@@ -124,34 +124,34 @@ class AddSelect(POST):
         fragment: Optional[Literal] = None,
         service: Optional[URIRef] = None,
     ) -> Any:
-        """Pure function: create SPARQL SELECT query with RDFLib terms"""
+        """Pure function: create SPARQL CONSTRUCT query with RDFLib terms"""
         if not isinstance(url, URIRef):
             raise TypeError(
-                f"AddSelect.execute expects url to be URIRef, got {type(url)}"
+                f"AddConstruct.execute expects url to be URIRef, got {type(url)}"
             )
         if not Operation.is_string_literal(query):
             raise TypeError(
-                f"AddSelect.execute expects query to be string Literal, got {type(query)}"
+                f"AddConstruct.execute expects query to be string Literal, got {type(query)}"
             )
         if not Operation.is_string_literal(title):
             raise TypeError(
-                f"AddSelect.execute expects title to be string Literal, got {type(title)}"
+                f"AddConstruct.execute expects title to be string Literal, got {type(title)}"
             )
         if description is not None and (
             not Operation.is_string_literal(description)
         ):
             raise TypeError(
-                f"AddSelect.execute expects description to be string Literal, got {type(description)}"
+                f"AddConstruct.execute expects description to be string Literal, got {type(description)}"
             )
         if fragment is not None and (
             not Operation.is_string_literal(fragment)
         ):
             raise TypeError(
-                f"AddSelect.execute expects fragment to be string Literal, got {type(fragment)}"
+                f"AddConstruct.execute expects fragment to be string Literal, got {type(fragment)}"
             )
         if service is not None and not isinstance(service, URIRef):
             raise TypeError(
-                f"AddSelect.execute expects service to be URIRef, got {type(service)}"
+                f"AddConstruct.execute expects service to be URIRef, got {type(service)}"
             )
 
         url_str = str(url)
@@ -162,7 +162,7 @@ class AddSelect(POST):
         service_str = str(service) if service else None
 
         logging.info(
-            "Creating SELECT query for document <%s> with title '%s'",
+            "Creating CONSTRUCT query for document <%s> with title '%s'",
             url_str,
             title_str,
         )
@@ -173,7 +173,7 @@ class AddSelect(POST):
         else:
             subject_id = "_:subject"
 
-        # Build JSON-LD structure for the SELECT query - matching shell script output
+        # Build JSON-LD structure for the CONSTRUCT query - matching shell script output
         data = {
             "@context": {
                 "ldh": "https://w3id.org/atomgraph/linkeddatahub#",
@@ -181,7 +181,7 @@ class AddSelect(POST):
                 "sp": "http://spinrdf.org/sp#",
             },
             "@id": subject_id,
-            "@type": "sp:Select",
+            "@type": "sp:Construct",
             "dct:title": title_str,
             "sp:text": query_str,
         }
@@ -193,7 +193,7 @@ class AddSelect(POST):
         if description_str:
             data["dct:description"] = description_str
 
-        logging.info(f"Posting SELECT query with JSON-LD data: {data}")
+        logging.info(f"Posting CONSTRUCT query with JSON-LD data: {data}")
 
         # Convert the JSON-LD content to a Graph and POST to the target URI
         graph = self.to_graph(data, base=url_str)
@@ -225,4 +225,4 @@ class AddSelect(POST):
 
         # Return status for MCP response
         status_binding = result.bindings[0]["status"]
-        return [types.TextContent(type="text", text=f"SELECT query added - status: {status_binding}")]
+        return [types.TextContent(type="text", text=f"CONSTRUCT query added - status: {status_binding}")]

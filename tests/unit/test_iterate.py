@@ -6,8 +6,12 @@ Abstract: (Name ⇀ Value) × Operation⟨quoted⟩
   iteration runs; next-iteration members are evaluated in the iteration's
   environment (loop params + body bindings) and rebind the parameters;
   break compares a loop variable's lexical form after rebinding; the
-  iteration count is capped at 1000 (normative); Unit-valued iterations are
-  dropped; Iterate establishes no focus.
+  iteration count is capped at 1000 (normative); Iterate establishes no
+  focus.
+- The result is the concatenation of the iteration values, in order (§3.1):
+  a Unit-valued iteration contributes nothing, a sequence-valued one its
+  items; an array `operation` yields the concatenation of its element values
+  per iteration, as in ForEach.
 """
 
 from __future__ import annotations
@@ -94,10 +98,66 @@ class TestIterateJson:
                 "break": {"name": "url", "equals": "a!!!"},
             }
         )
+        # the Variable element of the array leaves no item (§3.2)
         assert [str(v) for v in result] == ["a!", "a!!", "a!!!"]
 
-    def test_unit_valued_iterations_are_dropped(self, settings):
-        # §4.1: Unit-valued iterations are dropped from the output
+    def test_array_body_yields_concatenation_per_iteration(self, settings):
+        # §4.1: array operands as in ForEach — each iteration's value is the
+        # concatenation of the element values, and the result concatenates
+        # the iteration values in order
+        op = Operation.get("Iterate")(settings=settings)
+        result = op.execute_json(
+            {
+                "params": {"s": "a"},
+                "operation": [_str_of("$s"), "|"],
+                "next-iteration": {"s": "b"},
+                "break": {"name": "s", "equals": "b"},
+            }
+        )
+        assert [str(v) for v in result] == ["a", "|"]
+
+    def test_array_body_two_iterations(self, settings):
+        # §3.8 (ITERATE): w₁ ⧺ w₂ where each wᵢ is the array's sequence value
+        op = Operation.get("Iterate")(settings=settings)
+        result = op.execute_json(
+            {
+                "params": {"s": ""},
+                "operation": [_str_of("$s"), "|"],
+                "next-iteration": {
+                    "s": {
+                        "@op": "Concat",
+                        "args": {
+                            "inputs": [{"@op": "Value", "args": {"name": "$s"}}, "a"]
+                        },
+                    }
+                },
+                "break": {"name": "s", "equals": "aa"},
+            }
+        )
+        assert [str(v) for v in result] == ["", "|", "a", "|"]
+
+    def test_sequence_valued_iterations_contribute_their_items(self, settings):
+        # §3.1: a sequence-valued iteration contributes its items, flat
+        op = Operation.get("Iterate")(settings=settings)
+        result = op.execute_json(
+            {
+                "params": {"s": "a"},
+                "operation": {
+                    "@op": "ForEach",
+                    "args": {
+                        "select": ["x", "y"],
+                        "operation": {
+                            "@op": "Str",
+                            "args": {"input": {"@op": "Current", "args": {}}},
+                        },
+                    },
+                },
+            }
+        )
+        assert result == [Literal("x"), Literal("y")]
+
+    def test_unit_valued_iterations_contribute_nothing(self, settings):
+        # §4.1/§3.1: a Unit-valued iteration contributes nothing
         op = Operation.get("Iterate")(settings=settings)
         result = op.execute_json(
             {
@@ -151,7 +211,8 @@ class TestIterateJson:
                 },
             }
         )
-        assert result == [[Literal("a")]]
+        # §3.1: the inner Iterate's sequence contributes its items, flat
+        assert result == [Literal("a")]
 
     def test_missing_operation_raises_key_error(self, settings):
         # §3.7: missing required argument key → KeyError

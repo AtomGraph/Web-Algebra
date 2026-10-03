@@ -1,9 +1,9 @@
-"""Spec: formal-semantics.md Appendix A "ldh-AddSelect" (informative)
+"""Spec: formal-semantics.md Appendix A "ldh-AddConstruct" (informative)
 JSON args: url: URI · query: Literal · title: Literal
            · description/fragment: Maybe Literal · service: Maybe URI
 Python:   def execute(self, url: URIRef, query: Literal, title: Literal, description: Literal = None,
                       fragment: Literal = None, service: URIRef = None) -> Result
-- Records a stored query (`sp:Select`) in the document at `url`.
+- Records a stored query (`sp:Construct`) in the document at `url`.
 - An update operation: returns the single-row Result of §4.4 (status, url)
   and is subject to the same rules (§3.6, §4.4) — a non-2xx answer to its
   write is a ValueError.
@@ -20,12 +20,12 @@ from tests.http_stub import StubResponse, default_handler, request_body_text
 from web_algebra.operation import Operation
 
 DOC = "https://example.org/doc/"
-QUERY = "SELECT * WHERE { ?s ?p ?o }"
+QUERY = "CONSTRUCT WHERE { ?s ?p ?o }"
 
 
-class TestLDHAddSelectPure:
+class TestLDHAddConstructPure:
     def test_wrong_url_type_raises(self, settings):
-        op = Operation.get("ldh-AddSelect")(settings=settings)
+        op = Operation.get("ldh-AddConstruct")(settings=settings)
         with pytest.raises(TypeError):
             op.execute(
                 Literal("not-a-uri"),
@@ -34,7 +34,7 @@ class TestLDHAddSelectPure:
             )
 
     def test_wrong_query_type_raises(self, settings):
-        op = Operation.get("ldh-AddSelect")(settings=settings)
+        op = Operation.get("ldh-AddConstruct")(settings=settings)
         with pytest.raises(TypeError):
             op.execute(
                 URIRef("https://example.org/"),
@@ -43,9 +43,9 @@ class TestLDHAddSelectPure:
             )
 
 
-class TestLDHAddSelectStubbed:
+class TestLDHAddConstructStubbed:
     def _run(self, settings):
-        op = Operation.get("ldh-AddSelect")(settings=settings)
+        op = Operation.get("ldh-AddConstruct")(settings=settings)
         return op.execute_json(
             {"url": {"@id": DOC}, "query": QUERY, "title": "Stored query"}
         )
@@ -60,8 +60,8 @@ class TestLDHAddSelectStubbed:
         assert 200 <= int(rows[0]["status"]) < 300
         assert rows[0]["url"] is not None
 
-    def test_records_a_stored_select(self, settings, http_stub):
-        # Appendix A: records an sp:Select in the document
+    def test_records_a_stored_construct(self, settings, http_stub):
+        # Appendix A: records an sp:Construct in the document
         self._run(settings)
         bodies = [
             request_body_text(r)
@@ -69,7 +69,7 @@ class TestLDHAddSelectStubbed:
             if r.get_method() not in ("GET", "HEAD")
         ]
         assert bodies, "no write was made"
-        assert any("Select" in body for body in bodies)
+        assert any("Construct" in body for body in bodies)
 
     def test_non_2xx_write_raises_value_error(self, settings, http_stub):
         # Appendix A / §4.4 / §3.7: a write answered outside 2xx → ValueError
@@ -84,7 +84,7 @@ class TestLDHAddSelectStubbed:
 
 
 @pytest.mark.ldh
-class TestLDHAddSelectLive:
+class TestLDHAddConstructLive:
     @pytest.mark.skip(reason="Live LinkedDataHub run; covered by integration LDH composition fixture instead.")
     def test_basic(self, settings_with_auth):
         pass

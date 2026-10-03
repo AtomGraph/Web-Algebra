@@ -18,7 +18,9 @@ Two deliberate omissions:
 
 - There is no wrapper for HTTP/SPARQL transport failures. Spec §3.7 pins them
   to `urllib.error.HTTPError` / `URLError` propagating **unwrapped**; wrapping
-  would contradict the normative contract.
+  would contradict the normative contract. A *write* answered outside 2xx is
+  not a transport failure but a refused write (§4.4), raised as
+  `WriteRefusedError`.
 - Per-operation argument type errors stay built-in `TypeError` for the same
   reason (§3.7 names them `TypeError`), and to avoid churning ~170 leaf
   validation sites whose meaning is already unambiguous.
@@ -43,3 +45,22 @@ class VariableNotFoundError(WebAlgebraError, ValueError):
 
 class NoFocusError(WebAlgebraError, ValueError):
     """An operation that requires an iteration focus ran outside one (spec §3.5)."""
+
+
+class SameTargetError(WebAlgebraError, ValueError):
+    """Two iterations of one `ForEach` updated the same URI (spec §3.6) — the
+    algebra's XTDE1490."""
+
+
+class WriteRefusedError(ValueError):
+    """A write was answered outside 2xx (spec §4.4) — as an
+    `xsl:result-document` that cannot be written. Carries the status and the
+    server's reason. Not a `WebAlgebraError`: the document is well-formed, the
+    world refused it."""
+
+    def __init__(self, method: str, url: str, status: int, reason: str):
+        self.method = method
+        self.url = url
+        self.status = status
+        self.reason = reason
+        super().__init__(f"{method} {url} answered {status}: {reason}")

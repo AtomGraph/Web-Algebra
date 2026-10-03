@@ -1,6 +1,9 @@
 """Spec: formal-semantics.md "POST - Submit RDF data via HTTP POST"
 Abstract: URI × Graph → Result
 Python:   def execute(self, url: rdflib.URIRef, data: rdflib.Graph) -> Result
+- §4.4: returns a single-row Result (status, url); the shared write
+  contract (url from Location, non-2xx → ValueError, If-Match via HEAD) is
+  covered for POST, PUT and PATCH in test_write_contract.py.
 """
 
 from __future__ import annotations

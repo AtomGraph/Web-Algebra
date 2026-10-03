@@ -13,14 +13,22 @@ live.
 
 ## Remaining gaps
 
-- **`ldh-*` operations** — Appendix A of the spec is explicitly informative: JSON arg
-  keys are documented, but return contracts are deliberately loose (`Any`, or
-  `Result` with unspecified shape). Unit tests for these operations stay skipped
-  until a later spec revision pins them; behavior is exercised by the `ldh`-marked
-  integration fixtures against a live LinkedDataHub.
-- **SPARQLString** — §4.3 pins the type contract only (string-compatible Literal →
-  Literal); the operation is non-deterministic (LLM) and needs an OpenAI client, so
-  even the type contract is only exercised in live runs.
+- **`ldh-*` operations** — Appendix A of the spec is informative. It now pins the
+  return of the *update* operations (the single-row `Result` of §4.4) and makes
+  them subject to §3.6/§4.4, and `ldh-AddSelect`/`ldh-AddConstruct` are unit-tested
+  against stubbed HTTP on that basis (return shape, recorded `sp:Select` /
+  `sp:Construct`, non-2xx → `ValueError`). The remaining `ldh-*` unit tests stay
+  type-only; their behavior is exercised by the `ldh`-marked integration fixtures
+  against a live LinkedDataHub.
+- **SPARQLString** — §4.3 now pins `endpoint · question · projection · context`.
+  The type contract and the empty-`context` `ValueError` are tested offline. The
+  model-dependent contract (parseable simple-literal result, projection honoured,
+  bounded retry then `ValueError`) needs the model call stubbed, and there is no
+  infrastructure seam for SPARQLString's model call outside the operation module,
+  so those tests are skipped.
+- **Relative IRIs in a `graph` data form** (§4.3) — the form "is parsed with no
+  base IRI, so its IRIs must be absolute", but what a relative IRI does (error,
+  dropped triple, left relative) is unstated. Test skipped (`test_select.py`).
 - **Live-service behavior** — §3.7 pins transport failures to
   `urllib.error.HTTPError`/`URLError` propagating unwrapped, and §4.3–4.4 pin the
   response contract (RDF-only, transparent conneg, non-RDF → `ValueError`); still
@@ -31,6 +39,36 @@ live.
   `[a-z-[aeiou]]`) are not supported and surface as `ValueError` (invalid pattern).
   This is an implementation gap against the normative fn:replace behavior, not
   sanctioned spec behavior.
+
+## Resolved in the 2026-10 spec revision
+
+These supersede the corresponding 2026-07 entries below.
+
+- **Flat sequences** (§3.1, §3.2, §3.8 SEQ): sequences are XDM-flat; Unit and
+  `Variable` leave no item, a sequence-valued element contributes its items, and a
+  `Result` is one item (never dissolved). Supersedes "sequence-valued results stay
+  nested" under *ForEach output shape*.
+- **ForEach / Iterate results** (§4.1): the concatenation of the iteration values;
+  an array `operation` yields the concatenation of its element values per
+  iteration. Supersedes "operation arrays yield the last non-Unit value".
+- **Same-target rule** (§3.6): two iterations of one `ForEach` updating the same
+  reported URI → `ValueError`, raised when the second write is reported; nested
+  `ForEach` writes count for every enclosing iteration.
+- **Filter by name** (§4.1): a string Literal on a `Binding` looks the variable up
+  (bare, `?x`, `$x`); a miss → `ValueError`; other pairings → `TypeError`.
+  Supersedes *Filter signature* below.
+- **SELECT/CONSTRUCT/DESCRIBE `graph` operand** (§4.3): exactly one of
+  `endpoint`/`graph`; neither → `KeyError`, both → `TypeError`; `graph` is pure.
+- **Write contract** (§4.4, §3.7): single-row `Result` (`status`, `url` = Location
+  or effective request URI); non-2xx write → `ValueError`, non-2xx read →
+  `HTTPError`; `If-Match` from a `HEAD` with the write's `Accept`.
+- **Relative `Location`** (§4.4): resolved against the effective request URI
+  (RFC 3986 §5).
+- **SPARQLString empty `context`** (§4.3): the `ValueError` is raised before the
+  model is called.
+- **Schema `bindings`** (§4.6): optional `Result` whose `subject` column scopes the
+  extraction via `VALUES`; no `subject` / no rows → `ValueError`, non-Result →
+  `TypeError`.
 
 ## Resolved in the 2026-07 spec revision
 
@@ -80,8 +118,8 @@ and the corresponding tests are un-skipped.
   variables and context never shadow; misses → `ValueError`.
 - **Current on unset context** (§3.5): `ValueError` — only ForEach establishes a
   context.
-- **Execute narrative** (§4.1): evaluates a quoted operation form in the current
-  context and the current variable environment.
+- **Execute** (§4.1): removed from the algebra — it was the MCP-era entry point
+  and no document uses it.
 - **Extract\* URI role** (§4.6): the URI names a SPARQL endpoint.
 - **Error semantics** (§3.7): normative exception table — unknown `@op` →
   `ValueError`, type mismatch → `TypeError`, missing required argument → `KeyError`,
