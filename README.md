@@ -140,10 +140,44 @@ _Here and throughout this guide, the client certificate/password arguments are o
 
 ### As MCP server
 
+#### Install
+
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/). Add this to your MCP client configuration (e.g. `claude_desktop_config.json`):
+
+```json
+{
+    "mcpServers": {
+        "web-algebra": {
+            "command": "uvx",
+            "args": ["--from", "web-algebra", "web-algebra-mcp"],
+            "env": {
+                "CERT_PEM_PATH": "/path/to/LinkedDataHub/ssl/owner/cert.pem",
+                "CERT_PASSWORD": "********"
+            }
+        }
+    }
+}
+```
+
+or with Claude Code:
+
+```bash
+claude mcp add web-algebra -e CERT_PEM_PATH=/path/to/LinkedDataHub/ssl/owner/cert.pem -e CERT_PASSWORD=******** -- uvx --from web-algebra web-algebra-mcp
+```
+
+Environment variables:
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `CERT_PEM_PATH` | No | Path to the LinkedDataHub owner certificate (PEM). Only needed for LinkedDataHub operations. |
+| `CERT_PASSWORD` | No | Password for the certificate above. |
+
+The MCP server does not need `OPENAI_API_KEY`; that is only used by the standalone natural-language mode.
+
 #### stdio transport
 
 ```bash
-uv run python -m web_algebra
+uv run web-algebra-mcp
 ```
 
 #### Streamable HTTP transport
@@ -180,9 +214,9 @@ Web Algebra's settings:
     <dd>http://127.0.0.1:8000/mcp</dd>
 </dl>
 
-#### [Claude Desktop](https://claude.ai/download) tool config
+#### [Claude Desktop](https://claude.ai/download) tool config from a local checkout
 
-Add Web Algebra entry (that uses stdio transport) to the `mcpServer` configuration your `claude_desktop_config.json` file:
+To run the MCP server from a local checkout instead of the [published package](#install), add a Web Algebra entry (that uses stdio transport) to the `mcpServer` configuration your `claude_desktop_config.json` file:
 ```json
 {
     "mcpServers": {

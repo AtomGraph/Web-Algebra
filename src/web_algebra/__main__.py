@@ -13,5 +13,9 @@ async def serve():
         await server.run(read_stream, write_stream, options)
 
 
-if __name__ == "__main__":
+def main():
     asyncio.run(serve())
+
+
+if __name__ == "__main__":
+    main()
