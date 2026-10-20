@@ -274,7 +274,9 @@ The focus accessors, named after their XSLT/XPath counterparts:
 - `Value` with an unprefixed name looks the name up *in* the focus item.
   The item shapes are **closed**: a `Binding` (SPARQL row) yields the term
   bound to that variable name; a mapping (e.g. a JSON object item) yields
-  the member value. A miss, or any other item shape, raises `ValueError`.
+  the member value. A miss — a name the item does not have, including a
+  variable that a `Binding` leaves unbound (an `OPTIONAL` that did not
+  match) — or any other item shape, raises `ValueError`.
 
 ### 3.6 Effects and ordering
 
@@ -768,6 +770,13 @@ format is negotiated transparently (SPARQL Results for `SELECT`, an RDF
 serialization for `CONSTRUCT`/`DESCRIBE`) — a response that does not parse as
 the negotiated format raises `ValueError` (§3.7).
 
+Each operation takes a query of its own form: `SELECT` a `SELECT` query,
+`CONSTRUCT` a `CONSTRUCT` query, `DESCRIBE` a `DESCRIBE` query. A query that
+does not parse, or is of another form, raises `ValueError`, before any
+network I/O. An `endpoint` is used as given, a query string of its own
+included (`…/sparql?default-graph-uri=…`): the query is sent as one more
+parameter of the SPARQL 1.1 Protocol request.
+
 **SELECT** — execute a SPARQL SELECT query over an endpoint or a graph.
 ```
 Abstract: (URI + Graph) × Literal → Result
@@ -805,10 +814,18 @@ Python:   def execute(self, query, var, binding_value) -> Literal
 JSON:     query: Literal · var: Literal (variable name, with or without `?`)
           · binding: URI + Literal (Term or SPARQL JSON term form, §2.4)
 ```
-- Matches both `?var` and `$var` occurrences at token boundaries. A URI value
-  serializes as `<iri>`; a Literal as a quoted literal with its language tag
-  or datatype. A `BNode` value raises `TypeError` (a blank-node label in a
-  query is a fresh variable, not a reference — substitution would be
+- Matches both `?var` and `$var` occurrences at token boundaries, and
+  changes nothing else: the result is the query with those occurrences
+  replaced, and a `var` that does not occur leaves the query unchanged.
+- The value is written in SPARQL syntax, as `Values` writes it, and inserted
+  as it is — nothing in it is read as a reference or an escape of the
+  substitution. A URI serializes as `<iri>`; one containing a character that
+  a SPARQL `IRIREF` excludes (space, `<`, `>`, `"`, `{`, `}`, `|`, `^`, `` ` ``,
+  `\`, or a control character) raises `ValueError`. A Literal serializes as
+  a quoted string with `\`, `"`, line feed and carriage return escaped
+  (SPARQL `ECHAR`), followed by its language tag or `^^<datatype>`; a simple
+  literal has neither. A `BNode` value raises `TypeError` (a blank-node label
+  in a query is a fresh variable, not a reference — substitution would be
   meaningless).
 - The substitution is textual, not parse-aware; it can produce an invalid
   query if `var` collides with content inside string literals of the query.
@@ -1107,6 +1124,10 @@ URI extended by `slug` and `/`; without a `slug` the segment is a fresh
 lowercase UUID, as in the LinkedDataHub CLI. The write is a `PUT`, so a
 document already at that URI is replaced.
 
+A `fragment` names the resource an operation creates in the document,
+`url#fragment`; it is given with or without the leading `#`. Without one the
+resource is a blank node.
+
 `ldh-AddSelect` and `ldh-AddConstruct` record a stored query (`sp:Select`,
 `sp:Construct`) in the document. Two differences between the serializations
 are forced by the XML one running as a service: its `AddFile` takes `file`
@@ -1115,8 +1136,10 @@ program upload any file the server can read; and it leaves out the
 `Generate*` operations, which only the JSON serialization has.
 
 `ldh-AddFile` uploads the file's bytes and appends its description to `url`.
-Its `url` is the uploaded file's URI, not the document's: LinkedDataHub
-stores the bytes at `uploads/{sha1}` resolved against the application's base
-URI, `sha1` being the hex SHA-1 of the bytes. That is the URI an
-`ldh-AddObjectBlock` places. LinkedDataHub appends an upload rather than
+Its `url` is the uploaded file's URI, not the document's: the resource the
+document describes, after the upload, with `foaf:sha1` equal to the hex SHA-1
+of the bytes (LinkedDataHub stores them at `uploads/{sha1}` resolved against
+the application's base URI, which a client cannot assume to be the origin).
+That is the URI an `ldh-AddObjectBlock` places. A document that does not
+describe the upload after a 2xx answer raises `ValueError`. LinkedDataHub appends an upload rather than
 rewriting the document, and asks no `If-Match` of it.
