@@ -18,11 +18,11 @@
   - `$label` ← `SELECT` (with `Substitute`)
   - `ldh-AddObjectBlock`
 
-Operations used: `Concat`, `Filter`, `GET`, `Iterate`, `SELECT`, `Str`, `Substitute`, `URI`, `Value`, `Variable`, `ldh-AddObjectBlock`, `ldh-AddXHTMLBlock`, `ldh-CreateContainer`, `ldh-CreateItem`.
+Operations used: `Concat`, `Filter`, `GET`, `Iterate`, `SELECT`, `Substitute`, `URI`, `Value`, `Variable`, `ldh-AddObjectBlock`, `ldh-AddXHTMLBlock`, `ldh-CreateContainer`, `ldh-CreateItem`.
 
 ## Result
 
-From a run on 2026-10-21 against LinkedDataHub ee5905b20 at `https://localhost:4443/`, in 2.2 s. Counts and names come from the live sources and may differ on another day; the shape should not.
+From a run on 2026-10-21 against LinkedDataHub ee5905b20 at `https://localhost:4443/`, in 1.0 s. Counts and names come from the live sources and may differ on another day; the shape should not.
 
 2 documents under `https://localhost:4443/unesco-concept-trail/`:
 

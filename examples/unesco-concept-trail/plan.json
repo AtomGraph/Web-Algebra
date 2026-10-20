@@ -178,14 +178,9 @@
               }
             },
             "title": {
-              "@op": "Str",
+              "@op": "Value",
               "args": {
-                "input": {
-                  "@op": "Value",
-                  "args": {
-                    "name": "$label"
-                  }
-                }
+                "name": "$label"
               }
             }
           }
