@@ -1,3 +1,4 @@
+from importlib.metadata import version
 from typing import Sequence, List, Type
 import logging
 import os
@@ -17,7 +18,7 @@ from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-server = Server("web-algebra", "1.0.0")
+server = Server("web-algebra", version("web-algebra"))
 
 # Initialize settings from environment variables
 cert_pem_path = os.getenv("CERT_PEM_PATH")
