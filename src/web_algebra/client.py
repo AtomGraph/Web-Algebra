@@ -5,6 +5,8 @@ import json
 import time
 import urllib.error
 import urllib.parse
+
+from web_algebra.rfc3986 import resolve
 import urllib.request
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -42,8 +44,20 @@ class WriteRecorder(Protocol):
 
 
 class HTTPRedirectHandler308(urllib.request.HTTPRedirectHandler):
+    # urllib dispatches a 308 to http_error_308 only from Python 3.11; before
+    # that a 308 was an error even for a GET
+    http_error_308 = urllib.request.HTTPRedirectHandler.http_error_302
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        """Handle 308 Permanent Redirect by preserving method and body"""
+        """Follow a redirect for a read only; 308 preserves the method.
+
+        A write is not followed: its body was written against the request URI,
+        so resending it elsewhere writes a different resource from the one the
+        program named (formal-semantics.md §4.4). Returning None leaves the 3xx
+        as an HTTPError, which `send` reports as a refused write.
+        """
+        if req.get_method() not in ("GET", "HEAD"):
+            return None
         if code == 308:
             return urllib.request.Request(
                 newurl, data=req.data, headers=req.headers, method=req.get_method()
@@ -87,8 +101,13 @@ def send(
     except urllib.error.HTTPError as e:
         if method not in MUTATING_METHODS:
             raise
-        raise WriteRefusedError(method, request.full_url, e.code, http_reason(e)) from None
-    if method in MUTATING_METHODS and not 200 <= response.status < 300:
+        # a 303 See Other answered to a write reports success: the write was
+        # made and Location names its result (Post/Redirect/Get) - it is the
+        # url reported, not dereferenced; any other non-2xx is a refusal
+        if e.code != 303:
+            raise WriteRefusedError(method, request.full_url, e.code, http_reason(e)) from None
+        response = e
+    if method in MUTATING_METHODS and not (200 <= response.status < 300 or response.status == 303):
         raise WriteRefusedError(method, request.full_url, response.status, response.reason)
     if recorder is not None and method in MUTATING_METHODS:
         recorder.record(method, written_url(response))
@@ -118,7 +137,7 @@ def written_url(response: HTTPResponse) -> str:
     as a relative reference may be — otherwise the effective request URI."""
     location = response.headers.get("Location") if response.headers else None
     if location:
-        return urllib.parse.urljoin(response.geturl(), location)
+        return resolve(response.geturl(), location)
     return response.geturl()
 
 
@@ -463,18 +482,25 @@ class SPARQLClient:
             raise ValueError(f"Unsupported query type: {query_type}")
 
         headers = {"Accept": accept}
+        # an endpoint is used as given, a query string of its own included
+        # (…/sparql?default-graph-uri=…): the query is one more parameter of the
+        # SPARQL 1.1 Protocol request (formal-semantics.md §4.3)
+        endpoint = urllib.parse.urlsplit(endpoint_url)
+        params = urllib.parse.parse_qsl(endpoint.query, keep_blank_values=True)
+        params.append(("query", query_string))
         if post:
             headers["Content-Type"] = "application/x-www-form-urlencoded"
             request = urllib.request.Request(
-                endpoint_url,
-                data=urllib.parse.urlencode({"query": query_string}).encode("utf-8"),
+                urllib.parse.urlunsplit(endpoint._replace(query="")),
+                data=urllib.parse.urlencode(params).encode("utf-8"),
                 headers=headers,
                 method="POST",
             )
         else:
-            # Encode URL parameters
-            params = urllib.parse.urlencode({"query": query_string})
-            request = urllib.request.Request(f"{endpoint_url}?{params}", headers=headers)
+            request = urllib.request.Request(
+                urllib.parse.urlunsplit(endpoint._replace(query=urllib.parse.urlencode(params))),
+                headers=headers,
+            )
         response = self.opener.open(request)
         data = response.read()
 

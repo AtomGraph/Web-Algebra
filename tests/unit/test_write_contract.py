@@ -2,7 +2,8 @@
 and PATCH, and §3.7's error table.
 - A write returns a single-row Result with variables `status` (xsd:integer
   HTTP status) and `url`: the response's Location when it has one, otherwise
-  the effective request URI after redirects.
+  the request URI. A 303 answered to a write reports success (url = its
+  Location, not dereferenced); any other 3xx is an error and is not followed.
 - A response outside 2xx is an error (ValueError, not urllib's HTTPError);
   transport failures (no response) propagate unwrapped.
 - If-Match: the entity tag is read with HEAD, sending the same Accept as the
@@ -15,6 +16,7 @@ HTTP is stubbed at the urllib boundary (tests/http_stub.py); no network.
 
 from __future__ import annotations
 
+import hashlib
 import urllib.error
 
 import pytest
@@ -97,35 +99,105 @@ class TestWriteResult:
         row = _single_row(_write(method, settings, EX + "container/"))
         assert str(row["url"]) == child
 
-    def test_url_is_effective_request_uri_after_redirects(
+    def test_url_is_the_request_uri_without_location(
         self, method, settings, http_stub
     ):
-        # §4.4: without Location, url is the effective request URI after
-        # redirects (what urllib reports as the response URL)
-        moved = EX + "moved"
-        http_stub.handler = _writes_answered(
-            method, lambda: StubResponse(200, url=moved)
-        )
+        # §4.4: without Location, url is the request URI
+        http_stub.handler = _writes_answered(method, lambda: StubResponse(200))
         row = _single_row(_write(method, settings))
-        assert str(row["url"]) == moved
+        assert str(row["url"]) == DOC
 
     def test_relative_location(self, method, settings, http_stub):
-        # §4.4: a relative Location is resolved against the effective request
-        # URI (RFC 3986 §5)
+        # §4.4: a relative Location is resolved against the request URI
+        # (RFC 3986 §5)
         http_stub.handler = _writes_answered(
             method, lambda: StubResponse(201, {"Location": "child"})
         )
         row = _single_row(_write(method, settings, EX + "container/"))
         assert str(row["url"]) == EX + "container/child"
 
-    def test_relative_location_after_redirect(self, method, settings, http_stub):
-        # §4.4: the base is the *effective* request URI, after redirects
+    def test_relative_location_with_dot_segments(self, method, settings, http_stub):
+        # §4.4: a relative Location is resolved against the request URI per
+        # RFC 3986 §5, dot segments included
         http_stub.handler = _writes_answered(
-            method,
-            lambda: StubResponse(201, {"Location": "child"}, url=EX + "moved/"),
+            method, lambda: StubResponse(201, {"Location": "../sibling/"})
         )
+        row = _single_row(_write(method, settings, EX + "container/doc/"))
+        assert str(row["url"]) == EX + "container/sibling/"
+
+
+@pytest.mark.parametrize("method", WRITES)
+@pytest.mark.parametrize("status", [301, 302, 307, 308])
+class TestWriteRedirect:
+    def test_a_redirect_answered_to_a_write_is_an_error(
+        self, method, status, settings, http_wire
+    ):
+        # §4.4: a 3xx answered to a write is a non-2xx response - an error
+        http_wire.handler = _writes_answered(
+            method, lambda: StubResponse(status, {"Location": DOC + "/"})
+        )
+        with pytest.raises(ValueError):
+            _write(method, settings)
+
+    def test_a_redirect_answered_to_a_write_is_not_followed(
+        self, method, status, settings, http_wire
+    ):
+        # §4.4: the body was written against the request URI; it is not resent
+        # to the URI the redirect names
+        http_wire.handler = _writes_answered(
+            method, lambda: StubResponse(status, {"Location": DOC + "/"})
+        )
+        with pytest.raises(ValueError):
+            _write(method, settings)
+        assert all(r.full_url == DOC for r in http_wire.requests)
+        assert len([r for r in http_wire.requests if r.get_method() not in ("HEAD", "GET")]) == 1
+
+
+@pytest.mark.parametrize("method", WRITES)
+class TestWriteSeeOther:
+    def _see_other(self, method, http_wire, location):
+        http_wire.handler = _writes_answered(
+            method, lambda: StubResponse(303, {"Location": location})
+        )
+
+    def test_303_reports_success(self, method, settings, http_wire):
+        # §4.4: a 303 See Other answered to a write reports success
+        self._see_other(method, http_wire, EX + "result")
+        row = _single_row(_write(method, settings))
+        assert int(row["status"]) == 303
+
+    def test_303_url_is_its_location(self, method, settings, http_wire):
+        # §4.4: the url reported is the Location, resolved against the
+        # request URI
+        self._see_other(method, http_wire, "result/1")
         row = _single_row(_write(method, settings, EX + "container/"))
-        assert str(row["url"]) == EX + "moved/child"
+        assert str(row["url"]) == EX + "container/result/1"
+
+    def test_303_location_is_not_dereferenced(self, method, settings, http_wire):
+        # §4.4: the Location is reported, not dereferenced
+        self._see_other(method, http_wire, EX + "result")
+        _write(method, settings)
+        assert all(r.full_url == DOC for r in http_wire.requests)
+        assert [r.get_method() for r in http_wire.requests].count(method) == 1
+
+
+class TestGetFollowsRedirects:
+    def test_get_follows_a_redirect(self, settings, http_wire):
+        # §4.4: a GET follows redirects
+        moved = EX + "moved"
+
+        def handler(request):
+            if request.full_url == DOC:
+                return StubResponse(308, {"Location": moved})
+            return StubResponse(
+                200,
+                {"Content-Type": "application/n-triples"},
+                f"<{moved}> <{EX}p> \"v\" .\n".encode(),
+            )
+
+        http_wire.handler = handler
+        graph = Operation.get("GET")(settings=settings).execute(URIRef(DOC))
+        assert (URIRef(moved), URIRef(EX + "p"), Literal("v")) in graph
 
 
 @pytest.mark.parametrize("method", WRITES)
@@ -234,10 +306,25 @@ LDH_WRITES = {
 
 @pytest.mark.parametrize("op", sorted(LDH_WRITES))
 class TestLdhWriteIfMatch:
-    def _run(self, op, settings, tmp_path):
+    def _run(self, op, settings, http_stub, tmp_path):
         path = tmp_path / "upload.txt"
         path.write_bytes(b"bytes")
         _, args, _ = LDH_WRITES[op]
+        writes = http_stub.handler
+        sha1 = hashlib.sha1(b"bytes").hexdigest()
+
+        def handler(request):
+            # Appendix A: after an upload the document describes the file with
+            # foaf:sha1, which is how ldh-AddFile finds the file's URI
+            if request.get_method() == "GET" and request.full_url == DOC:
+                return StubResponse(
+                    200,
+                    {"Content-Type": "application/n-triples"},
+                    f'<{EX}uploads/{sha1}> <http://xmlns.com/foaf/0.1/sha1> "{sha1}" .\n'.encode(),
+                )
+            return writes(request)
+
+        http_stub.handler = handler
         Operation.process_json(settings, {"@op": op, "args": args(path)})
 
     def test_etag_from_head_is_sent_as_if_match(self, op, settings, http_stub, tmp_path):
@@ -249,7 +336,7 @@ class TestLdhWriteIfMatch:
             lambda: StubResponse(200),
             head=lambda: StubResponse(200, {"ETag": '"abc123"'}),
         )
-        self._run(op, settings, tmp_path)
+        self._run(op, settings, http_stub, tmp_path)
         [write] = http_stub.with_method(method)
         [head] = http_stub.with_method("HEAD")
         assert write.full_url == head.full_url == url
@@ -262,7 +349,7 @@ class TestLdhWriteIfMatch:
         http_stub.handler = _writes_answered(
             method, lambda: StubResponse(201), head=lambda: StubResponse(404)
         )
-        self._run(op, settings, tmp_path)
+        self._run(op, settings, http_stub, tmp_path)
         [write] = http_stub.with_method(method)
         assert request_header(write, "If-Match") is None
 

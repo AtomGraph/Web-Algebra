@@ -75,6 +75,15 @@ wheels = [
 ]
 
 [[package]]
+name = "elementpath"
+version = "5.1.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/9d/766386c47959bb8b014242af8770c869350884a3c3f7054375576e11f30a/elementpath-5.1.4.tar.gz", hash = "sha256:3c912a9c41311ac5244c038867670d7c0b0fec0e444813608e5b846dbb3428ac", size = 381114, upload-time = "2026-08-08T20:29:22.963Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl", hash = "sha256:5ec8d7bb44b16c98414a6a95e20cb150f3cbfc3cac65edc14773288c7a937376", size = 261881, upload-time = "2026-08-08T20:29:20.649Z" },
+]
+
+[[package]]
 name = "exceptiongroup"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -920,6 +929,7 @@ name = "web-algebra"
 version = "2.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "elementpath" },
     { name = "mcp", extra = ["cli"] },
     { name = "openai" },
     { name = "pydantic" },
@@ -936,6 +946,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "elementpath", specifier = ">=5" },
     { name = "mcp", extras = ["cli"], specifier = "==1.10.1" },
     { name = "openai" },
     { name = "pydantic", specifier = "<2.14" },

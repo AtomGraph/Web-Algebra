@@ -1,5 +1,5 @@
 from typing import Any
-from urllib.parse import urljoin
+from web_algebra.rfc3986 import resolve
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
@@ -48,7 +48,8 @@ class ResolveURI(Operation, MCPTool):
 
         base_str = str(base)
         relative_str = str(relative)
-        resolved_uri = urljoin(base_str, relative_str)
+        # RFC 3986 §5.2 for a base of any scheme (formal-semantics.md §4.2)
+        resolved_uri = resolve(base_str, relative_str)
         return URIRef(resolved_uri)
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> URIRef:

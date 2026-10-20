@@ -3,6 +3,7 @@ import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
 from web_algebra.operation import Operation
+from web_algebra.operations.linkeddatahub.fragments import fragment_id
 from web_algebra.operations.linked_data.post import POST
 
 
@@ -133,12 +134,12 @@ class AddConstruct(POST):
             raise TypeError(
                 f"AddConstruct.execute expects query to be string Literal, got {type(query)}"
             )
-        if not Operation.is_string_literal(title):
+        if not Operation.is_string_compatible(title):
             raise TypeError(
                 f"AddConstruct.execute expects title to be string Literal, got {type(title)}"
             )
         if description is not None and (
-            not Operation.is_string_literal(description)
+            not Operation.is_string_compatible(description)
         ):
             raise TypeError(
                 f"AddConstruct.execute expects description to be string Literal, got {type(description)}"
@@ -156,9 +157,9 @@ class AddConstruct(POST):
 
         url_str = str(url)
         query_str = str(query)
-        title_str = str(title)
-        description_str = str(description) if description else None
-        fragment_str = str(fragment) if fragment else None
+        title_str = Operation.jsonld_text(title)
+        description_str = Operation.jsonld_text(description) if description else None
+        fragment_str = fragment_id(fragment)
         service_str = str(service) if service else None
 
         logging.info(

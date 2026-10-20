@@ -2,6 +2,7 @@ from typing import Any
 import logging
 import json
 from mcp import types
+from rdflib.query import Result
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
 from web_algebra.mcp_tool import MCPTool
@@ -66,7 +67,7 @@ class LDHList(Operation, MCPTool):
         self,
         url: URIRef,
         endpoint: URIRef,
-    ) -> list[dict]:
+    ) -> Result:
         """Pure function: list LinkedDataHub children with RDFLib terms"""
         if not isinstance(url, URIRef):
             raise TypeError(
@@ -93,17 +94,13 @@ class LDHList(Operation, MCPTool):
 
         select = SELECT(settings=self.settings, context=self.context)
         # Direct call with RDFLib terms
-        result = select.execute(endpoint, query)
-
-        # Convert JSONResult to dict if needed
-        if hasattr(result, "to_json") and callable(result.to_json):
-            return result.to_json()
-        else:
-            return result
+        # a Result, one row per child (formal-semantics.md Appendix A), so the
+        # listing composes with ForEach, Filter and Bindings like any SELECT
+        return select.execute(endpoint, query)
 
     def execute_json(
         self, arguments: dict[str, str], variable_stack: list = None
-    ) -> list[dict]:
+    ) -> Result:
         """JSON execution: process arguments and delegate to execute()"""
         # Process required arguments
         url_data = Operation.process_json(
@@ -149,11 +146,16 @@ class LDHList(Operation, MCPTool):
         """MCP execution: plain args → plain results"""
         # Convert plain arguments to RDFLib terms
         url = URIRef(arguments["url"])
-        endpoint = URIRef(arguments["endpoint"])
+        if "endpoint" in arguments:
+            endpoint = URIRef(arguments["endpoint"])
+        elif "base" in arguments:
+            base = arguments["base"] if arguments["base"].endswith("/") else arguments["base"] + "/"
+            endpoint = URIRef(base + "sparql")
+        else:
+            raise ValueError("ldh-List requires either 'endpoint' or 'base'")
 
-        # Call pure function
-        json_data = self.execute(url, endpoint)
-        json_str = json.dumps(json_data)
+        # Call pure function; the Result goes out as SPARQL Results JSON
+        json_str = json.dumps(self.execute(url, endpoint).to_json())
 
         logging.info("Returning SPARQL Results JSON data as text content.")
         return [types.TextContent(type="text", text=json_str)]

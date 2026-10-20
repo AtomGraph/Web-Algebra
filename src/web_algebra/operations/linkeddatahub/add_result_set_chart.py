@@ -3,6 +3,7 @@ import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
 from web_algebra.operation import Operation
+from web_algebra.operations.linkeddatahub.fragments import fragment_id
 from web_algebra.operations.linked_data.post import POST
 
 
@@ -176,7 +177,7 @@ class AddResultSetChart(POST):
             raise TypeError(
                 f"AddResultSetChart.execute expects query to be URIRef, got {type(query)}"
             )
-        if not Operation.is_string_literal(title):
+        if not Operation.is_string_compatible(title):
             raise TypeError(
                 f"AddResultSetChart.execute expects title to be string Literal, got {type(title)}"
             )
@@ -197,7 +198,7 @@ class AddResultSetChart(POST):
                 f"AddResultSetChart.execute expects series_var_name to be string Literal, got {type(series_var_name)}"
             )
         if description is not None and (
-            not Operation.is_string_literal(description)
+            not Operation.is_string_compatible(description)
         ):
             raise TypeError(
                 f"AddResultSetChart.execute expects description to be string Literal, got {type(description)}"
@@ -211,12 +212,12 @@ class AddResultSetChart(POST):
 
         url_str = str(url)
         query_str = str(query)
-        title_str = str(title)
+        title_str = Operation.jsonld_text(title)
         chart_type_str = str(chart_type)
         category_var_name_str = str(category_var_name)
         series_var_name_str = str(series_var_name)
-        description_str = str(description) if description else None
-        fragment_str = str(fragment) if fragment else None
+        description_str = Operation.jsonld_text(description) if description else None
+        fragment_str = fragment_id(fragment)
 
         logging.info(
             "Creating ResultSetChart for document <%s> with sp:Select resource <%s>",

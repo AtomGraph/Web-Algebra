@@ -396,6 +396,22 @@ class Operation(ABC, BaseModel):
         )
 
     @staticmethod
+    def is_string_compatible(term: Any) -> bool:
+        """True for a string-compatible literal (formal-semantics.md §4.2): a
+        simple or xsd:string literal, or a language-tagged one."""
+        return Operation.is_string_literal(term) or (
+            isinstance(term, Literal) and term.language is not None
+        )
+
+    @staticmethod
+    def jsonld_text(term: Literal) -> Any:
+        """A string-compatible literal as a JSON-LD value: a plain string, or a
+        value object that keeps its language tag."""
+        if term.language:
+            return {"@value": str(term), "@language": term.language}
+        return str(term)
+
+    @staticmethod
     def to_string_literal(term: Node) -> Literal:
         """Convert Literal terms to string-compatible literals, following SPARQL semantics"""
         if isinstance(term, Literal):

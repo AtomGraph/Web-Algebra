@@ -1,7 +1,6 @@
 import logging
 from typing import Any
 from rdflib import URIRef, Literal, BNode
-from rdflib.plugins.sparql import prepareQuery
 from rdflib.namespace import XSD
 from mcp import types
 import re
@@ -11,18 +10,20 @@ from web_algebra.operation import Operation
 
 class Substitute(Operation, MCPTool):
     """
-    Replaces variable placeholders in a SPARQL query with actual values from a given set of bindings.
-    For example, Replace("DESCRIBE ?x", "x", URI("new_value")) produces "DESCRIBE <new_value>".
-    """
+    Substitutes one variable of a SPARQL query with an RDF term, written in
+    SPARQL syntax (formal-semantics.md §4.3). For example,
+    Substitute("DESCRIBE ?x", "x", <http://ex.org/a>) produces
+    "DESCRIBE <http://ex.org/a>".
 
-    """
-    Note: not a safe replacement atm, can lead to invalid SPARQL queries!
+    The substitution is textual: it can produce an invalid query if the name
+    also occurs inside a string literal of the query. Prefer Values where it
+    applies.
     """
 
     @classmethod
     def description(cls) -> str:
-        return """Replaces variable placeholders in a SPARQL query with actual values from a given set of bindings. This operation allows for dynamic query construction by substituting variables with specific values, enabling flexible SPARQL query execution.
-        For example, Replace("DESCRIBE ?x", "x", URI("new_value")) produces "DESCRIBE <new_value>"."""
+        return """Substitutes one variable of a SPARQL query (every ?var and $var occurrence) with an RDF term, written in SPARQL syntax: a URI as <iri>, a literal as an escaped quoted string with its language tag or datatype. Nothing else in the query changes, and a variable that does not occur leaves the query unchanged. A URI that is not a valid SPARQL IRI raises an error; a blank node is rejected.
+        For example, Substitute("DESCRIBE ?x", "x", URI("http://ex.org/a")) produces "DESCRIBE <http://ex.org/a>"."""
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -78,16 +79,17 @@ class Substitute(Operation, MCPTool):
                 f"Substitute.execute expects binding_value to be URIRef or Literal, got {type(binding_value)}"
             )
 
-        query_str = str(query)
-        var_str = str(var)
+        name = str(var)
+        if name[:1] in ("?", "$"):
+            name = name[1:]
 
-        logging.info("Substituting variable %s in SPARQL query", var_str)
+        logging.info("Substituting variable %s in SPARQL query", name)
 
-        pss = ParameterizedSparqlString(query_str)
-        pss.set_param(var_str, binding_value)
-        substituted_query = pss.to_string()
-
-        return Literal(substituted_query, datatype=XSD.string)
+        term = sparql_term(binding_value)
+        # the replacement is a function, so nothing in the term is read as a
+        # group reference or an escape (a literal holding "\\1" stays "\\1")
+        pattern = re.compile(rf"[?$]{re.escape(name)}(?![\w\u00B7\u0300-\u036F\u203F-\u2040])")
+        return Literal(pattern.sub(lambda _: term, str(query)), datatype=XSD.string)
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> Literal:
         """JSON execution: process arguments and call pure function"""
@@ -136,101 +138,27 @@ class Substitute(Operation, MCPTool):
         return [types.TextContent(type="text", text=str(result))]
 
 
-class ParameterizedSparqlString:
-    def __init__(self, command, base_uri=None, prefixes=None):
-        self.command = command
-        self.base_uri = base_uri
-        self.params = {}
-        self.positional_params = {}
-        self.prefixes = prefixes or {}
+# characters a SPARQL IRIREF excludes: controls, space and <>"{}|^`\
+_IRIREF_EXCLUDED = re.compile(r'[\x00-\x20<>"{}|^`\\]')
+# SPARQL ECHAR: \t \b \n \r \f \" \\
+_ECHAR = str.maketrans({"\t": "\\t", "\b": "\\b", "\n": "\\n", "\r": "\\r", "\f": "\\f", '"': '\\"', "\\": "\\\\"})
 
-    def set_base_uri(self, base_uri):
-        self.base_uri = base_uri
 
-    def add_prefix(self, prefix, uri):
-        self.prefixes[prefix] = uri
+def sparql_term(node: Any) -> str:
+    """A URI or Literal in SPARQL syntax (formal-semantics.md §4.3 Substitute).
 
-    def set_param(self, var, value):
-        if var.startswith("?"):
-            var = var[1:]
-        self.params[var] = self._validate_value(value)
-
-    def set_param_positional(self, index, value):
-        self.positional_params[index] = self._validate_value(value)
-
-    def clear_param(self, var):
-        self.params.pop(var, None)
-
-    def clear_param_positional(self, index):
-        self.positional_params.pop(index, None)
-
-    def clear_params(self):
-        self.params.clear()
-        self.positional_params.clear()
-
-    def _validate_value(self, value):
-        if isinstance(value, (URIRef, Literal, BNode)):
-            return value
-        raise ValueError("Invalid RDFLib node type for parameter substitution.")
-
-    def _safe_replace(self, query, var, value):
-        safe_value = self._format_node(value)
-        pattern = re.compile(rf"([?$]{var})([^\w]|$)")
-        return pattern.sub(rf"{safe_value}\2", query)
-
-    def _format_node(self, node):
-        if isinstance(node, URIRef):
-            return f"<{node}>"
-        elif isinstance(node, Literal):
-            if node.language:
-                return f'"{node}"@{node.language}'
-            elif node.datatype:
-                return f'"{node}"^^<{node.datatype}>'
-            else:
-                return f'"{node}"'
-        else:
-            raise ValueError("Unsupported RDFLib node type")
-
-    def __str__(self):
-        return self.to_string()
-
-    def to_string(self):
-        query = self.command
-        for var, value in self.params.items():
-            query = self._safe_replace(query, var, value)
-
-        positional_pattern = re.compile(r"\?(\s|[;,.])")
-        index = 0
-        adj = 0
-
-        def replace_positional(match):
-            nonlocal index, adj, query
-            if index in self.positional_params:
-                node_str = self._format_node(self.positional_params[index])
-                index += 1
-                return node_str + match.group(1)
-            index += 1
-            return match.group(0)
-
-        query = positional_pattern.sub(replace_positional, query)
-
-        prefix_decls = "\n".join(
-            [f"PREFIX {p}: <{u}>" for p, u in self.prefixes.items()]
-        )
-
-        if self.base_uri:
-            query = f"BASE <{self.base_uri}>\n" + query
-
-        return prefix_decls + "\n" + query
-
-    def as_query(self):
-        """Parses the SPARQL string into a prepared query."""
-        return prepareQuery(self.to_string(), initNs=self.prefixes)
-
-    def copy(self):
-        new_instance = ParameterizedSparqlString(
-            self.command, self.base_uri, self.prefixes.copy()
-        )
-        new_instance.params = self.params.copy()
-        new_instance.positional_params = self.positional_params.copy()
-        return new_instance
+    A literal is a short quoted string in which every character SPARQL ECHAR
+    names is escaped, followed by its language tag or datatype.
+    """
+    if isinstance(node, URIRef):
+        if _IRIREF_EXCLUDED.search(str(node)):
+            raise ValueError(f"<{node}> is not a valid SPARQL IRI")
+        return f"<{node}>"
+    if isinstance(node, Literal):
+        lexical = str(node).translate(_ECHAR)
+        if node.language:
+            return f'"{lexical}"@{node.language}'
+        if node.datatype:
+            return f'"{lexical}"^^{sparql_term(node.datatype)}'
+        return f'"{lexical}"'
+    raise TypeError(f"Cannot write {type(node).__name__} as a SPARQL term")

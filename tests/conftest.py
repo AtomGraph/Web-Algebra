@@ -7,9 +7,11 @@ the registry, fixtures, and helpers may use code knowledge.
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import urllib.request
+import urllib.response
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +74,32 @@ def http_stub(monkeypatch) -> StubWeb:
         return web.open(request, data)
 
     monkeypatch.setattr(urllib.request.OpenerDirector, "open", _open)
+    return web
+
+
+@pytest.fixture
+def http_wire(monkeypatch) -> StubWeb:
+    """Answer every urllib request at the connection, offline, and record it.
+
+    Unlike ``http_stub``, which replaces ``OpenerDirector.open`` whole, this
+    patches only the HTTP and HTTPS handlers' ``*_open``, so the rest of the
+    opener chain - redirect handling, error processing - runs as it would on
+    the network. A 3xx answer is therefore followed or not as the client's own
+    handlers decide, and every request they send is recorded.
+    """
+    web = StubWeb()
+
+    def _open(self, request):
+        web.requests.append(request)
+        answer = web.handler(request)
+        response = urllib.response.addinfourl(
+            io.BytesIO(answer._body), answer.headers, request.full_url, answer.status
+        )
+        response.msg = answer.reason
+        return response
+
+    monkeypatch.setattr(urllib.request.HTTPHandler, "http_open", _open)
+    monkeypatch.setattr(urllib.request.HTTPSHandler, "https_open", _open)
     return web
 
 

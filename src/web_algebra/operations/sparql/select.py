@@ -17,6 +17,8 @@ class SELECT(QuerySource, ClientOperation, Operation, MCPTool):
     Executes SPARQL SELECT queries over an endpoint or a graph
     """
 
+    query_form: ClassVar[str] = "SelectQuery"
+
     client_class: ClassVar[Type] = SPARQLClient
 
 

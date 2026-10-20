@@ -1,5 +1,6 @@
-from typing import Any, Union
+from typing import Any, ClassVar, Union
 from rdflib import Graph, Literal, URIRef
+from rdflib.plugins.sparql.parser import parseQuery
 from web_algebra.operation import Operation
 
 
@@ -9,6 +10,9 @@ class QuerySource:
     `Graph` in hand (formal-semantics.md §4.3). Exactly one is given. The graph
     case is pure and local, so it never touches the client.
     """
+
+    # the rdflib parse-tree name of the one query form the operation takes
+    query_form: ClassVar[str]
 
     def resolve_source(
         self, arguments: dict, variable_stack: list
@@ -64,4 +68,14 @@ class QuerySource:
         if not Operation.is_string_literal(query):
             raise TypeError(
                 f"{self.name()} expects query to be string Literal, got {type(query).__name__}"
+            )
+        # each operation takes a query of its own form; one that does not parse,
+        # or is of another form, is refused here, before any network I/O (§4.3)
+        try:
+            form = parseQuery(str(query))[1].name
+        except Exception as e:
+            raise ValueError(f"{self.name()}: the query does not parse: {e}") from None
+        if form != self.query_form:
+            raise ValueError(
+                f"{self.name()} takes a {self.name()} query, got a {form.removesuffix('Query').upper()} query"
             )

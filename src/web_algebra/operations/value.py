@@ -46,13 +46,18 @@ class Value(Operation):
             if isinstance(context, Focus):
                 context = context.item
             if isinstance(context, ResultRow):
-                # SPARQL result row - access by variable name
+                # SPARQL result row - access by variable name. A projected
+                # variable the row leaves unbound (an OPTIONAL that did not
+                # match) reads as None in rdflib; that is a miss too.
                 try:
-                    return context[name]  # Already RDFLib term
+                    term = context[name]  # Already RDFLib term
                 except KeyError:
+                    term = None
+                if term is None:
                     raise VariableNotFoundError(
-                        f"Variable '{name}' not found in ResultRow"
+                        f"Variable '{name}' is not bound in this row"
                     )
+                return term
             elif isinstance(context, Mapping):
                 if name in context:
                     return context[name]

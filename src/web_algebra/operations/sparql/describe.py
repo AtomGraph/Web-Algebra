@@ -15,6 +15,8 @@ class DESCRIBE(QuerySource, ClientOperation, Operation, MCPTool):
     Executes a SPARQL DESCRIBE query against a specified endpoint and returns a JSON-LD response.
     """
 
+    query_form: ClassVar[str] = "DescribeQuery"
+
     client_class: ClassVar[Type] = SPARQLClient
 
 
