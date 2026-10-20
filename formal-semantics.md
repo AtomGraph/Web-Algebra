@@ -139,6 +139,9 @@ that turns the JSON-LD into a `Graph` — resolves them against its *target*
 URI (e.g. `PUT`'s `url`), by parsing with that URI as base. There is no
 document-global base IRI. Fragment references like `#service` therefore
 resolve against the document being written, which is the intended semantics.
+A data argument that has no target — the `graph` of `SELECT`, `CONSTRUCT` and
+`DESCRIBE` (§4.3) — is parsed with no base, so its IRIs must be absolute. The
+XML serialization's inline RDF/XML follows the same rule.
 
 ### 2.4 SPARQL JSON term form
 
@@ -683,6 +686,10 @@ Abstract: Sequence Literal → Literal
 Python:   def execute(self, inputs: List[Literal]) -> Literal
 JSON:     inputs: array of string-compatible Literal forms
 ```
+- `inputs` is a sequence form (§2.2): an element whose value is a sequence
+  contributes its items, as in XPath, where sequences do not nest —
+  `inputs: [ForEach(…), ", "]` concatenates every value of the `ForEach` and
+  the separator, like `fn:string-join(($values, ", "))`.
 - Result kind per SPARQL: if all inputs are typed `xsd:string`, so is the
   result; if all inputs carry the *same* language tag, the result carries it
   too; in all other cases (including the empty input sequence) the result is
@@ -862,7 +869,8 @@ JSON:     endpoint: URI · question: string-compatible Literal
   `projection` is given, the query is a `SELECT` that projects every named
   variable, named exactly so (it may project others as well), because the
   program reads those names from its rows.
-- `context` forms are evaluated eagerly, like any argument. Their values (a
+- `context` is a sequence form (§2.2), evaluated eagerly like any argument;
+  an element whose value is a sequence contributes its items. The values (a
   `Result`'s rows, a `Graph`) are shown to the model as what the endpoint
   holds, cut to a prompt-sized excerpt, before it writes the query. This is
   how a program explores an endpoint it does not know (a predicate
@@ -874,8 +882,10 @@ JSON:     endpoint: URI · question: string-compatible Literal
 - An answer that does not parse, or does not have the declared projection,
   goes back to the model with the reason, a bounded number of times, before
   the operation fails with `ValueError`. The implementation may also put the
-  query's pattern to `endpoint` as an `ASK`, and send a query that matches
-  nothing back too. That read decides the string and is never returned; the
+  query's `WHERE` pattern to `endpoint` as an `ASK` — the pattern alone, with
+  the query's `FROM`/`FROM NAMED` but without its projection, grouping,
+  `HAVING`, ordering, `LIMIT`/`OFFSET` or trailing `VALUES` — and send a query
+  whose pattern matches nothing back too. That read decides the string and is never returned; the
   rows are `SELECT`'s. Because an empty answer can be the true one, a query
   that still matches nothing after the last attempt is returned.
 - The generated query text is not otherwise specified.
@@ -898,11 +908,13 @@ request URI (RFC 3986 §5).
 A response outside the 2xx range is an error (`ValueError`, §3.7), as an
 `xsl:result-document` that cannot be written is: the status and the server's
 reason are reported, and nothing after the write runs. Transport failures
-propagate per §3.7. A redirect (3xx) answered to a write is such a response
-and is not followed: the body was written against the request URI, so
-resending it to another URI writes a different resource from the one the
-program named (a document's own triples would describe the old URI). A
-`GET` follows redirects.
+propagate per §3.7. A `303 See Other` answered to a write reports success,
+as in the Post/Redirect/Get pattern: the write was made and `Location` names
+its result, which is the `url` reported and is not dereferenced. Any other
+redirect (3xx) answered to a write is an error and is not followed: the body
+was written against the request URI, so resending it to another URI writes a
+different resource from the one the program named (a document's own triples
+would describe the old URI). A `GET` follows redirects.
 
 Some servers apply a write as read-modify-write and require a write to an
 existing resource to be conditional (`428 Precondition Required` without
@@ -1116,7 +1128,7 @@ operations' MCP tools, and an MCP tool name allows only ASCII letters, digits,
 | `ldh-AddXHTMLBlock` | `url: URI · value: Literal (XHTML) · title/description/fragment: Maybe Literal` |
 | `ldh-RemoveBlock` | `url: URI · block: Maybe URI` |
 | `ldh-GenerateOntologyViews` | `ontology: Graph · base_uri: URI · service_uri: URI` |
-| `ldh-GenerateClassContainers` | `ontology: Graph · parent_container: URI · endpoint: URI · service_uri: Maybe URI` |
+| `ldh-GenerateClassContainers` | `ontology: Graph · parent_container: URI · endpoint: URI · service_uri: URI` |
 | `ldh-GeneratePortal` | `endpoint: URI · ontology_namespace: URI · parent_container: URI` |
 
 `ldh-CreateContainer` and `ldh-CreateItem` write the document at the parent's
