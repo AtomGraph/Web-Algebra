@@ -78,7 +78,13 @@ many are breaking.
   `KeyError`), raised as subclasses of `WebAlgebraError` that also inherit
   the built-in, e.g. `UnknownOperationError`, `VariableNotFoundError`,
   `NoFocusError`, `WriteRefusedError`.
-- **rdflib** is pinned at 7.6.0, from 7.0.0. ([#39](https://github.com/AtomGraph/Web-Algebra/pull/39))
+- **rdflib** 7.6, from 7.0.0. ([#39](https://github.com/AtomGraph/Web-Algebra/pull/39))
+- **MCP SDK 2.x**, from 1.10.1, which clears its security advisories and those
+  of the packages it brought in (Starlette, AnyIO, python-multipart, …). The
+  HTTP transport is at `/mcp`. The server no longer offers resources: its one
+  resource listing failed on every call.
+- **Dependencies are ranges**, not exact pins, so the package installs beside
+  others; `uv.lock` keeps the development environment reproducible.
 
 ### Added
 
@@ -112,7 +118,7 @@ many are breaking.
 
 ### Changed
 
-- **The operation guide** [prompts/system.md](prompts/system.md), which the
+- **The operation guide** [src/web_algebra/prompts/system.md](src/web_algebra/prompts/system.md), which the
   model is given, is rewritten and checked by `tests/test_system_prompt.py`
   against each operation's schema and the spec: every example is
   well-formed, runs, and shows its actual result. ([#36](https://github.com/AtomGraph/Web-Algebra/pull/36))
@@ -127,8 +133,16 @@ many are breaking.
   document; only `ldh-AddXHTMLBlock` and `ldh-AddObjectBlock` show something
   on the page. ([#27](https://github.com/AtomGraph/Web-Algebra/pull/27))
 
+- **`web-algebra` reads the certificate** from `CERT_PEM_PATH` and
+  `CERT_PASSWORD`, as the MCP server does; `--cert_pem_path` and
+  `--cert_password` override them. ([#41](https://github.com/AtomGraph/Web-Algebra/pull/41))
+
 ### Fixed
 
+- **The prompts are part of the package**, so `web-algebra` without
+  `--from-json` runs when installed, not only from a checkout.
+- **An MCP tool's error** is the tool's result (`isError`), which the model
+  sees, and an unknown tool a protocol error.
 - A `GET` follows a `308` on Python 3.10, where `urllib` only learned to from
   3.11.
 - The `README` and the guide's examples pass URIs as `{"@id": …}`. The old

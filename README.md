@@ -29,7 +29,7 @@ The system is built around the `Operation` abstract base class that provides:
 
 ### Key Components
 
-- **[System Prompt](prompts/system.md)**: Complete operation definitions and JSON format specification
+- **[System Prompt](src/web_algebra/prompts/system.md)**: Complete operation definitions and JSON format specification
 - **[Formal Semantics](formal-semantics.md)**: Complete type system and operation catalog
 - **[Operation Interface](src/web_algebra/operation.py)**: Base class and JSON interpreter
 - **[Operation Implementations](src/web_algebra/operations/)**: Directory containing all available operations
