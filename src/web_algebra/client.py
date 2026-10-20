@@ -5,6 +5,8 @@ import json
 import time
 import urllib.error
 import urllib.parse
+
+from web_algebra.rfc3986 import resolve
 import urllib.request
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -118,7 +120,7 @@ def written_url(response: HTTPResponse) -> str:
     as a relative reference may be — otherwise the effective request URI."""
     location = response.headers.get("Location") if response.headers else None
     if location:
-        return urllib.parse.urljoin(response.geturl(), location)
+        return resolve(response.geturl(), location)
     return response.geturl()
 
 
