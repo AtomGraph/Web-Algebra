@@ -189,16 +189,14 @@ def document(example: Path, opener, settings) -> None:
         out += ["| " + " | ".join(cell(row.get(c, ""), container) for c in columns) + " |" for row in key]
     out += ["", "## Checks", "", "After the run, these hold on the instance ([`expect/`](expect/)):", ""]
     out += [f"- {'✅' if held else '❌'} `{name}`" for name, held in checks]
-    out += ["", "## Run it", "", "```bash",
-            f"uv run python src/web_algebra/main.py --from-json examples/{example.name}/plan.json \\",
-            "  --cert_pem_path $CERT_PEM_PATH --cert_password $CERT_PASSWORD",
+    out += ["", "## Run it", "", "With `CERT_PEM_PATH` and `CERT_PASSWORD` set to the LinkedDataHub owner certificate and its password:", "", "```bash",
+            f"uv run web-algebra --from-json examples/{example.name}/plan.json",
             "```", "", "or with its checks, cleaning up after itself:", "", "```bash",
-            f"CERT_PEM_PATH=... CERT_PASSWORD=... uv run pytest -m ldh tests/test_examples.py -k {example.name}",
+            f"uv run pytest -m ldh tests/test_examples.py -k {example.name}",
             "```", ""]
     if (example / "setup.json").exists():
         out[out.index("```bash") + 1:out.index("```bash") + 1] = [
-            f"uv run python src/web_algebra/main.py --from-json examples/{example.name}/setup.json \\",
-            "  --cert_pem_path $CERT_PEM_PATH --cert_password $CERT_PASSWORD"]
+            f"uv run web-algebra --from-json examples/{example.name}/setup.json"]
     (example / "README.md").write_text("\n".join(out))
     print(f"{example.name}: {len(docs)} documents, {sum(h for _, h in checks)}/{len(checks)} checks, {seconds:.1f} s")
 

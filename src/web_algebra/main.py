@@ -135,12 +135,14 @@ def cli() -> None:
     )
     args = parser.parse_args()
 
-    if args.cert_pem_path and args.cert_password:
-        settings = LinkedDataHubSettings(
-            cert_pem_path=args.cert_pem_path, cert_password=args.cert_password
-        )
-    else:
-        settings = BaseSettings()
+    # the flags override CERT_PEM_PATH / CERT_PASSWORD, which the settings
+    # read from the environment, as the MCP server and the tests do
+    overrides = {
+        k: v
+        for k, v in (("cert_pem_path", args.cert_pem_path), ("cert_password", args.cert_password))
+        if v
+    }
+    settings = LinkedDataHubSettings(**overrides)
 
     main(settings, args.from_json)
 
