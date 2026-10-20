@@ -3,27 +3,23 @@ from typing import Any
 from rdflib import URIRef, Literal, BNode
 from rdflib.namespace import XSD
 from mcp import types
-import re
 from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
+from web_algebra.sparql_restrict import restrict
 
 
 class Substitute(Operation, MCPTool):
     """
-    Substitutes one variable of a SPARQL query with an RDF term, written in
-    SPARQL syntax (formal-semantics.md §4.3). For example,
-    Substitute("DESCRIBE ?x", "x", <http://ex.org/a>) produces
-    "DESCRIBE <http://ex.org/a>".
-
-    The substitution is textual: it can produce an invalid query if the name
-    also occurs inside a string literal of the query. Prefer Values where it
-    applies.
+    Restricts one variable of a SPARQL query or update to an RDF term
+    (formal-semantics.md §4.3, binding restriction): the variable stays a
+    variable and can only be bound to the term. Substitute is Values over a
+    one-row, one-column table.
     """
 
     @classmethod
     def description(cls) -> str:
-        return """Substitutes one variable of a SPARQL query (every ?var and $var occurrence) with an RDF term, written in SPARQL syntax: a URI as <iri>, a literal as an escaped quoted string with its language tag or datatype. Nothing else in the query changes, and a variable that does not occur leaves the query unchanged. A URI that is not a valid SPARQL IRI raises an error; a blank node is rejected.
-        For example, Substitute("DESCRIBE ?x", "x", URI("http://ex.org/a")) produces "DESCRIBE <http://ex.org/a>"."""
+        return """Gives one variable of a SPARQL query or update a value without removing the variable: an inline VALUES block restricting it to the term is joined into every group of the query, so the query stays valid, a SELECT still projects the variable and every result row still carries it. Subqueries that do not project the variable keep their own copy (it is renamed there). The query must not assign the variable itself (AS or VALUES). A URI is written as <iri>, a literal escaped; a blank node is rejected. Substitute is Values over a one-row table; use Values for several variables or rows.
+        For example, Substitute("SELECT ?city ?label WHERE { ?city rdfs:label ?label }", "city", URI("http://ex.org/C")) produces "SELECT ?city ?label WHERE { VALUES (?city) { (<http://ex.org/C>) } ?city rdfs:label ?label }"."""
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -83,13 +79,11 @@ class Substitute(Operation, MCPTool):
         if name[:1] in ("?", "$"):
             name = name[1:]
 
-        logging.info("Substituting variable %s in SPARQL query", name)
+        logging.info("Restricting variable %s in SPARQL query", name)
 
-        term = sparql_term(binding_value)
-        # the replacement is a function, so nothing in the term is read as a
-        # group reference or an escape (a literal holding "\\1" stays "\\1")
-        pattern = re.compile(rf"[?$]{re.escape(name)}(?![\w\u00B7\u0300-\u036F\u203F-\u2040])")
-        return Literal(pattern.sub(lambda _: term, str(query)), datatype=XSD.string)
+        # binding restriction (formal-semantics.md §4.3): ?name stays a
+        # variable, restricted to the term in every group of the query
+        return Literal(restrict(str(query), [name], [[binding_value]]), datatype=XSD.string)
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> Literal:
         """JSON execution: process arguments and call pure function"""
@@ -136,29 +130,3 @@ class Substitute(Operation, MCPTool):
 
         result = self.execute(query, var, binding_value)
         return [types.TextContent(type="text", text=str(result))]
-
-
-# characters a SPARQL IRIREF excludes: controls, space and <>"{}|^`\
-_IRIREF_EXCLUDED = re.compile(r'[\x00-\x20<>"{}|^`\\]')
-# SPARQL ECHAR: \t \b \n \r \f \" \\
-_ECHAR = str.maketrans({"\t": "\\t", "\b": "\\b", "\n": "\\n", "\r": "\\r", "\f": "\\f", '"': '\\"', "\\": "\\\\"})
-
-
-def sparql_term(node: Any) -> str:
-    """A URI or Literal in SPARQL syntax (formal-semantics.md §4.3 Substitute).
-
-    A literal is a short quoted string in which every character SPARQL ECHAR
-    names is escaped, followed by its language tag or datatype.
-    """
-    if isinstance(node, URIRef):
-        if _IRIREF_EXCLUDED.search(str(node)):
-            raise ValueError(f"<{node}> is not a valid SPARQL IRI")
-        return f"<{node}>"
-    if isinstance(node, Literal):
-        lexical = str(node).translate(_ECHAR)
-        if node.language:
-            return f'"{lexical}"@{node.language}'
-        if node.datatype:
-            return f'"{lexical}"^^{sparql_term(node.datatype)}'
-        return f'"{lexical}"'
-    raise TypeError(f"Cannot write {type(node).__name__} as a SPARQL term")

@@ -381,7 +381,7 @@ Runs a SPARQL `DESCRIBE` query over an endpoint or a graph in hand, and returns 
 
 ## Substitute(query: Literal, var: Literal, binding: URI + Literal) → Literal
 
-Replaces every `?var`/`$var` in a SPARQL query with a term, written in SPARQL syntax (escaped). `var` may be given with or without `?`. For a set of values, prefer `Values`.
+Gives one variable of a SPARQL query or update a value without removing the variable: the query is restricted so that the variable can only be bound to that term (an inline `VALUES` joined into every group), so the query stays valid, a `SELECT` still projects the variable, and every row still carries it. `var` may be given with or without `?`/`$`. The query must not assign the variable itself (`AS`, `VALUES`). `Substitute` is `Values` over a one-row, one-column table; use `Values` for several variables or rows.
 
 ### Example JSON
 ```json
@@ -396,12 +396,12 @@ Replaces every `?var`/`$var` in a SPARQL query with a term, written in SPARQL sy
 ```
 ### Result
 ```json
-"DESCRIBE <http://dbpedia.org/resource/Copenhagen>"
+"DESCRIBE ?city WHERE { VALUES (?city) { (<http://dbpedia.org/resource/Copenhagen>) } }"
 ```
 
 ## Values(query: Literal, data: Result, vars?: Sequence Literal) → Literal
 
-Appends a SPARQL `VALUES` block, built from a result's rows, to a query, so one query runs over the results of another. `vars` selects and orders the columns (default: all of them).
+Restricts variables of a SPARQL query or update to the rows of a result, so one query runs over the results of another (for example, describe or update all of them at once). The variables stay variables; the rows are joined into every group as inline `VALUES`. `vars` selects and orders the columns (default: all of them); a row that does not bind a column leaves it free (`UNDEF`). `Substitute` is the one-variable, one-value case.
 
 ### Example JSON
 ```json
@@ -421,7 +421,7 @@ Appends a SPARQL `VALUES` block, built from a result's rows, to a query, so one 
 ```
 ### Result
 ```json
-"DESCRIBE ?city WHERE { ?city ?p ?o } VALUES ?city { <http://example.org/copenhagen> }"
+"DESCRIBE ?city WHERE { VALUES (?city) { (<http://example.org/copenhagen>) } ?city ?p ?o }"
 ```
 
 ## SPARQLString(endpoint: URI, question: Literal, projection?: Sequence Literal, context?: Sequence Operation) → Literal
