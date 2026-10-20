@@ -1,12 +1,11 @@
 from typing import Any, Optional, ClassVar, Type
 import logging
 import mimetypes
-import urllib.parse
 from pathlib import Path
 
 from mcp import types
 from rdflib import Literal, URIRef
-from rdflib.namespace import XSD
+from rdflib.namespace import FOAF, XSD
 from rdflib.query import Result
 
 from web_algebra.client import FileClient
@@ -58,9 +57,10 @@ class AddFile(ClientOperation, Operation, MCPTool):
         - `content_type` — optional MIME-type override; auto-detected from
           the file path if absent.
 
-        Returns a result with `url` (the minted `<base>/uploads/{sha1}` URI
-        the file resource is now addressable at) and `status` (HTTP status
-        code) bindings.
+        Returns a result with `url` (the uploaded file's URI, as the document
+        describes it after the upload: `<base>/uploads/{sha1}`, `<base>` being
+        the application's base URI) and `status` (HTTP status code) bindings.
+        Place the file in the content with ldh-AddObjectBlock, `url` as value.
         """
 
     @classmethod
@@ -147,12 +147,21 @@ class AddFile(ClientOperation, Operation, MCPTool):
             filename=Path(path_str).name,
         )
 
-        # The minted file URI lives at `<scheme>://<host>/uploads/<sha1>`
-        # regardless of which target document we RDF/POSTed to. Reconstruct
-        # from the target URL's host so callers don't need to thread the
-        # base URL through separately.
-        parsed = urllib.parse.urlparse(url_str)
-        file_uri = f"{parsed.scheme}://{parsed.netloc}/uploads/{sha1}"
+        # The file's URI is where the server put the bytes, which a client
+        # cannot assume (LinkedDataHub: uploads/{sha1} against the
+        # application's base URI, not the origin). The document says: it now
+        # describes the upload with foaf:sha1 (formal-semantics.md Appendix A).
+        document = Operation.get("GET")(settings=self.settings, context=self.context).execute(url)
+        uploads = {
+            subject
+            for subject, value in document.subject_objects(FOAF.sha1)
+            if isinstance(subject, URIRef) and str(value).lower() == sha1
+        }
+        if len(uploads) != 1:
+            raise ValueError(
+                f"<{url_str}> does not describe the uploaded file (foaf:sha1 \"{sha1}\") after the upload"
+            )
+        file_uri = str(uploads.pop())
 
         logging.info("AddFile status %s → <%s>", response.status, file_uri)
 
