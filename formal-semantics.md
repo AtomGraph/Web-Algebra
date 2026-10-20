@@ -822,9 +822,9 @@ JSON:     query: Literal · var: Literal (variable name, with or without `?`)
   substitution. A URI serializes as `<iri>`; one containing a character that
   a SPARQL `IRIREF` excludes (space, `<`, `>`, `"`, `{`, `}`, `|`, `^`, `` ` ``,
   `\`, or a control character) raises `ValueError`. A Literal serializes as
-  a quoted string with `\`, `"`, line feed and carriage return escaped
-  (SPARQL `ECHAR`), followed by its language tag or `^^<datatype>`; a simple
-  literal has neither. A `BNode` value raises `TypeError` (a blank-node label
+  a quoted string in which every character SPARQL `ECHAR` names is escaped
+  (`\t`, `\b`, `\n`, `\r`, `\f`, `\"`, `\\`), followed by its language tag
+  or `^^<datatype>`; a simple literal has neither. A `BNode` value raises `TypeError` (a blank-node label
   in a query is a fresh variable, not a reference — substitution would be
   meaningless).
 - The substitution is textual, not parse-aware; it can produce an invalid
