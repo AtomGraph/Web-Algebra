@@ -23,9 +23,10 @@ dependencies = [
     "rdflib==7.0.0",
     "openai",
     "mcp[cli]==1.10.1",
-    "pydantic<2.14",  # mcp 1.10.1 imports pydantic._internal._typing_extra.eval_type_backport, removed in 2.14
+    "pydantic<2.14", # mcp 1.10.1 imports pydantic._internal._typing_extra.eval_type_backport, removed in 2.14
     "pydantic-settings",
     "urllib3",
+    "elementpath>=5",
 ]
 
 [project.urls]
