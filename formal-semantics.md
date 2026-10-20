@@ -139,6 +139,9 @@ that turns the JSON-LD into a `Graph` — resolves them against its *target*
 URI (e.g. `PUT`'s `url`), by parsing with that URI as base. There is no
 document-global base IRI. Fragment references like `#service` therefore
 resolve against the document being written, which is the intended semantics.
+A data argument that has no target — the `graph` of `SELECT`, `CONSTRUCT` and
+`DESCRIBE` (§4.3) — is parsed with no base, so its IRIs must be absolute. The
+XML serialization's inline RDF/XML follows the same rule.
 
 ### 2.4 SPARQL JSON term form
 
@@ -274,7 +277,9 @@ The focus accessors, named after their XSLT/XPath counterparts:
 - `Value` with an unprefixed name looks the name up *in* the focus item.
   The item shapes are **closed**: a `Binding` (SPARQL row) yields the term
   bound to that variable name; a mapping (e.g. a JSON object item) yields
-  the member value. A miss, or any other item shape, raises `ValueError`.
+  the member value. A miss — a name the item does not have, including a
+  variable that a `Binding` leaves unbound (an `OPTIONAL` that did not
+  match) — or any other item shape, raises `ValueError`.
 
 ### 3.6 Effects and ordering
 
@@ -681,6 +686,10 @@ Abstract: Sequence Literal → Literal
 Python:   def execute(self, inputs: List[Literal]) -> Literal
 JSON:     inputs: array of string-compatible Literal forms
 ```
+- `inputs` is a sequence form (§2.2): an element whose value is a sequence
+  contributes its items, as in XPath, where sequences do not nest —
+  `inputs: [ForEach(…), ", "]` concatenates every value of the `ForEach` and
+  the separator, like `fn:string-join(($values, ", "))`.
 - Result kind per SPARQL: if all inputs are typed `xsd:string`, so is the
   result; if all inputs carry the *same* language tag, the result carries it
   too; in all other cases (including the empty input sequence) the result is
@@ -746,8 +755,14 @@ Abstract: URI × Literal → URI
 Python:   def execute(self, base: URIRef, relative: Literal) -> URIRef
 JSON:     base: URI · relative: string-compatible Literal
 ```
-- Standard §5 resolution semantics (as by `urljoin`): if `relative` is itself
-  an absolute URI, the result is `relative`.
+- RFC 3986 §5.2 reference resolution, for a base of any scheme: the
+  algorithm of §5.2.2, path merging per §5.2.3 and dot-segment removal per
+  §5.2.4. If `relative` is itself an absolute URI, the result is `relative`
+  with its dot segments removed. The scheme of the base is never dropped:
+  `urn:a:b` with `#f` is `urn:a:b#f`, with `c` is `urn:c`, and
+  `tag:ex.org,2024:a/b` with `c` is `tag:ex.org,2024:a/c`. (Libraries that
+  resolve only a fixed list of hierarchical schemes, such as Python's
+  `urljoin`, return `relative` unchanged for the others and do not conform.)
 
 ### 4.3 SPARQL operations
 
@@ -761,6 +776,13 @@ is *pure* and local; with `endpoint` it is a *query* effect, and the response
 format is negotiated transparently (SPARQL Results for `SELECT`, an RDF
 serialization for `CONSTRUCT`/`DESCRIBE`) — a response that does not parse as
 the negotiated format raises `ValueError` (§3.7).
+
+Each operation takes a query of its own form: `SELECT` a `SELECT` query,
+`CONSTRUCT` a `CONSTRUCT` query, `DESCRIBE` a `DESCRIBE` query. A query that
+does not parse, or is of another form, raises `ValueError`, before any
+network I/O. An `endpoint` is used as given, a query string of its own
+included (`…/sparql?default-graph-uri=…`): the query is sent as one more
+parameter of the SPARQL 1.1 Protocol request.
 
 **SELECT** — execute a SPARQL SELECT query over an endpoint or a graph.
 ```
@@ -799,10 +821,18 @@ Python:   def execute(self, query, var, binding_value) -> Literal
 JSON:     query: Literal · var: Literal (variable name, with or without `?`)
           · binding: URI + Literal (Term or SPARQL JSON term form, §2.4)
 ```
-- Matches both `?var` and `$var` occurrences at token boundaries. A URI value
-  serializes as `<iri>`; a Literal as a quoted literal with its language tag
-  or datatype. A `BNode` value raises `TypeError` (a blank-node label in a
-  query is a fresh variable, not a reference — substitution would be
+- Matches both `?var` and `$var` occurrences at token boundaries, and
+  changes nothing else: the result is the query with those occurrences
+  replaced, and a `var` that does not occur leaves the query unchanged.
+- The value is written in SPARQL syntax, as `Values` writes it, and inserted
+  as it is — nothing in it is read as a reference or an escape of the
+  substitution. A URI serializes as `<iri>`; one containing a character that
+  a SPARQL `IRIREF` excludes (space, `<`, `>`, `"`, `{`, `}`, `|`, `^`, `` ` ``,
+  `\`, or a control character) raises `ValueError`. A Literal serializes as
+  a quoted string in which every character SPARQL `ECHAR` names is escaped
+  (`\t`, `\b`, `\n`, `\r`, `\f`, `\"`, `\\`), followed by its language tag
+  or `^^<datatype>`; a simple literal has neither. A `BNode` value raises `TypeError` (a blank-node label
+  in a query is a fresh variable, not a reference — substitution would be
   meaningless).
 - The substitution is textual, not parse-aware; it can produce an invalid
   query if `var` collides with content inside string literals of the query.
@@ -839,7 +869,8 @@ JSON:     endpoint: URI · question: string-compatible Literal
   `projection` is given, the query is a `SELECT` that projects every named
   variable, named exactly so (it may project others as well), because the
   program reads those names from its rows.
-- `context` forms are evaluated eagerly, like any argument. Their values (a
+- `context` is a sequence form (§2.2), evaluated eagerly like any argument;
+  an element whose value is a sequence contributes its items. The values (a
   `Result`'s rows, a `Graph`) are shown to the model as what the endpoint
   holds, cut to a prompt-sized excerpt, before it writes the query. This is
   how a program explores an endpoint it does not know (a predicate
@@ -851,8 +882,10 @@ JSON:     endpoint: URI · question: string-compatible Literal
 - An answer that does not parse, or does not have the declared projection,
   goes back to the model with the reason, a bounded number of times, before
   the operation fails with `ValueError`. The implementation may also put the
-  query's pattern to `endpoint` as an `ASK`, and send a query that matches
-  nothing back too. That read decides the string and is never returned; the
+  query's `WHERE` pattern to `endpoint` as an `ASK` — the pattern alone, with
+  the query's `FROM`/`FROM NAMED` but without its projection, grouping,
+  `HAVING`, ordering, `LIMIT`/`OFFSET` or trailing `VALUES` — and send a query
+  whose pattern matches nothing back too. That read decides the string and is never returned; the
   rows are `SELECT`'s. Because an empty answer can be the true one, a query
   that still matches nothing after the last attempt is returned.
 - The generated query text is not otherwise specified.
@@ -870,20 +903,27 @@ declared RDF type — raises `ValueError` (§3.7).
 `POST`, `PUT` and `PATCH` return a single-row `Result` with variables
 `status` (`xsd:integer` HTTP status) and `url`. `url` is the URI of the
 resource that the write produced: the response's `Location` when it has one,
-as when a `POST` to a container creates a child, otherwise the effective
-request URI after redirects. A relative `Location` is resolved against the
-effective request URI (RFC 3986 §5).
+otherwise the request URI. A relative `Location` is resolved against the
+request URI (RFC 3986 §5).
 A response outside the 2xx range is an error (`ValueError`, §3.7), as an
 `xsl:result-document` that cannot be written is: the status and the server's
 reason are reported, and nothing after the write runs. Transport failures
-propagate per §3.7.
+propagate per §3.7. A `303 See Other` answered to a write reports success,
+as in the Post/Redirect/Get pattern: the write was made and `Location` names
+its result, which is the `url` reported and is not dereferenced. Any other
+redirect (3xx) answered to a write is an error and is not followed: the body
+was written against the request URI, so resending it to another URI writes a
+different resource from the one the program named (a document's own triples
+would describe the old URI). A `GET` follows redirects.
 
 Some servers apply a write as read-modify-write and require a write to an
 existing resource to be conditional (`428 Precondition Required` without
 one). For them, the implementation reads the resource's entity tag with
 `HEAD`, sending the same `Accept` as the write since the tag names a
-negotiated variant, and sends it as `If-Match`. A resource that does not
-exist, or that has no tag, is written unconditionally. The tag is read
+negotiated variant, and sends it as `If-Match`. A resource whose `HEAD` is
+not answered 2xx — it does not exist, or the server will not say (a server
+may answer a missing resource `403` rather than `404`) — or that has no tag,
+is written unconditionally. The tag is read
 immediately before the write, not when the program last read the resource,
 so this satisfies the server's precondition but does not protect against
 lost updates. A write that another client makes between the `HEAD` and the
@@ -994,28 +1034,51 @@ datatype and object properties) as one graph, each scoped by the same
   prefix correspond to a fixed JSON name prefix, given in the family's
   appendix. The XML executor dispatches on the expanded name, and argument
   elements stay in the algebra's namespace.
-- What the XML serialization still owes the spec:
+- What the XML serialization still owes the spec (each item observed by
+  running REST-VKG's executor):
+  - An operation finds a named argument among all its descendants, not its
+    children, in most core operations (`GET`, `POST`, `PUT`, `PATCH`, `Str`,
+    `URI`, `EncodeForURI`, `ResolveURI`, `Replace`, `Substitute`, `Values`,
+    `Bindings`, the `Extract*` `endpoint`, and `Iterate`'s `next-iteration`,
+    `break` and next parameters). An argument that contains a nested
+    operation with an argument of the same name, or an omitted argument, is
+    read from the nested operation: a `PUT` whose `url` holds a `POST` sends
+    the `POST`'s graph.
+  - Text arguments are whitespace-trimmed, so `" "` is `""` (a `Concat`
+    separator, a `Replace` replacement).
   - The variable environment is threaded only inside sequence constructors
     (`Sequence`, and the `operation` of `ForEach` and `Iterate`), not across
     the operands of a call (§3.8 CALL, OBJ). A `Variable` written as an
-    argument of another operation binds nothing for its sibling arguments.
-  - `Iterate` binds a parameter whose value is a `Result` to the lexical
-    form of its first row's first value, and one whose value is a one-item
-    sequence to that item. The algebra binds the value as it is, and
-    `Str(Filter(Filter(…, 1), "name"))` expresses the collapse. `Iterate`
-    also gives a parameter named `totalLimit` a meaning of its own (the loop
-    stops once its graph items hold that many distinct subjects), which no
-    parameter has in the algebra.
-  - `Concat`, `EncodeForURI` and `Replace`'s `input` accept any literal; per
-    SPARQL (§4.2) a non-string literal is a type error.
-  - `Replace` uses Java's regular-expression dialect and replacement syntax,
-    which accepts `${name}` where XPath raises `err:FORX0004`, rather than
-    XPath's.
+    operand is an error (`Unit` is not a term), and a `Sequence` operand is
+    an error even with one item.
+  - `Iterate` collapses a parameter's value: a `Result` to the lexical form of
+    its first row's first bound value as a string (an IRI becomes a string
+    literal, a datatype is lost), an empty `Result` or empty sequence to
+    `""`, a one-item sequence to that item; two or more items are an error.
+    The algebra binds the value as it is, and `Str(Filter(Filter(…, 1),
+    "name"))` expresses the collapse. A parameter named `totalLimit` stops the
+    loop once its graph items hold that many distinct subjects, which no
+    parameter means in the algebra.
+  - `Concat`, `EncodeForURI` and every argument of `Replace` accept literals
+    of any datatype, and `ResolveURI` accepts a literal `base` and a
+    non-string `relative`; per §4.2 these are type errors.
+  - `Replace` uses Java's regular-expression dialect and replacement syntax
+    (`${name}`, possessive quantifiers, `\p{javaLowerCase}`), not XPath's.
   - `ResolveURI` resolves with `java.net.URI.resolve`, which departs from
-    RFC 3986 §5 in known cases (an empty reference, dot segments in the
-    base).
+    RFC 3986 §5 for an empty reference, a query-only reference and dot
+    segments above the root.
   - `Value` with a bare name that misses the focus item falls back to the
     variables, with a deprecation warning (§3.4 keeps the two domains apart).
+  - `SELECT` reads an `endpoint` holding an operation as a graph and fails,
+    and `SPARQLString` reads its `endpoint` as text without evaluating it, so
+    neither takes a computed endpoint (`CONSTRUCT` and `DESCRIBE` do).
+  - `Substitute` does not escape newlines and carriage returns, leaves a
+    variable named with a leading `?` unsubstituted, and applies its bindings
+    one after another, so a substituted literal containing `?b` is rewritten
+    by the binding for `b`.
+  - A write reports a relative `Location` unresolved.
+  - `ldh-AddFile` reports a non-2xx answer as a row rather than an error, and
+    its `url` is the document, not the uploaded file (Appendix A).
 - An XML text argument has no integer/string distinction, so a `Filter`
   expression that reads as an integer is a position. A variable whose name
   is all digits, which SPARQL allows, is looked up there as `?1`.
@@ -1065,7 +1128,7 @@ operations' MCP tools, and an MCP tool name allows only ASCII letters, digits,
 | `ldh-AddXHTMLBlock` | `url: URI · value: Literal (XHTML) · title/description/fragment: Maybe Literal` |
 | `ldh-RemoveBlock` | `url: URI · block: Maybe URI` |
 | `ldh-GenerateOntologyViews` | `ontology: Graph · base_uri: URI · service_uri: URI` |
-| `ldh-GenerateClassContainers` | `ontology: Graph · parent_container: URI · endpoint: URI · service_uri: Maybe URI` |
+| `ldh-GenerateClassContainers` | `ontology: Graph · parent_container: URI · endpoint: URI · service_uri: URI` |
 | `ldh-GeneratePortal` | `endpoint: URI · ontology_namespace: URI · parent_container: URI` |
 
 `ldh-CreateContainer` and `ldh-CreateItem` write the document at the parent's
@@ -1073,9 +1136,22 @@ URI extended by `slug` and `/`; without a `slug` the segment is a fresh
 lowercase UUID, as in the LinkedDataHub CLI. The write is a `PUT`, so a
 document already at that URI is replaced.
 
+A `fragment` names the resource an operation creates in the document,
+`url#fragment`; it is given with or without the leading `#`. Without one the
+resource is a blank node.
+
 `ldh-AddSelect` and `ldh-AddConstruct` record a stored query (`sp:Select`,
 `sp:Construct`) in the document. Two differences between the serializations
 are forced by the XML one running as a service: its `AddFile` takes `file`
 as a URL that the server fetches, since a local path would let a submitted
 program upload any file the server can read; and it leaves out the
 `Generate*` operations, which only the JSON serialization has.
+
+`ldh-AddFile` uploads the file's bytes and appends its description to `url`.
+Its `url` is the uploaded file's URI, not the document's: the resource the
+document describes, after the upload, with `foaf:sha1` equal to the hex SHA-1
+of the bytes (LinkedDataHub stores them at `uploads/{sha1}` resolved against
+the application's base URI, which a client cannot assume to be the origin).
+That is the URI an `ldh-AddObjectBlock` places. A document that does not
+describe the upload after a 2xx answer raises `ValueError`. LinkedDataHub appends an upload rather than
+rewriting the document, and asks no `If-Match` of it.
