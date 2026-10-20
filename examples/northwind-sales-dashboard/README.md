@@ -43,13 +43,14 @@ After the run, these hold on the instance ([`expect/`](expect/)):
 
 ## Run it
 
+With `CERT_PEM_PATH` and `CERT_PASSWORD` set to the LinkedDataHub owner certificate and its password:
+
 ```bash
-uv run python src/web_algebra/main.py --from-json examples/northwind-sales-dashboard/plan.json \
-  --cert_pem_path $CERT_PEM_PATH --cert_password $CERT_PASSWORD
+uv run web-algebra --from-json examples/northwind-sales-dashboard/plan.json
 ```
 
 or with its checks, cleaning up after itself:
 
 ```bash
-CERT_PEM_PATH=... CERT_PASSWORD=... uv run pytest -m ldh tests/test_examples.py -k northwind-sales-dashboard
+uv run pytest -m ldh tests/test_examples.py -k northwind-sales-dashboard
 ```

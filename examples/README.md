@@ -42,16 +42,16 @@ without touching anything else on the instance.
 One example, against a LinkedDataHub at `https://localhost:4443/` (run `setup.json` first where there is one):
 
 ```bash
-uv run python src/web_algebra/main.py --from-json examples/city-profiles/plan.json \
-  --cert_pem_path ../LinkedDataHub/ssl/owner/cert.pem --cert_password ********
+export CERT_PEM_PATH=../LinkedDataHub/ssl/owner/cert.pem
+export CERT_PASSWORD="$(cat ../LinkedDataHub/secrets/owner_cert_password.txt)"
+uv run web-algebra --from-json examples/city-profiles/plan.json
 ```
 
 All of them, with their checks, removing what they wrote afterwards (`LDH_BASE` selects another instance,
 `WA_KEEP_EXAMPLES=1` keeps the results):
 
 ```bash
-CERT_PEM_PATH=../LinkedDataHub/ssl/owner/cert.pem CERT_PASSWORD=******** \
-  uv run pytest -m ldh tests/test_examples.py
+uv run pytest -m ldh tests/test_examples.py
 ```
 
 Without an instance, `uv run pytest tests/test_examples.py` still checks every plan against the operations' schemas

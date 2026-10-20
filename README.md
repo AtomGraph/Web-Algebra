@@ -120,9 +120,7 @@ _Currently requires OpenAI API access. `OPENAI_API_KEY` env value has to be set.
 #### Execute JSON
 
 ```bash
-uv run python src/web_algebra/main.py --from-json ./examples/city-profiles/plan.json \
-  --cert_pem_path ../LinkedDataHub/ssl/owner/cert.pem \
-  --cert_password **********
+uv run web-algebra --from-json ./examples/city-profiles/plan.json
 ```
 
 See the [examples](examples/): each has the instruction it answers, its plan, the result of a run, and checks.
@@ -130,15 +128,15 @@ See the [examples](examples/): each has the instruction it answers, its plan, th
 #### With [LinkedDataHub](https://atomgraph.github.io/LinkedDataHub/)
 
 1. Run LinkedDataHub v6
-2. Execute `src/web_algebra/main.py`, it expects the path to your LDH's owner certificate and its password as arguments. For example:
+2. Give `web-algebra` your LDH's owner certificate and its password in the `CERT_PEM_PATH` and `CERT_PASSWORD` environment variables (or the `--cert_pem_path` and `--cert_password` options, which override them). For example:
 
 ```bash
-uv run python src/web_algebra/main.py --from-json ./examples/northwind-category-catalogue/plan.json \
-  --cert_pem_path ../LinkedDataHub/ssl/owner/cert.pem \
-  --cert_password **********
+export CERT_PEM_PATH=../LinkedDataHub/ssl/owner/cert.pem
+export CERT_PASSWORD="$(cat ../LinkedDataHub/secrets/owner_cert_password.txt)"
+uv run web-algebra --from-json ./examples/northwind-category-catalogue/plan.json
 ```
 
-_Here and throughout this guide, the client certificate/password arguments are only required for authentication with LinkedDataHub. You don't need them if you're not using LinkedDataHub with Web Algebra._
+_Here and throughout this guide, the client certificate and its password are only required for authentication with LinkedDataHub. You don't need them if you're not using LinkedDataHub with Web Algebra._
 
 ### As MCP server
 
@@ -186,11 +184,7 @@ uv run web-algebra-mcp
 ```bash
 uv run uvicorn web_algebra.server:app --reload
 ```
-or with LinkedDataHub certificate credentials (change the path and password to yours):
-
-```bash
-CERT_PEM_PATH="/Users/Martynas.Jusevicius/WebRoot/LinkedDataHub/ssl/owner/cert.pem" CERT_PASSWORD="********" uv run uvicorn web_algebra.server:app --reload
-```
+with `CERT_PEM_PATH` and `CERT_PASSWORD` set, as above, for LinkedDataHub.
 
 #### [MCP Inspector](https://github.com/modelcontextprotocol/inspector) config
 
