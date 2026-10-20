@@ -1,4 +1,4 @@
-"""prompts/system.md - the operation guide the model is given - says what the
+"""src/web_algebra/prompts/system.md - the operation guide the model is given - says what the
 operations are and do, so it is checked against the two things that define
 them: each operation's inputSchema() and formal-semantics.md.
 
@@ -35,7 +35,7 @@ from tests.plan_check import SPEC, SPEC_ENTRIES, check_static
 from web_algebra.operation import Operation
 
 ROOT = Path(__file__).resolve().parent.parent
-GUIDE = (ROOT / "prompts" / "system.md").read_text()
+GUIDE = (ROOT / "src" / "web_algebra" / "prompts" / "system.md").read_text()
 
 HEADING = re.compile(r"^## (?:`)?([A-Za-z][\w-]*)(?:`)?\((.*)\) → (.+)$", re.M)
 

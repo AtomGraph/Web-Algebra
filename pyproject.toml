@@ -17,16 +17,18 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "rdflib==7.6.0",
-    "openai",
-    "mcp[cli]==1.10.1",
-    "pydantic<2.14", # mcp 1.10.1 imports pydantic._internal._typing_extra.eval_type_backport, removed in 2.14
-    "pydantic-settings",
-    "urllib3",
-    "elementpath>=5",
+    "rdflib>=7.6,<8",
+    "openai>=1",
+    "mcp>=2.3,<3",
+    "pydantic>=2",
+    "pydantic-settings>=2",
+    "uvicorn",
+    "urllib3>=2.8",
+    "elementpath>=5,<6",
 ]
 
 [project.urls]
@@ -45,6 +47,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["web_algebra*"]
+
+[tool.setuptools.package-data]
+web_algebra = ["prompts/*.md", "prompts/*.txt"]
 
 [tool.setuptools.package-dir]
 "" = "src"

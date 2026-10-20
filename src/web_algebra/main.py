@@ -7,6 +7,7 @@ from types import ModuleType
 from typing import List, Type, Optional
 import pkgutil
 import importlib
+from importlib import resources
 import inspect
 import rdflib
 from openai import OpenAI
@@ -85,9 +86,11 @@ def main(settings: BaseSettings, json_data: Optional[str]):
         model = "gpt-4o-mini"
 
         # Load prompts
+        # the prompts are package data, found wherever the package is installed
+        prompts = resources.files("web_algebra") / "prompts"
         with (
-            open("prompts/system.md") as system_prompt_file,
-            open("prompts/user.template.txt") as user_prompt_template_file,
+            (prompts / "system.md").open(encoding="utf-8") as system_prompt_file,
+            (prompts / "user.template.txt").open(encoding="utf-8") as user_prompt_template_file,
         ):
             system_prompt = system_prompt_file.read()
             messages = [{"role": "system", "content": system_prompt}]

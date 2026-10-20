@@ -1,132 +1,67 @@
 from importlib.metadata import version
-from typing import Sequence, List, Type
 import logging
-import os
-from mcp import Tool
+from mcp import types
 from mcp.server import Server
-from mcp.types import TextContent, ImageContent, EmbeddedResource, Resource
-from pydantic import AnyUrl
-from web_algebra.main import LinkedDataHubSettings, list_operation_subclasses
+from mcp.shared.exceptions import MCPError
+from web_algebra.main import LinkedDataHubSettings, list_operation_subclasses, register
 import web_algebra.operations
 from web_algebra.operation import Operation
 from web_algebra.mcp_tool import MCPTool
-import web_algebra.operations.sparql.select
-from starlette.applications import Starlette
-from starlette.routing import Mount
-from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-server = Server("web-algebra", version("web-algebra"))
-
-# Initialize settings from environment variables
-cert_pem_path = os.getenv("CERT_PEM_PATH")
-cert_password = os.getenv("CERT_PASSWORD")
-
-settings = LinkedDataHubSettings(
-    cert_pem_path=cert_pem_path, cert_password=cert_password
-)
-
-
-def register(classes: List[Type[Operation]]):
-    for cls in classes:
-        Operation.register(cls)
-
+# certificate from CERT_PEM_PATH / CERT_PASSWORD, read by the settings
+settings = LinkedDataHubSettings()
 
 register(list_operation_subclasses(web_algebra.operations, Operation))
 
 
-@server.list_tools()
-async def list_tools() -> list[Tool]:
-    tools = []
-
-    for tool_class in Operation.list_operations():
-        # Only expose operations that implement MCPTool interface
-        if issubclass(tool_class, MCPTool):
-            tools.append(
-                Tool(
-                    name=tool_class.name(),
-                    description=tool_class.description(),
-                    inputSchema=tool_class.inputSchema(),
-                )
-            )
-
-    return tools
-
-
-@server.call_tool()
-async def call_tool(
-    name: str, arguments: dict
-) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
-    tool_class = Operation.get(name)
-    tool = tool_class(settings=settings)
-
-    # Ensure the operation implements MCPTool interface
-    if not isinstance(tool, MCPTool):
-        raise ValueError(f"Operation {name} does not implement MCPTool interface")
-
-    return tool.mcp_run(arguments)
-
-
-@server.list_resources()
-async def list_resources() -> Sequence[EmbeddedResource]:
-    resources = []
-
-    select = web_algebra.operations.sparql.select.SELECT(settings=settings)
-    args = {
-        "query": """
-            PREFIX  sp:  <http://spinrdf.org/sp#>
-            PREFIX dct: <http://purl.org/dc/terms/>
-
-            SELECT DISTINCT  ?query ?title ?text
-            WHERE
-            { GRAPH ?g
-                {   ?query  dct:title ?title ;
-                        sp:text ?text
-                }
-            }
-        """,
-        "endpoint": "https://localhost:4443/sparql",
+def mcp_tools() -> dict:
+    """The operations exposed as MCP tools, by name."""
+    return {
+        cls.name(): cls
+        for cls in Operation.list_operations()
+        if issubclass(cls, MCPTool)
     }
 
-    result = select.execute(args)
-    bindings = result["results"]["bindings"]
-    logger.info(bindings)
 
-    for binding in bindings:
-        query = binding["query"]["value"]
-        title = binding["title"]["value"]
-        # text = binding["text"]["value"]
-        resources.append(
-            Resource(
-                uri=AnyUrl(query),
-                name=title,
-                # description=text,
-                mimeType="application/sparql-query",
+async def list_tools(ctx, params) -> types.ListToolsResult:
+    return types.ListToolsResult(
+        tools=[
+            types.Tool(
+                name=cls.name(),
+                description=cls.description(),
+                input_schema=cls.inputSchema(),
             )
+            for cls in mcp_tools().values()
+        ]
+    )
+
+
+async def call_tool(ctx, params: types.CallToolRequestParams) -> types.CallToolResult:
+    tool_class = mcp_tools().get(params.name)
+    if tool_class is None:
+        raise MCPError(types.INVALID_PARAMS, f"Unknown tool: {params.name}")
+
+    try:
+        content = tool_class(settings=settings).mcp_run(params.arguments or {})
+    except Exception as e:
+        # an operation's error is the tool's result, which the model can see
+        logger.exception("Tool %s failed", params.name)
+        return types.CallToolResult(
+            content=[types.TextContent(text=f"{type(e).__name__}: {e}")],
+            is_error=True,
         )
-
-    return resources
-
-
-def create_app() -> Starlette:
-    """Create Starlette app that wraps the MCP server"""
-
-    # Create the session manager
-    session_manager = StreamableHTTPSessionManager(
-        app=server,
-        json_response=False,
-    )
-
-    # Create an ASGI application that uses the session manager
-    app = Starlette(
-        debug=True,
-        routes=[Mount("/mcp", app=session_manager.handle_request)],
-        lifespan=lambda app: session_manager.run(),
-    )
-
-    return app
+    return types.CallToolResult(content=list(content))
 
 
-app = create_app()
+server = Server(
+    "web-algebra",
+    version=version("web-algebra"),
+    on_list_tools=list_tools,
+    on_call_tool=call_tool,
+)
+
+# streamable HTTP transport at /mcp
+app = server.streamable_http_app(streamable_http_path="/mcp")

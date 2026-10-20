@@ -26,7 +26,7 @@ uv run web-algebra-mcp                  # MCP server, stdio
 uv run uvicorn web_algebra.server:app --reload   # MCP server, streamable HTTP
 ```
 
-CI runs `uv run pytest` on Python 3.10, 3.11 and 3.12. A `v*` tag publishes to
+CI runs `uv run pytest` on Python 3.10 to 3.13. A `v*` tag publishes to
 PyPI (`.github/workflows/release.yml`): it cannot be undone, so never push a
 tag without being asked.
 
@@ -67,15 +67,15 @@ src/web_algebra/
   client.py             HTTP clients: conditional writes, redirects
   sparql_restrict.py    binding restriction (Substitute, Values)
   rfc3986.py            reference resolution
+  prompts/system.md     the operation guide given to the model
   operations/           the operations, one class per module
     linked_data/ sparql/ string/ schema/ linkeddatahub/
 formal-semantics.md     the specification
-prompts/system.md       the operation guide given to the model
 examples/               worked plans, each with its instruction and checks
 tests/
   unit/                 spec-derived tests, one area per file
   integration/ fixtures/  positive/negative JSON fixtures
-  test_system_prompt.py prompts/system.md checked against the code and spec
+  test_system_prompt.py the operation guide checked against the code and spec
   test_examples.py      examples checked offline, run with -m ldh
   plan_check.py         static plan checker shared by both
 scripts/document_examples.py  regenerates examples/*/README.md from a live run
@@ -130,7 +130,7 @@ only the transport, converted at fixed boundaries:
   harness and may use code knowledge. Write the whole set of tests for a change
   before running any. Spec ambiguities go in `tests/SPEC_GAPS.md`.
 - **The operation guide is tested.** Every registered operation needs exactly
-  one `## Name(args) → Result` section in `prompts/system.md` whose arguments
+  one `## Name(args) → Result` section in `src/web_algebra/prompts/system.md` whose arguments
   match its `inputSchema()`; its examples are checked and run.
 - **Examples stay runnable.** `uv run pytest tests/test_examples.py` checks
   them offline; run them with `-m ldh` after changing anything they use, and

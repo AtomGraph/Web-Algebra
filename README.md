@@ -29,7 +29,7 @@ The system is built around the `Operation` abstract base class that provides:
 
 ### Key Components
 
-- **[System Prompt](prompts/system.md)**: Complete operation definitions and JSON format specification
+- **[System Prompt](src/web_algebra/prompts/system.md)**: Complete operation definitions and JSON format specification
 - **[Formal Semantics](formal-semantics.md)**: Complete type system and operation catalog
 - **[Operation Interface](src/web_algebra/operation.py)**: Base class and JSON interpreter
 - **[Operation Implementations](src/web_algebra/operations/)**: Directory containing all available operations
@@ -219,20 +219,12 @@ To run the MCP server from a local checkout instead of the [published package](#
             "command": "uv",
             "args": [
                 "--directory",
-                "/Users/Martynas.Jusevicius/WebRoot/Web-Algebra/src",
+                "/path/to/Web-Algebra",
                 "run",
-                "--with",
-                "mcp[cli]",
-                "--with",
-                "rdflib",
-                "--with",
-                "openai",
-                "python",
-                "-m",
-                "web_algebra"
+                "web-algebra-mcp"
             ],
             "env": {
-                "CERT_PEM_PATH": "/Users/Martynas.Jusevicius/WebRoot/LinkedDataHub/ssl/owner/cert.pem",
+                "CERT_PEM_PATH": "/path/to/LinkedDataHub/ssl/owner/cert.pem",
                 "CERT_PASSWORD": "********"
             }
         }
