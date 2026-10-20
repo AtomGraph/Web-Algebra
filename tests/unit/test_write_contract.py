@@ -16,6 +16,7 @@ HTTP is stubbed at the urllib boundary (tests/http_stub.py); no network.
 
 from __future__ import annotations
 
+import hashlib
 import urllib.error
 
 import pytest
@@ -305,10 +306,25 @@ LDH_WRITES = {
 
 @pytest.mark.parametrize("op", sorted(LDH_WRITES))
 class TestLdhWriteIfMatch:
-    def _run(self, op, settings, tmp_path):
+    def _run(self, op, settings, http_stub, tmp_path):
         path = tmp_path / "upload.txt"
         path.write_bytes(b"bytes")
         _, args, _ = LDH_WRITES[op]
+        writes = http_stub.handler
+        sha1 = hashlib.sha1(b"bytes").hexdigest()
+
+        def handler(request):
+            # Appendix A: after an upload the document describes the file with
+            # foaf:sha1, which is how ldh-AddFile finds the file's URI
+            if request.get_method() == "GET" and request.full_url == DOC:
+                return StubResponse(
+                    200,
+                    {"Content-Type": "application/n-triples"},
+                    f'<{EX}uploads/{sha1}> <http://xmlns.com/foaf/0.1/sha1> "{sha1}" .\n'.encode(),
+                )
+            return writes(request)
+
+        http_stub.handler = handler
         Operation.process_json(settings, {"@op": op, "args": args(path)})
 
     def test_etag_from_head_is_sent_as_if_match(self, op, settings, http_stub, tmp_path):
@@ -320,7 +336,7 @@ class TestLdhWriteIfMatch:
             lambda: StubResponse(200),
             head=lambda: StubResponse(200, {"ETag": '"abc123"'}),
         )
-        self._run(op, settings, tmp_path)
+        self._run(op, settings, http_stub, tmp_path)
         [write] = http_stub.with_method(method)
         [head] = http_stub.with_method("HEAD")
         assert write.full_url == head.full_url == url
@@ -333,7 +349,7 @@ class TestLdhWriteIfMatch:
         http_stub.handler = _writes_answered(
             method, lambda: StubResponse(201), head=lambda: StubResponse(404)
         )
-        self._run(op, settings, tmp_path)
+        self._run(op, settings, http_stub, tmp_path)
         [write] = http_stub.with_method(method)
         assert request_header(write, "If-Match") is None
 
