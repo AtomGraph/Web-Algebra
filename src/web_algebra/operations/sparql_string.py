@@ -30,6 +30,51 @@ SYSTEM_PROMPT = (
 _PROLOGUE = re.compile(
     r"^\s*(?:(?:BASE\s*<[^>]*>|PREFIX\s+[^\s:]*:\s*<[^>]*>)\s*)*", re.IGNORECASE
 )
+
+
+# an IRIREF: no space, quote or brace inside, which tells it from a `<` comparison
+_IRIREF = re.compile(r'<[^<>"{}|^`\\\x00-\x20]*>')
+
+
+def _top_level_groups(query: str, start: int) -> List[tuple]:
+    """The (begin, end) spans of the `{ ... }` groups at the top level of
+    `query` from `start` - outside parentheses, strings, IRIs and comments."""
+    groups = []
+    depth = parens = 0
+    begin = None
+    i = start
+    while i < len(query):
+        ch = query[i]
+        if ch in "\"'":
+            quote = query[i : i + 3] if query[i : i + 3] in ('"""', "\'\'\'") else ch
+            i += len(quote)
+            while i < len(query) and not query.startswith(quote, i):
+                i += 2 if query[i] == "\\" else 1
+            i += len(quote)
+            continue
+        if ch == "<":
+            m = _IRIREF.match(query, i)
+            if m:
+                i = m.end()
+                continue
+        if ch == "#":
+            newline = query.find("\n", i)
+            i = len(query) if newline == -1 else newline + 1
+            continue
+        if ch == "(" and depth == 0:
+            parens += 1
+        elif ch == ")" and depth == 0 and parens:
+            parens -= 1
+        elif ch == "{" and not parens:
+            if depth == 0:
+                begin = i
+            depth += 1
+        elif ch == "}" and not parens and depth:
+            depth -= 1
+            if depth == 0:
+                groups.append((begin, i + 1))
+        i += 1
+    return groups
 _FENCE = re.compile(r"^\s*```[a-zA-Z]*\s*\n(.*?)\n\s*```\s*$", re.DOTALL)
 
 
@@ -174,12 +219,14 @@ class SPARQLString(ClientOperation, Operation, MCPTool):
                 raise TypeError(
                     f"SPARQLString expects 'context' to be an array of forms, got {type(forms).__name__}"
                 )
-            # evaluated one by one, not as a sequence form: each is shown as
-            # one exploration, and a Result is one value, not its rows
-            context_values = [
-                Operation.process_json(self.settings, form, self.context, variable_stack)
-                for form in forms
-            ]
+            # a sequence form (formal-semantics.md §2.2, §4.3): an element that
+            # yields a sequence contributes its items; a Result stays one value
+            # - one exploration - since a Result is never dissolved into rows
+            context_values = Operation.process_json(
+                self.settings, forms, self.context, variable_stack
+            )
+            if not isinstance(context_values, list):
+                context_values = [context_values]
         return self.execute(endpoint, question, projection, context_values)
 
     @staticmethod
@@ -256,18 +303,30 @@ class SPARQLString(ClientOperation, Operation, MCPTool):
 
     @staticmethod
     def _ask(query: str) -> Optional[str]:
-        """A SELECT's pattern as an ASK: the SELECT becomes a subquery of an
-        ASK with the same prologue, which SPARQL 1.1 allows with its solution
-        modifiers and VALUES. None for other query forms, and for a SELECT
-        with a dataset clause, which a subquery cannot carry."""
+        """The query's WHERE pattern as an ASK (formal-semantics.md §4.3): the
+        pattern alone, with the query's FROM / FROM NAMED, without projection,
+        grouping, HAVING, ordering, LIMIT/OFFSET or a trailing VALUES - for
+        any query form. None when the query does not parse or has no pattern
+        (DESCRIBE <iri>)."""
         try:
             prepared = prepareQuery(query)
         except Exception:
             return None
-        if prepared.algebra.name != "SelectQuery" or prepared.algebra.get("datasetClause"):
-            return None
+        form = prepared.algebra.name
         prologue = _PROLOGUE.match(query).group(0)
-        ask = f"{prologue}ASK {{ {query[len(prologue):]} }}"
+        groups = _top_level_groups(query, len(prologue))
+        long_construct = form == "ConstructQuery" and not re.match(
+            r"\s*CONSTRUCT\s+WHERE\b", query[len(prologue):], re.IGNORECASE
+        )
+        index = 1 if long_construct else 0
+        if len(groups) <= index:
+            return None
+        begin, end = groups[index]
+        dataset = "".join(
+            f"FROM NAMED <{clause['named']}> " if "named" in clause else f"FROM <{clause['default']}> "
+            for clause in prepared.algebra.get("datasetClause") or []
+        )
+        ask = f"{prologue}ASK {dataset}WHERE {query[begin:end]}"
         try:
             prepareQuery(ask)
         except Exception:

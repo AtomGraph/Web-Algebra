@@ -53,19 +53,15 @@ class Concat(Operation, MCPTool):
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> Literal:
         """JSON execution: process arguments and call pure function"""
-        inputs_data = arguments["inputs"]
-        
-        processed_inputs = []
-        for input_item in inputs_data:
-            # Process each input (may contain nested operations)
-            processed_input = Operation.process_json(
-                self.settings, input_item, self.context, variable_stack
-            )
-            # Convert to string literal
-            input_literal = self.to_string_literal(processed_input)
-            processed_inputs.append(input_literal)
-
-        return self.execute(processed_inputs)
+        # `inputs` is a sequence form (formal-semantics.md §2.2, §4.2): its
+        # value is the flat concatenation of its elements' values, so an
+        # element that yields a sequence contributes its items
+        items = Operation.process_json(
+            self.settings, arguments["inputs"], self.context, variable_stack
+        )
+        if not isinstance(items, list):
+            items = [items]
+        return self.execute([self.to_string_literal(item) for item in items])
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
