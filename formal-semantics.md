@@ -814,41 +814,85 @@ JSON:     endpoint: URI or graph: Graph (exactly one)
 In the JSON serialization, `graph` takes a `Graph` value or an RDF data form;
 the form is parsed with no base IRI, so its IRIs must be absolute (§2.3).
 
-**Substitute** — textually substitute one SPARQL variable with a Term.
+**Binding restriction.** `Substitute` and `Values` give variables of a SPARQL
+query or update values without replacing them, after A. Seaborne's
+*[Substitution](https://afs.github.io/substitute.html)*: a variable stays a
+variable, and its bindings are restricted to the given values, so the result
+still projects it, a `CONSTRUCT` template or an update template still uses it,
+and every solution carries it. For a query or update `Q`, variables `V` and
+rows `R` (one row for `Substitute`; a `Result`'s rows for `Values`):
+
+1. *Renaming.* In every subquery (`{ SELECT … }`) of `Q` that does not project
+   a variable of `V` — explicitly, or by `SELECT *` over a pattern that
+   mentions it — that variable is renamed to a fresh variable throughout the
+   subquery, so the subquery stays independent of the values.
+2. *Occurrence.* Only the variables of `V` that occur in `Q` after renaming
+   are restricted; if none occurs, `Q` is returned unchanged.
+3. *Assignment.* A restricted variable that `Q` assigns — with `AS` (in
+   `BIND`, a `SELECT` expression or `GROUP BY`) or in a `VALUES` block —
+   raises `ValueError`: its value is given, and cannot be assigned again.
+4. *Restriction.* Every group graph pattern of `Q` — the `WHERE` clause and
+   every group within it, including those of `OPTIONAL`, `MINUS`, `UNION`,
+   `GRAPH`, `SERVICE`, `EXISTS` and `NOT EXISTS` — gets the inline data
+   `VALUES (?v₁ … ?vₙ) { (t₁ … tₙ) … }` of the restricted variables as its first
+   element; a group that consists of a subquery is restricted in the
+   subquery's own `WHERE` clause instead. The data is thereby joined with
+   every basic graph pattern, path and `GRAPH` pattern of `Q`, as the note's
+   `Replace` joins it, and also with a group that has none of its own (a
+   `BIND` of a free variable, a group beginning with `OPTIONAL`), so the
+   values are in every solution.
+
+The result is the text of `Q` with those blocks inserted and those variables
+renamed; nothing else changes. A query or update that does not parse raises
+`ValueError`. A `CONSTRUCT WHERE { P }` or `DELETE WHERE { P }`, whose
+pattern is also its template and so cannot hold `VALUES`, is first written in
+its equivalent long form, `CONSTRUCT { P } WHERE { P }` or
+`DELETE { P } WHERE { P }`. Terms are
+written in SPARQL syntax: a URI as `<iri>` — one containing a character that a
+SPARQL `IRIREF` excludes (space, `<`, `>`, `"`, `{`, `}`, `|`, `^`, `` ` ``,
+`\`, or a control character) raises `ValueError` — and a Literal as a quoted
+string in which every character SPARQL `ECHAR` names is escaped (`\t`, `\b`,
+`\n`, `\r`, `\f`, `\"`, `\\`), followed by its language tag or
+`^^<datatype>` (a simple literal has neither). A variable missing from a row
+is `UNDEF`. A table with no rows is written `FILTER(1 = 0)`, which has the same
+meaning in every group (an empty table joins with nothing) and which every
+SPARQL processor evaluates, as an empty `VALUES` block is not. A `DESCRIBE`
+without a `WHERE` clause (`DESCRIBE ?x`) is first given one, `WHERE { }`, so
+that it has a group to restrict.
+
+**Substitute** — restrict one SPARQL variable to a Term.
 ```
 Abstract: Literal × Literal × (URI + Literal) → Literal
 Python:   def execute(self, query, var, binding_value) -> Literal
-JSON:     query: Literal · var: Literal (variable name, with or without `?`)
-          · binding: URI + Literal (Term or SPARQL JSON term form, §2.4)
+JSON:     query: Literal (a SPARQL query or update) · var: Literal (variable
+          name, with or without `?`/`$`) · binding: URI + Literal (Term or
+          SPARQL JSON term form, §2.4)
 ```
-- Matches both `?var` and `$var` occurrences at token boundaries, and
-  changes nothing else: the result is the query with those occurrences
-  replaced, and a `var` that does not occur leaves the query unchanged.
-- The value is written in SPARQL syntax, as `Values` writes it, and inserted
-  as it is — nothing in it is read as a reference or an escape of the
-  substitution. A URI serializes as `<iri>`; one containing a character that
-  a SPARQL `IRIREF` excludes (space, `<`, `>`, `"`, `{`, `}`, `|`, `^`, `` ` ``,
-  `\`, or a control character) raises `ValueError`. A Literal serializes as
-  a quoted string in which every character SPARQL `ECHAR` names is escaped
-  (`\t`, `\b`, `\n`, `\r`, `\f`, `\"`, `\\`), followed by its language tag
-  or `^^<datatype>`; a simple literal has neither. A `BNode` value raises `TypeError` (a blank-node label
-  in a query is a fresh variable, not a reference — substitution would be
-  meaningless).
-- The substitution is textual, not parse-aware; it can produce an invalid
-  query if `var` collides with content inside string literals of the query.
-  Prefer `Values` where applicable.
+- Binding restriction (above) of `var` to the one-row table `{ var ↦ binding }`.
+  `SELECT ?city ?label WHERE { ?city rdfs:label ?label }` with `city` ↦ `<C>`
+  is `SELECT ?city ?label WHERE { VALUES (?city) { (<C>) } ?city rdfs:label
+  ?label }`: still valid, and its rows still carry `?city`.
+- A `BNode` value raises `TypeError`: a blank-node label in a query is a fresh
+  variable, not a reference.
+- `Substitute` is `Values` over a one-row, one-column table: the two apply
+  the same binding restriction, and `Values` is the general form (several
+  variables, many rows, `UNDEF`). Both are kept, `Substitute` as the common
+  single-variable case; they may be merged into one operation later.
 
-**Values** — append a SPARQL `VALUES` data block built from a result set.
+**Values** — restrict SPARQL variables to the rows of a result set.
 ```
 Abstract: Literal × Result × Maybe (Sequence Literal) → Literal
 Python:   def execute(self, query: Literal, data: Result,
                       vars: Optional[List[str]] = None) -> Literal
-JSON:     query: Literal · data: Result · vars: Maybe (array of string Literals)
+JSON:     query: Literal (a SPARQL query or update) · data: Result
+          · vars: Maybe (array of string Literals)
 ```
-- Columns default to the result's variables; `vars` selects/reorders them
-  (names given with or without `?`). Missing values render as `UNDEF`. Terms
-  serialize per SPARQL syntax with correct escaping. Blank nodes raise
-  `ValueError` (forbidden in `VALUES`).
+- Binding restriction (above) of the data's variables to its rows: the
+  set-valued counterpart of `Substitute`, which lets one query be constrained
+  by, or batched over, the results of another. Columns default to the
+  result's variables; `vars` selects and orders them (names given with or
+  without `?`). A row that does not bind a column has `UNDEF` there. A blank
+  node in the data raises `ValueError` (forbidden in `VALUES`).
 
 **SPARQLString** — write a SPARQL query for an endpoint from a natural-language
 question, via an LLM. *Non-deterministic*; external service call. It is the
@@ -1072,10 +1116,10 @@ datatype and object properties) as one graph, each scoped by the same
   - `SELECT` reads an `endpoint` holding an operation as a graph and fails,
     and `SPARQLString` reads its `endpoint` as text without evaluating it, so
     neither takes a computed endpoint (`CONSTRUCT` and `DESCRIBE` do).
-  - `Substitute` does not escape newlines and carriage returns, leaves a
-    variable named with a leading `?` unsubstituted, and applies its bindings
-    one after another, so a substituted literal containing `?b` is rewritten
-    by the binding for `b`.
+  - `Substitute` replaces variables with terms instead of restricting them
+    (§4.3 binding restriction), and `Values` appends a trailing `VALUES`; its
+    textual replacement also leaves newlines unescaped, ignores a name given
+    with `?`, and applies bindings one after another.
   - A write reports a relative `Location` unresolved.
   - `ldh-AddFile` reports a non-2xx answer as a row rather than an error, and
     its `url` is the document, not the uploaded file (Appendix A).
