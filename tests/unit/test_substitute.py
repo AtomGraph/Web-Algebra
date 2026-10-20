@@ -210,6 +210,11 @@ def test_construct_where_is_written_long_and_restricted(settings, graph):
     assert set(graph.query(q).graph) == {(C, MAYOR, M)}
 
 
+def test_an_undeclared_prefix_does_not_parse(settings):
+    with pytest.raises(ValueError):
+        substitute(settings, "SELECT ?city WHERE { ?city a ex:City }", "city", uri(C))
+
+
 def test_a_query_that_does_not_parse_raises(settings):
     with pytest.raises(ValueError):
         substitute(settings, "SELEKT ?city WHERE { ?city ?p ?o }", "city", uri(C))

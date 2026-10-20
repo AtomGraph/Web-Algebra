@@ -65,7 +65,7 @@ class Values(Operation, MCPTool):
             )
 
         if vars is not None:
-            columns = [str(v).lstrip("?") for v in vars]
+            columns = [str(v)[1:] if str(v)[:1] in ("?", "$") else str(v) for v in vars]
         else:
             columns = [str(v) for v in (data.vars or [])]
 

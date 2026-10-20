@@ -24,7 +24,7 @@ import re
 from typing import Any, Dict, List, NamedTuple, Optional, Sequence
 
 from rdflib import Literal, URIRef
-from rdflib.plugins.sparql.parser import parseQuery, parseUpdate
+from rdflib.plugins.sparql import prepareQuery, prepareUpdate
 
 # characters a SPARQL IRIREF excludes: controls, space and <>"{}|^`\
 _IRIREF_EXCLUDED = re.compile(r'[\x00-\x20<>"{}|^`\\]')
@@ -244,13 +244,15 @@ def restrict(text: str, variables: Sequence[str], rows: Sequence[Sequence[Option
 def _parse(text: str) -> bool:
     """Parse `text` as a query, or else as an update; True for an update.
     ValueError if it is neither."""
+    # prepared, not only parsed: preparing also resolves prefixed names, so an
+    # undeclared prefix does not parse, as SPARQL requires
     try:
-        parseQuery(text)
+        prepareQuery(text)
         return False
     except Exception:
         pass
     try:
-        parseUpdate(text)
+        prepareUpdate(text)
         return True
     except Exception as e:
         raise ValueError(f"Not a SPARQL query or update: {e}") from None

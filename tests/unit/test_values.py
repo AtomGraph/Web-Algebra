@@ -91,9 +91,10 @@ def test_vars_selects_the_columns(settings, graph):
     assert rows(q, graph) == [(str(A), "A")]
 
 
-def test_vars_with_a_sigil(settings, graph):
+@pytest.mark.parametrize("name", ["?city", "$city"])
+def test_vars_with_a_sigil(settings, graph, name):
     d = data("SELECT ?city WHERE { ?city ?p ?o }", cities(B))
-    q = values(settings, P + "SELECT ?city WHERE { ?city a ex:City }", d, ["?city"])
+    q = values(settings, P + "SELECT ?city WHERE { ?city a ex:City }", d, [name])
     assert rows(q, graph) == [(str(B),)]
 
 
