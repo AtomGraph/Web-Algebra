@@ -101,8 +101,13 @@ def send(
     except urllib.error.HTTPError as e:
         if method not in MUTATING_METHODS:
             raise
-        raise WriteRefusedError(method, request.full_url, e.code, http_reason(e)) from None
-    if method in MUTATING_METHODS and not 200 <= response.status < 300:
+        # a 303 See Other answered to a write reports success: the write was
+        # made and Location names its result (Post/Redirect/Get) - it is the
+        # url reported, not dereferenced; any other non-2xx is a refusal
+        if e.code != 303:
+            raise WriteRefusedError(method, request.full_url, e.code, http_reason(e)) from None
+        response = e
+    if method in MUTATING_METHODS and not (200 <= response.status < 300 or response.status == 303):
         raise WriteRefusedError(method, request.full_url, response.status, response.reason)
     if recorder is not None and method in MUTATING_METHODS:
         recorder.record(method, written_url(response))

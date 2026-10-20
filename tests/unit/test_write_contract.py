@@ -2,7 +2,8 @@
 and PATCH, and §3.7's error table.
 - A write returns a single-row Result with variables `status` (xsd:integer
   HTTP status) and `url`: the response's Location when it has one, otherwise
-  the request URI. A 3xx answer to a write is an error and is not followed.
+  the request URI. A 303 answered to a write reports success (url = its
+  Location, not dereferenced); any other 3xx is an error and is not followed.
 - A response outside 2xx is an error (ValueError, not urllib's HTTPError);
   transport failures (no response) propagate unwrapped.
 - If-Match: the entity tag is read with HEAD, sending the same Accept as the
@@ -125,7 +126,7 @@ class TestWriteResult:
 
 
 @pytest.mark.parametrize("method", WRITES)
-@pytest.mark.parametrize("status", [301, 302, 303, 307, 308])
+@pytest.mark.parametrize("status", [301, 302, 307, 308])
 class TestWriteRedirect:
     def test_a_redirect_answered_to_a_write_is_an_error(
         self, method, status, settings, http_wire
@@ -149,6 +150,34 @@ class TestWriteRedirect:
             _write(method, settings)
         assert all(r.full_url == DOC for r in http_wire.requests)
         assert len([r for r in http_wire.requests if r.get_method() not in ("HEAD", "GET")]) == 1
+
+
+@pytest.mark.parametrize("method", WRITES)
+class TestWriteSeeOther:
+    def _see_other(self, method, http_wire, location):
+        http_wire.handler = _writes_answered(
+            method, lambda: StubResponse(303, {"Location": location})
+        )
+
+    def test_303_reports_success(self, method, settings, http_wire):
+        # §4.4: a 303 See Other answered to a write reports success
+        self._see_other(method, http_wire, EX + "result")
+        row = _single_row(_write(method, settings))
+        assert int(row["status"]) == 303
+
+    def test_303_url_is_its_location(self, method, settings, http_wire):
+        # §4.4: the url reported is the Location, resolved against the
+        # request URI
+        self._see_other(method, http_wire, "result/1")
+        row = _single_row(_write(method, settings, EX + "container/"))
+        assert str(row["url"]) == EX + "container/result/1"
+
+    def test_303_location_is_not_dereferenced(self, method, settings, http_wire):
+        # §4.4: the Location is reported, not dereferenced
+        self._see_other(method, http_wire, EX + "result")
+        _write(method, settings)
+        assert all(r.full_url == DOC for r in http_wire.requests)
+        assert [r.get_method() for r in http_wire.requests].count(method) == 1
 
 
 class TestGetFollowsRedirects:
