@@ -1,0 +1,20 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX sioc: <http://rdfs.org/sioc/ns#>
+PREFIX ldh: <https://w3id.org/atomgraph/linkeddatahub#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX sp: <http://spinrdf.org/sp#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+ASK {
+  FILTER NOT EXISTS {
+    GRAPH ?guide { ?guide sioc:has_container <https://localhost:4443/unesco-domain-guides/> }
+    FILTER NOT EXISTS {
+      GRAPH ?guide {
+        ?area a skos:Collection ; skos:prefLabel ?label .
+        ?guide rdf:_1 ?text ; rdf:_2 ?list .
+        ?text a ldh:XHTML .
+        ?list rdf:value ?view .
+        ?view a ldh:View .
+      }
+    }
+  }
+}

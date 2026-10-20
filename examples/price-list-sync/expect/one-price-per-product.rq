@@ -1,0 +1,7 @@
+PREFIX schema: <https://schema.org/>
+ASK {
+  FILTER NOT EXISTS {
+    GRAPH ?doc { ?product schema:sku ?sku ; schema:price ?a , ?b FILTER(?a != ?b) }
+    FILTER(STRSTARTS(STR(?doc), "https://localhost:4443/price-list-sync/products/"))
+  }
+}

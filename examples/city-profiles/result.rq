@@ -1,0 +1,7 @@
+PREFIX geo: <http://www.w3.org/2003/01/geo/wgs84_pos#>
+PREFIX dbo: <http://dbpedia.org/ontology/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?city ?population ?lat ?long WHERE {
+  GRAPH ?doc { ?c rdfs:label ?city ; geo:lat ?lat ; geo:long ?long OPTIONAL { ?c dbo:populationTotal ?population } }
+  FILTER(STRSTARTS(STR(?doc), "https://localhost:4443/city-profiles/"))
+} ORDER BY ?city

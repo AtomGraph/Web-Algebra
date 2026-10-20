@@ -31,11 +31,11 @@ from rdflib import BNode, Literal, URIRef
 from rdflib.namespace import XSD
 
 from tests.http_stub import StubResponse, default_handler
+from tests.plan_check import SPEC, SPEC_ENTRIES, check_static
 from web_algebra.operation import Operation
 
 ROOT = Path(__file__).resolve().parent.parent
 GUIDE = (ROOT / "prompts" / "system.md").read_text()
-SPEC = (ROOT / "formal-semantics.md").read_text()
 
 HEADING = re.compile(r"^## (?:`)?([A-Za-z][\w-]*)(?:`)?\((.*)\) → (.+)$", re.M)
 
@@ -88,47 +88,6 @@ def _examples():
 EXAMPLES = _examples()
 
 
-# --- the spec
-
-
-def _spec_entries() -> dict:
-    """name → {"abstract": result type, "uri_args": {...}} from the catalog's
-    code blocks and the Appendix A table."""
-    entries = {}
-    for m in re.finditer(r"^\*\*([A-Za-z][\w]*)\*\*[^\n]*\n(?:[^\n]*\n)*?```\n(.*?)```", SPEC, re.M | re.S):
-        name, block = m.group(1), m.group(2)
-        abstract = re.search(r"Abstract:(.*?)(?=\n\S|\Z)", block, re.S)
-        json_line = re.search(r"JSON:(.*?)(?=\n\S|\Z)", block, re.S)
-        entries.setdefault(
-            name,
-            {
-                "abstract": " ".join(abstract.group(1).split()).rsplit("→", 1)[1].strip() if abstract else None,
-                "uri_args": _uri_args(json_line.group(1)) if json_line else set(),
-            },
-        )
-    # §4.6: the four extractions share one block
-    for name in ("ExtractClasses", "ExtractDatatypeProperties", "ExtractObjectProperties", "ExtractOntology"):
-        entries[name] = {"abstract": "Graph", "uri_args": {"endpoint"}}
-    # Appendix A table
-    for m in re.finditer(r"^\| `(ldh-[\w]+)`[^|]*\| `(.*?)`", SPEC, re.M):
-        name = m.group(1)
-        entries[name] = {
-            "abstract": "Result" if not name.startswith("ldh-Generate") else None,
-            "uri_args": _uri_args(m.group(2)),
-        }
-    return entries
-
-
-def _uri_args(text: str) -> set:
-    """Argument names typed exactly `URI` (not `URI + Literal`)."""
-    return {
-        name
-        for name, rest in re.findall(r"(\w+): URI\b(.{0,3})", text)
-        if not rest.strip().startswith("+")
-    }
-
-
-SPEC_ENTRIES = _spec_entries()
 
 
 # --- heading ↔ schema ↔ spec
@@ -179,41 +138,10 @@ def test_heading_result_is_the_specs(name):
 # --- examples, statically
 
 
-def _check_static(node, problems, path="$"):
-    if isinstance(node, list):
-        for i, item in enumerate(node):
-            _check_static(item, problems, f"{path}[{i}]")
-        return
-    if not isinstance(node, dict):
-        return
-    if "@op" in node:
-        name = node["@op"]
-        if name not in Operation.registry:
-            problems.append(f"{path}: unknown operation {name}")
-            return
-        schema = Operation.registry[name].inputSchema()
-        args = node.get("args", {})
-        properties = set(schema.get("properties", {}))
-        for key in args:
-            if key not in properties:
-                problems.append(f"{path}: {name} has no argument {key!r}")
-        for key in schema.get("required", []):
-            if key not in args:
-                problems.append(f"{path}: {name} misses required {key!r}")
-        for key in SPEC_ENTRIES.get(name, {}).get("uri_args", set()):
-            if isinstance(args.get(key), str):
-                problems.append(f"{path}: {name}.{key} is a plain string; a URI is {{\"@id\": ...}}")
-        for key, value in args.items():
-            _check_static(value, problems, f"{path}.{name}.{key}")
-        return
-    for key, value in node.items():
-        _check_static(value, problems, f"{path}.{key}")
-
-
 @pytest.mark.parametrize("example_id, plan, expected", EXAMPLES, ids=[e[0] for e in EXAMPLES])
 def test_example_is_well_formed(example_id, plan, expected):
     problems = []
-    _check_static(plan, problems)
+    check_static(plan, problems)
     assert problems == []
 
 

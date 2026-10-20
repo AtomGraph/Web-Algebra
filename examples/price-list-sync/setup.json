@@ -1,0 +1,152 @@
+[
+  {
+    "@op": "ldh-CreateContainer",
+    "args": {
+      "parent": {
+        "@id": "https://localhost:4443/"
+      },
+      "title": "Price list",
+      "slug": "price-list-sync"
+    }
+  },
+  {
+    "@op": "ldh-CreateContainer",
+    "args": {
+      "parent": {
+        "@id": "https://localhost:4443/price-list-sync/"
+      },
+      "title": "Products",
+      "slug": "products"
+    }
+  },
+  {
+    "@op": "ldh-CreateItem",
+    "args": {
+      "container": {
+        "@id": "https://localhost:4443/price-list-sync/products/"
+      },
+      "title": "Queso Cabrales",
+      "slug": "queso-cabrales"
+    }
+  },
+  {
+    "@op": "POST",
+    "args": {
+      "url": {
+        "@id": "https://localhost:4443/price-list-sync/products/queso-cabrales/"
+      },
+      "data": {
+        "@id": "#this",
+        "@type": "https://schema.org/Product",
+        "https://schema.org/sku": "NW-11",
+        "https://schema.org/name": "Queso Cabrales",
+        "https://schema.org/price": {
+          "@value": "21.00",
+          "@type": "http://www.w3.org/2001/XMLSchema#decimal"
+        }
+      }
+    }
+  },
+  {
+    "@op": "ldh-CreateItem",
+    "args": {
+      "container": {
+        "@id": "https://localhost:4443/price-list-sync/products/"
+      },
+      "title": "Chai",
+      "slug": "chai"
+    }
+  },
+  {
+    "@op": "POST",
+    "args": {
+      "url": {
+        "@id": "https://localhost:4443/price-list-sync/products/chai/"
+      },
+      "data": {
+        "@id": "#this",
+        "@type": "https://schema.org/Product",
+        "https://schema.org/sku": "NW-1",
+        "https://schema.org/name": "Chai",
+        "https://schema.org/price": {
+          "@value": "18.00",
+          "@type": "http://www.w3.org/2001/XMLSchema#decimal"
+        }
+      }
+    }
+  },
+  {
+    "@op": "ldh-CreateItem",
+    "args": {
+      "container": {
+        "@id": "https://localhost:4443/price-list-sync/products/"
+      },
+      "title": "Ikura",
+      "slug": "ikura"
+    }
+  },
+  {
+    "@op": "POST",
+    "args": {
+      "url": {
+        "@id": "https://localhost:4443/price-list-sync/products/ikura/"
+      },
+      "data": {
+        "@id": "#this",
+        "@type": "https://schema.org/Product",
+        "https://schema.org/sku": "NW-10",
+        "https://schema.org/name": "Ikura",
+        "https://schema.org/price": {
+          "@value": "31.00",
+          "@type": "http://www.w3.org/2001/XMLSchema#decimal"
+        }
+      }
+    }
+  },
+  {
+    "@op": "ldh-CreateItem",
+    "args": {
+      "container": {
+        "@id": "https://localhost:4443/price-list-sync/"
+      },
+      "title": "Master price list",
+      "slug": "master"
+    }
+  },
+  {
+    "@op": "POST",
+    "args": {
+      "url": {
+        "@id": "https://localhost:4443/price-list-sync/master/"
+      },
+      "data": {
+        "@graph": [
+          {
+            "@id": "#nw-1",
+            "https://schema.org/sku": "NW-1",
+            "https://schema.org/price": {
+              "@value": "19.50",
+              "@type": "http://www.w3.org/2001/XMLSchema#decimal"
+            }
+          },
+          {
+            "@id": "#nw-10",
+            "https://schema.org/sku": "NW-10",
+            "https://schema.org/price": {
+              "@value": "31.00",
+              "@type": "http://www.w3.org/2001/XMLSchema#decimal"
+            }
+          },
+          {
+            "@id": "#nw-11",
+            "https://schema.org/sku": "NW-11",
+            "https://schema.org/price": {
+              "@value": "22.75",
+              "@type": "http://www.w3.org/2001/XMLSchema#decimal"
+            }
+          }
+        ]
+      }
+    }
+  }
+]

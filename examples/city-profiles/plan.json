@@ -1,0 +1,283 @@
+[
+  {
+    "@op": "Variable",
+    "args": {
+      "name": "cities",
+      "value": {
+        "@op": "Filter",
+        "args": {
+          "input": {
+            "@op": "Filter",
+            "args": {
+              "input": {
+                "@op": "ldh-CreateContainer",
+                "args": {
+                  "parent": {
+                    "@id": "https://localhost:4443/"
+                  },
+                  "title": "Danish cities",
+                  "slug": "city-profiles"
+                }
+              },
+              "expression": 1
+            }
+          },
+          "expression": "url"
+        }
+      }
+    }
+  },
+  {
+    "@op": "ForEach",
+    "args": {
+      "select": [
+        "Copenhagen",
+        "Aarhus",
+        "Odense"
+      ],
+      "operation": [
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "city",
+            "value": {
+              "@op": "ResolveURI",
+              "args": {
+                "base": {
+                  "@id": "http://dbpedia.org/resource/"
+                },
+                "relative": {
+                  "@op": "EncodeForURI",
+                  "args": {
+                    "input": {
+                      "@op": "Current",
+                      "args": {}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "description",
+            "value": {
+              "@op": "GET",
+              "args": {
+                "url": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$city"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "page",
+            "value": {
+              "@op": "Filter",
+              "args": {
+                "input": {
+                  "@op": "Filter",
+                  "args": {
+                    "input": {
+                      "@op": "ldh-CreateItem",
+                      "args": {
+                        "container": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "$cities"
+                          }
+                        },
+                        "title": {
+                          "@op": "Current",
+                          "args": {}
+                        },
+                        "slug": {
+                          "@op": "EncodeForURI",
+                          "args": {
+                            "input": {
+                              "@op": "Current",
+                              "args": {}
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "expression": 1
+                  }
+                },
+                "expression": "url"
+              }
+            }
+          }
+        },
+        {
+          "@op": "POST",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "$page"
+              }
+            },
+            "data": {
+              "@op": "CONSTRUCT",
+              "args": {
+                "graph": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$description"
+                  }
+                },
+                "query": {
+                  "@op": "Substitute",
+                  "args": {
+                    "query": "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> PREFIX geo: <http://www.w3.org/2003/01/geo/wgs84_pos#> PREFIX dbo: <http://dbpedia.org/ontology/> CONSTRUCT { ?city rdfs:label ?label ; geo:lat ?lat ; geo:long ?long ; dbo:populationTotal ?population ; dbo:thumbnail ?thumbnail } WHERE { ?city rdfs:label ?label FILTER(lang(?label) = \"en\") OPTIONAL { ?city geo:lat ?lat ; geo:long ?long } OPTIONAL { ?city dbo:thumbnail ?thumbnail } OPTIONAL { ?city dbo:populationTotal ?official } OPTIONAL { ?city <http://dbpedia.org/property/populationTotal> ?infobox } OPTIONAL { ?city dbo:populationUrban ?urban } BIND(COALESCE(?official, ?infobox, ?urban) AS ?population) }",
+                    "var": "city",
+                    "binding": {
+                      "@op": "Value",
+                      "args": {
+                        "name": "$city"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "@op": "ldh-AddObjectBlock",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "$page"
+              }
+            },
+            "value": {
+              "@op": "Filter",
+              "args": {
+                "input": {
+                  "@op": "Filter",
+                  "args": {
+                    "input": {
+                      "@op": "SELECT",
+                      "args": {
+                        "graph": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "$description"
+                          }
+                        },
+                        "query": {
+                          "@op": "Substitute",
+                          "args": {
+                            "query": "SELECT ?thumbnail WHERE { ?city <http://dbpedia.org/ontology/thumbnail> ?thumbnail }",
+                            "var": "city",
+                            "binding": {
+                              "@op": "Value",
+                              "args": {
+                                "name": "$city"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "expression": 1
+                  }
+                },
+                "expression": "thumbnail"
+              }
+            }
+          }
+        },
+        {
+          "@op": "ldh-AddSelect",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "$page"
+              }
+            },
+            "title": "Location",
+            "fragment": "location-query",
+            "query": {
+              "@op": "Substitute",
+              "args": {
+                "query": "SELECT ?city WHERE { GRAPH ?doc { ?city <http://www.w3.org/2003/01/geo/wgs84_pos#lat> ?lat } }",
+                "var": "doc",
+                "binding": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$page"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "@op": "ldh-AddView",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "$page"
+              }
+            },
+            "query": {
+              "@op": "ResolveURI",
+              "args": {
+                "base": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$page"
+                  }
+                },
+                "relative": "#location-query"
+              }
+            },
+            "title": "Location",
+            "fragment": "map",
+            "mode": {
+              "@id": "https://w3id.org/atomgraph/client#MapMode"
+            }
+          }
+        },
+        {
+          "@op": "ldh-AddObjectBlock",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "$page"
+              }
+            },
+            "value": {
+              "@op": "ResolveURI",
+              "args": {
+                "base": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$page"
+                  }
+                },
+                "relative": "#map"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+]

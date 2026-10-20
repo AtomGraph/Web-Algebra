@@ -1,0 +1,243 @@
+[
+  {
+    "@op": "Variable",
+    "args": {
+      "name": "trail",
+      "value": {
+        "@op": "Filter",
+        "args": {
+          "input": {
+            "@op": "Filter",
+            "args": {
+              "input": {
+                "@op": "ldh-CreateContainer",
+                "args": {
+                  "parent": {
+                    "@id": "https://localhost:4443/"
+                  },
+                  "title": "UNESCO Thesaurus trails",
+                  "slug": "unesco-concept-trail"
+                }
+              },
+              "expression": 1
+            }
+          },
+          "expression": "url"
+        }
+      }
+    }
+  },
+  {
+    "@op": "Variable",
+    "args": {
+      "name": "doc",
+      "value": {
+        "@op": "Filter",
+        "args": {
+          "input": {
+            "@op": "Filter",
+            "args": {
+              "input": {
+                "@op": "ldh-CreateItem",
+                "args": {
+                  "container": {
+                    "@op": "Value",
+                    "args": {
+                      "name": "$trail"
+                    }
+                  },
+                  "title": "Climate change: broader terms",
+                  "slug": "climate-change"
+                }
+              },
+              "expression": 1
+            }
+          },
+          "expression": "url"
+        }
+      }
+    }
+  },
+  {
+    "@op": "ldh-AddXHTMLBlock",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "value": {
+        "@op": "Concat",
+        "args": {
+          "inputs": [
+            "<div xmlns=\"http://www.w3.org/1999/xhtml\">",
+            "<p>The broader terms of <i>Climate change</i> in the UNESCO Thesaurus, from the most specific to the most general.</p>",
+            "</div>"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "@op": "Iterate",
+    "args": {
+      "params": {
+        "concept": {
+          "@id": "https://unesco-thesaurus.demo.linkeddatahub.com/concepts/concept4559/#this"
+        }
+      },
+      "operation": [
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "description",
+            "value": {
+              "@op": "GET",
+              "args": {
+                "url": {
+                  "@op": "URI",
+                  "args": {
+                    "input": {
+                      "@op": "Value",
+                      "args": {
+                        "name": "$concept"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "label",
+            "value": {
+              "@op": "Filter",
+              "args": {
+                "input": {
+                  "@op": "Filter",
+                  "args": {
+                    "input": {
+                      "@op": "SELECT",
+                      "args": {
+                        "graph": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "$description"
+                          }
+                        },
+                        "query": {
+                          "@op": "Substitute",
+                          "args": {
+                            "query": "PREFIX skos: <http://www.w3.org/2004/02/skos/core#> SELECT ?label WHERE { ?concept skos:prefLabel ?label FILTER(lang(?label) = \"en\") }",
+                            "var": "concept",
+                            "binding": {
+                              "@op": "URI",
+                              "args": {
+                                "input": {
+                                  "@op": "Value",
+                                  "args": {
+                                    "name": "$concept"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "expression": 1
+                  }
+                },
+                "expression": "label"
+              }
+            }
+          }
+        },
+        {
+          "@op": "ldh-AddObjectBlock",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "$doc"
+              }
+            },
+            "value": {
+              "@op": "URI",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$concept"
+                  }
+                }
+              }
+            },
+            "title": {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$label"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "next-iteration": {
+        "concept": {
+          "@op": "Filter",
+          "args": {
+            "input": {
+              "@op": "Filter",
+              "args": {
+                "input": {
+                  "@op": "SELECT",
+                  "args": {
+                    "graph": {
+                      "@op": "Value",
+                      "args": {
+                        "name": "$description"
+                      }
+                    },
+                    "query": {
+                      "@op": "Substitute",
+                      "args": {
+                        "query": "PREFIX skos: <http://www.w3.org/2004/02/skos/core#> SELECT (COALESCE(STR(?broader), \"\") AS ?next) WHERE { OPTIONAL { ?concept skos:broader ?broader } }",
+                        "var": "concept",
+                        "binding": {
+                          "@op": "URI",
+                          "args": {
+                            "input": {
+                              "@op": "Value",
+                              "args": {
+                                "name": "$concept"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "expression": 1
+              }
+            },
+            "expression": "next"
+          }
+        }
+      },
+      "break": {
+        "name": "concept",
+        "equals": ""
+      }
+    }
+  }
+]

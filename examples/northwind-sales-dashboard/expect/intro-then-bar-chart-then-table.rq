@@ -1,0 +1,18 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX sioc: <http://rdfs.org/sioc/ns#>
+PREFIX ldh: <https://w3id.org/atomgraph/linkeddatahub#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX sp: <http://spinrdf.org/sp#>
+PREFIX ac: <https://w3id.org/atomgraph/client#>
+ASK {
+  GRAPH <https://localhost:4443/northwind-sales-dashboard/overview/> {
+    <https://localhost:4443/northwind-sales-dashboard/overview/> rdf:_1 ?intro ; rdf:_2 ?first ; rdf:_3 ?second .
+    ?intro a ldh:XHTML .
+    ?first rdf:value <https://localhost:4443/northwind-sales-dashboard/overview/#revenue-chart> .
+    ?second rdf:value <https://localhost:4443/northwind-sales-dashboard/overview/#customers-table> .
+    <https://localhost:4443/northwind-sales-dashboard/overview/#revenue-chart> a ldh:ResultSetChart ; ldh:chartType ac:BarChart ; spin:query <https://localhost:4443/northwind-sales-dashboard/overview/#revenue-by-category> .
+    <https://localhost:4443/northwind-sales-dashboard/overview/#customers-table> a ldh:ResultSetChart ; ldh:chartType ac:Table ; spin:query <https://localhost:4443/northwind-sales-dashboard/overview/#top-customers> .
+    <https://localhost:4443/northwind-sales-dashboard/overview/#revenue-by-category> ldh:service <https://localhost:4443/northwind-sales-dashboard/overview/#northwind> .
+    <https://localhost:4443/northwind-sales-dashboard/overview/#top-customers> ldh:service <https://localhost:4443/northwind-sales-dashboard/overview/#northwind> .
+  }
+}

@@ -1,0 +1,21 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX sioc: <http://rdfs.org/sioc/ns#>
+PREFIX ldh: <https://w3id.org/atomgraph/linkeddatahub#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX sp: <http://spinrdf.org/sp#>
+ASK {
+  FILTER NOT EXISTS {
+    GRAPH ?item { ?item sioc:has_container <https://localhost:4443/northwind-category-catalogue/> }
+    FILTER NOT EXISTS {
+      GRAPH ?item {
+        ?item rdf:_1 ?text ; rdf:_2 ?picture ; rdf:_3 ?list .
+        ?text a ldh:XHTML .
+        ?picture a ldh:Object ; rdf:value ?image .
+        ?list a ldh:Object ; rdf:value ?view .
+        ?view a ldh:View ; spin:query ?query .
+        ?query a sp:Select ; sp:text ?text_ ; ldh:service <https://localhost:4443/northwind-category-catalogue/#northwind> .
+        FILTER(STRSTARTS(STR(?image), "https://northwind-traders.demo.linkeddatahub.com/uploads/"))
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+PREFIX schema: <https://schema.org/>
+SELECT ?product ?sku ?price WHERE {
+  GRAPH ?doc { ?p schema:name ?product ; schema:sku ?sku ; schema:price ?price }
+  FILTER(STRSTARTS(STR(?doc), "https://localhost:4443/price-list-sync/products/"))
+} ORDER BY ?sku
