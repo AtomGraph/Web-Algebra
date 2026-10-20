@@ -223,6 +223,50 @@ class TestWriteIfMatch:
             _write(method, settings)
 
 
+# Appendix A: the ldh-* updates "are subject to the same rules (§3.6, §4.4)".
+# (operation, the HTTP method it writes with, its arguments, the URI written)
+LDH_WRITES = {
+    "ldh-AddFile": ("POST", lambda path: {"url": {"@id": DOC}, "file": str(path), "title": "t"}, DOC),
+    "ldh-AddSelect": ("POST", lambda path: {"url": {"@id": DOC}, "query": "SELECT * { ?s ?p ?o }", "title": "t"}, DOC),
+    "ldh-CreateItem": ("PUT", lambda path: {"container": {"@id": EX}, "title": "t", "slug": "doc"}, EX + "doc/"),
+}
+
+
+@pytest.mark.parametrize("op", sorted(LDH_WRITES))
+class TestLdhWriteIfMatch:
+    def _run(self, op, settings, tmp_path):
+        path = tmp_path / "upload.txt"
+        path.write_bytes(b"bytes")
+        _, args, _ = LDH_WRITES[op]
+        Operation.process_json(settings, {"@op": op, "args": args(path)})
+
+    def test_etag_from_head_is_sent_as_if_match(self, op, settings, http_stub, tmp_path):
+        # Appendix A, §4.4: the entity tag is read with HEAD, with the write's
+        # Accept, on the URI written, and sent as If-Match
+        method, _, url = LDH_WRITES[op]
+        http_stub.handler = _writes_answered(
+            method,
+            lambda: StubResponse(200),
+            head=lambda: StubResponse(200, {"ETag": '"abc123"'}),
+        )
+        self._run(op, settings, tmp_path)
+        [write] = http_stub.with_method(method)
+        [head] = http_stub.with_method("HEAD")
+        assert write.full_url == head.full_url == url
+        assert request_header(write, "If-Match") == '"abc123"'
+        assert request_header(head, "Accept") == request_header(write, "Accept")
+
+    def test_no_if_match_when_head_fails(self, op, settings, http_stub, tmp_path):
+        # Appendix A, §4.4: a resource that does not exist is written unconditionally
+        method, _, _ = LDH_WRITES[op]
+        http_stub.handler = _writes_answered(
+            method, lambda: StubResponse(201), head=lambda: StubResponse(404)
+        )
+        self._run(op, settings, tmp_path)
+        [write] = http_stub.with_method(method)
+        assert request_header(write, "If-Match") is None
+
+
 class TestReportedUrlLookup:
     def test_filter_filter_put_url_is_the_reported_uri(self, settings, http_stub):
         # §4.4/§4.1: Filter(Filter(PUT(…), 1), "url") is the URI a write

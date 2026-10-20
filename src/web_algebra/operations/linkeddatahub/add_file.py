@@ -25,8 +25,8 @@ class AddFile(ClientOperation, Operation, MCPTool):
 
     Unlike the rest of the `ldh-Add*` family, this op does not subclass
     `POST` — file upload uses `multipart/form-data` with LDH's RDF/POST
-    dialect rather than an N-triples body, so it carries its own
-    `FileClient` instance instead of inheriting `LinkedDataClient` plumbing.
+    dialect rather than an N-triples body, so it carries a `FileClient`,
+    a `LinkedDataClient` whose upload is sent as conditionally as any write.
     """
 
     # uploads a file and appends its description to the target document
