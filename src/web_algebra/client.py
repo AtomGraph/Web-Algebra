@@ -463,18 +463,25 @@ class SPARQLClient:
             raise ValueError(f"Unsupported query type: {query_type}")
 
         headers = {"Accept": accept}
+        # an endpoint is used as given, a query string of its own included
+        # (…/sparql?default-graph-uri=…): the query is one more parameter of the
+        # SPARQL 1.1 Protocol request (formal-semantics.md §4.3)
+        endpoint = urllib.parse.urlsplit(endpoint_url)
+        params = urllib.parse.parse_qsl(endpoint.query, keep_blank_values=True)
+        params.append(("query", query_string))
         if post:
             headers["Content-Type"] = "application/x-www-form-urlencoded"
             request = urllib.request.Request(
-                endpoint_url,
-                data=urllib.parse.urlencode({"query": query_string}).encode("utf-8"),
+                urllib.parse.urlunsplit(endpoint._replace(query="")),
+                data=urllib.parse.urlencode(params).encode("utf-8"),
                 headers=headers,
                 method="POST",
             )
         else:
-            # Encode URL parameters
-            params = urllib.parse.urlencode({"query": query_string})
-            request = urllib.request.Request(f"{endpoint_url}?{params}", headers=headers)
+            request = urllib.request.Request(
+                urllib.parse.urlunsplit(endpoint._replace(query=urllib.parse.urlencode(params))),
+                headers=headers,
+            )
         response = self.opener.open(request)
         data = response.read()
 

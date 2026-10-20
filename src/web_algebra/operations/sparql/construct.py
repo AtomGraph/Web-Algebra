@@ -15,6 +15,8 @@ class CONSTRUCT(QuerySource, ClientOperation, Operation, MCPTool):
     Executes a SPARQL CONSTRUCT query against a specified endpoint.
     """
 
+    query_form: ClassVar[str] = "ConstructQuery"
+
     client_class: ClassVar[Type] = SPARQLClient
 
 
