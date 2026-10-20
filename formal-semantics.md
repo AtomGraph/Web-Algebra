@@ -1068,6 +1068,11 @@ operations' MCP tools, and an MCP tool name allows only ASCII letters, digits,
 | `ldh-GenerateClassContainers` | `ontology: Graph · parent_container: URI · endpoint: URI · service_uri: Maybe URI` |
 | `ldh-GeneratePortal` | `endpoint: URI · ontology_namespace: URI · parent_container: URI` |
 
+`ldh-CreateContainer` and `ldh-CreateItem` write the document at the parent's
+URI extended by `slug` and `/`; without a `slug` the segment is a fresh
+lowercase UUID, as in the LinkedDataHub CLI. The write is a `PUT`, so a
+document already at that URI is replaced.
+
 `ldh-AddSelect` and `ldh-AddConstruct` record a stored query (`sp:Select`,
 `sp:Construct`) in the document. Two differences between the serializations
 are forced by the XML one running as a service: its `AddFile` takes `file`
