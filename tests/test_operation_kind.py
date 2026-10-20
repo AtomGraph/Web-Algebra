@@ -1,0 +1,50 @@
+"""OperationKind orders by blast radius, not by its string values.
+
+OperationKind is implementation, not language (formal-semantics.md does not
+define it), so this test sits outside tests/unit/ and may name the module.
+"""
+
+import pytest
+
+from web_algebra.operation import OperationKind
+
+READ, WRITE, DESTRUCTIVE = OperationKind.READ, OperationKind.WRITE, OperationKind.DESTRUCTIVE
+
+
+@pytest.mark.parametrize(
+    "lower, higher", [(READ, WRITE), (WRITE, DESTRUCTIVE), (READ, DESTRUCTIVE)]
+)
+def test_every_comparison_orders_by_blast_radius(lower, higher):
+    assert lower < higher
+    assert lower <= higher
+    assert higher > lower
+    assert higher >= lower
+    assert not higher < lower
+    assert not lower > higher
+
+
+def test_a_kind_is_neither_above_nor_below_itself():
+    for kind in OperationKind:
+        assert kind <= kind
+        assert kind >= kind
+        assert not kind < kind
+        assert not kind > kind
+
+
+def test_the_worst_of_several_kinds_is_the_most_destructive():
+    assert max(READ, DESTRUCTIVE, WRITE) is DESTRUCTIVE
+    assert min(WRITE, DESTRUCTIVE, READ) is READ
+    assert sorted([DESTRUCTIVE, READ, WRITE]) == [READ, WRITE, DESTRUCTIVE]
+
+
+def test_an_upsert_is_destructive_and_what_extends_it_is_too():
+    # PUT replaces the whole document at a URL that already holds one;
+    # ldh-CreateContainer and ldh-CreateItem PUT to parent + slug (or title),
+    # so on an existing URL they replace it as well
+    from web_algebra.operations.linked_data.put import PUT
+    from web_algebra.operations.linkeddatahub.create_container import CreateContainer
+    from web_algebra.operations.linkeddatahub.create_item import CreateItem
+
+    assert PUT.kind is DESTRUCTIVE
+    assert CreateContainer.kind is DESTRUCTIVE
+    assert CreateItem.kind is DESTRUCTIVE

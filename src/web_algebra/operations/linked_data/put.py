@@ -19,8 +19,9 @@ class PUT(ClientOperation, Operation, MCPTool):
     Note: This operation does not return the updated graph, it only confirms the success of the operation.
     """
 
-    # writes the supplied graph at a URL the plan names outright, so the blast radius is visible in the plan itself
-    kind: ClassVar[OperationKind] = OperationKind.WRITE
+    # an upsert: on a URL that already holds a document it replaces all of it, and the client
+    # sends the If-Match that lets the replace through - so what it removes is not in the plan
+    kind: ClassVar[OperationKind] = OperationKind.DESTRUCTIVE
 
 
     @classmethod
