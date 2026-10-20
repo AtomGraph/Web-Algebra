@@ -44,6 +44,10 @@ class WriteRecorder(Protocol):
 
 
 class HTTPRedirectHandler308(urllib.request.HTTPRedirectHandler):
+    # urllib dispatches a 308 to http_error_308 only from Python 3.11; before
+    # that a 308 was an error even for a GET
+    http_error_308 = urllib.request.HTTPRedirectHandler.http_error_302
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         """Follow a redirect for a read only; 308 preserves the method.
 
