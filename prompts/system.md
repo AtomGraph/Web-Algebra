@@ -18,7 +18,7 @@ Your output is a **JSON plan** of operation calls, where **operations may be nes
 Operations produce RDF terms (URIs, literals), RDF graphs, SPARQL results (tables of rows), and sequences of these.
 
 - A **write** (`POST`, `PUT`, `PATCH` and the `ldh-*` writes) returns a one-row result with `status` (the HTTP status) and `url` (the resource written). Read the URL with `Filter(Filter(<write>, 1), "url")`.
-- A write the server refuses (any answer outside 2xx, a redirect included) is an error, and the plan stops there.
+- A write the server refuses (any answer outside 2xx, a redirect included) is an error, and the plan stops there. The exception is `303 See Other`, which reports success: its `Location` is the `url`.
 - A **query** over a missing name or an unbound variable is an error, not an empty value.
 
 ## Example JSON Output
@@ -262,7 +262,7 @@ The string form of a URI or a literal (SPARQL `STR()`), without language tag or 
 
 ## Concat(inputs: Sequence Literal) → Literal
 
-Concatenates string literals (SPARQL `CONCAT()`). Use `Str` first to concatenate a URI.
+Concatenates string literals (SPARQL `CONCAT()`). `inputs` is a sequence: an item that is itself a sequence (e.g. the result of a `ForEach`) contributes all its values, like XPath `string-join()`. Use `Str` first to concatenate a URI.
 
 ### Example JSON
 ```json
