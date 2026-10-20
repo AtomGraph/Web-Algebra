@@ -1,5 +1,5 @@
-Translate the following instruction into a JSON-formatted structure of operation calls, following the predefined format and execution rules.
+Translate the following instruction into a JSON plan of operation calls, following the format and rules given.
 
 Instruction: {instruction}
 
-Return only the JSON output, with operations represented as JSON objects using `operation` and `args`. Operations may be nested inside arguments, and execution should follow an inside-out approach. Do not include explanations or additional text—only return the JSON result.
+Return only the JSON plan: each operation an object with `@op` and `args`, operations nested inside arguments where one's result is another's input, and URIs written as {{"@id": "..."}}. Do not include explanations or additional text.
