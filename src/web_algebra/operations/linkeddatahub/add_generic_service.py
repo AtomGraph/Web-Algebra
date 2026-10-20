@@ -215,7 +215,7 @@ class AddGenericService(POST):
         data = {
             "@context": {
                 "ldh": "https://w3id.org/atomgraph/linkeddatahub#",
-                "dh": "https://www.w3.org/ns/ldt/document-hierarchy#",
+                "dh": "https://w3id.org/atomgraph/linkeddatahub/document-hierarchy#",
                 "a": "https://w3id.org/atomgraph/core#",
                 "dct": "http://purl.org/dc/terms/",
                 "foaf": "http://xmlns.com/foaf/0.1/",

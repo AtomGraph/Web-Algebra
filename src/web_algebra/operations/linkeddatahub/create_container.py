@@ -92,7 +92,7 @@ class CreateContainer(PUT):
         data = {
             "@context": {
                 "ldh": "https://w3id.org/atomgraph/linkeddatahub#",
-                "dh": "https://www.w3.org/ns/ldt/document-hierarchy#",
+                "dh": "https://w3id.org/atomgraph/linkeddatahub/document-hierarchy#",
                 "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
                 "dct": "http://purl.org/dc/terms/",
                 "sioc": "http://rdfs.org/sioc/ns#",
