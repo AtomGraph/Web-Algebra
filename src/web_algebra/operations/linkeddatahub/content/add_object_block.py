@@ -3,6 +3,7 @@ import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
 from web_algebra.operation import Operation
+from web_algebra.operations.linkeddatahub.fragments import fragment_id
 from web_algebra.operations.linked_data.post import POST
 from web_algebra.operations.linked_data.get import GET
 
@@ -183,7 +184,7 @@ class AddObjectBlock(POST):
         value_str = str(value)
         title_str = str(title) if title else None
         description_str = str(description) if description else None
-        fragment_str = str(fragment) if fragment else None
+        fragment_str = fragment_id(fragment)
         mode_str = str(mode) if mode else None
 
         logging.info(

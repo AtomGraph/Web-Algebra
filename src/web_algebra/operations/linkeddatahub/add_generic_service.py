@@ -3,6 +3,7 @@ import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
 from web_algebra.operation import Operation
+from web_algebra.operations.linkeddatahub.fragments import fragment_id
 from web_algebra.operations.linked_data.post import POST
 
 
@@ -194,7 +195,7 @@ class AddGenericService(POST):
         endpoint_str = str(endpoint)
         title_str = str(title)
         description_str = str(description) if description else None
-        fragment_str = str(fragment) if fragment else None
+        fragment_str = fragment_id(fragment)
         graph_store_str = str(graph_store) if graph_store else None
         auth_user_str = str(auth_user) if auth_user else None
         auth_pwd_str = str(auth_pwd) if auth_pwd else None

@@ -3,6 +3,7 @@ import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
 from web_algebra.operation import Operation
+from web_algebra.operations.linkeddatahub.fragments import fragment_id
 from web_algebra.operations.linked_data.post import POST
 
 
@@ -158,7 +159,7 @@ class AddSelect(POST):
         query_str = str(query)
         title_str = str(title)
         description_str = str(description) if description else None
-        fragment_str = str(fragment) if fragment else None
+        fragment_str = fragment_id(fragment)
         service_str = str(service) if service else None
 
         logging.info(
