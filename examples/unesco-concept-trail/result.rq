@@ -1,0 +1,9 @@
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+SELECT ?step ?concept ?title WHERE {
+  GRAPH <https://localhost:4443/unesco-concept-trail/climate-change/> {
+    <https://localhost:4443/unesco-concept-trail/climate-change/> ?seq ?block . ?block rdf:value ?concept ; dct:title ?title
+    BIND(xsd:integer(STRAFTER(STR(?seq), "#_")) - 1 AS ?step)
+  }
+} ORDER BY ?step

@@ -1,0 +1,157 @@
+[
+  {
+    "@op": "Variable",
+    "args": {
+      "name": "master",
+      "value": {
+        "@op": "GET",
+        "args": {
+          "url": {
+            "@id": "https://localhost:4443/price-list-sync/master/"
+          }
+        }
+      }
+    }
+  },
+  {
+    "@op": "ForEach",
+    "args": {
+      "select": {
+        "@op": "ldh-List",
+        "args": {
+          "url": {
+            "@id": "https://localhost:4443/price-list-sync/products/"
+          },
+          "base": "https://localhost:4443/"
+        }
+      },
+      "operation": [
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "product",
+            "value": {
+              "@op": "GET",
+              "args": {
+                "url": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "child"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "sku",
+            "value": {
+              "@op": "Filter",
+              "args": {
+                "input": {
+                  "@op": "Filter",
+                  "args": {
+                    "input": {
+                      "@op": "SELECT",
+                      "args": {
+                        "graph": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "$product"
+                          }
+                        },
+                        "query": "SELECT ?sku WHERE { ?product <https://schema.org/sku> ?sku }"
+                      }
+                    },
+                    "expression": 1
+                  }
+                },
+                "expression": "sku"
+              }
+            }
+          }
+        },
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "price",
+            "value": {
+              "@op": "Filter",
+              "args": {
+                "input": {
+                  "@op": "Filter",
+                  "args": {
+                    "input": {
+                      "@op": "SELECT",
+                      "args": {
+                        "graph": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "$master"
+                          }
+                        },
+                        "query": {
+                          "@op": "Substitute",
+                          "args": {
+                            "query": "SELECT ?price WHERE { ?offer <https://schema.org/sku> ?sku ; <https://schema.org/price> ?price }",
+                            "var": "sku",
+                            "binding": {
+                              "@op": "Value",
+                              "args": {
+                                "name": "$sku"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "expression": 1
+                  }
+                },
+                "expression": "price"
+              }
+            }
+          }
+        },
+        {
+          "@op": "PATCH",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "child"
+              }
+            },
+            "update": {
+              "@op": "Substitute",
+              "args": {
+                "query": {
+                  "@op": "Substitute",
+                  "args": {
+                    "query": "PREFIX schema: <https://schema.org/> DELETE { ?product schema:price ?old } INSERT { ?product schema:price ?price } WHERE { ?product schema:sku ?sku ; schema:price ?old }",
+                    "var": "price",
+                    "binding": {
+                      "@op": "Value",
+                      "args": {
+                        "name": "$price"
+                      }
+                    }
+                  }
+                },
+                "var": "sku",
+                "binding": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$sku"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+]

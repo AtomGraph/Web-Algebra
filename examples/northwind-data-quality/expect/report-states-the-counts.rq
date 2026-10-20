@@ -1,0 +1,12 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX sioc: <http://rdfs.org/sioc/ns#>
+PREFIX ldh: <https://w3id.org/atomgraph/linkeddatahub#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX sp: <http://spinrdf.org/sp#>
+ASK {
+  GRAPH <https://localhost:4443/northwind-data-quality/customer-contacts/> {
+    <https://localhost:4443/northwind-data-quality/customer-contacts/> rdf:_1 ?text .
+    ?text a ldh:XHTML ; rdf:value ?html .
+    FILTER(REGEX(STR(?html), "Of [0-9]+ companies, [0-9]+ have no telephone number and [0-9]+ have no contact point"))
+  }
+}

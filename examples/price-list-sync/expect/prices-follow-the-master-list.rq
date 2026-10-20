@@ -1,0 +1,6 @@
+PREFIX schema: <https://schema.org/>
+ASK {
+  GRAPH <https://localhost:4443/price-list-sync/products/chai/> { ?chai schema:sku "NW-1" ; schema:price 19.50 }
+  GRAPH <https://localhost:4443/price-list-sync/products/ikura/> { ?ikura schema:sku "NW-10" ; schema:price 31.00 }
+  GRAPH <https://localhost:4443/price-list-sync/products/queso-cabrales/> { ?queso schema:sku "NW-11" ; schema:price 22.75 }
+}

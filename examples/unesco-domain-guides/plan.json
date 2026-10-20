@@ -1,0 +1,236 @@
+[
+  {
+    "@op": "Variable",
+    "args": {
+      "name": "guides",
+      "value": {
+        "@op": "Filter",
+        "args": {
+          "input": {
+            "@op": "Filter",
+            "args": {
+              "input": {
+                "@op": "ldh-CreateContainer",
+                "args": {
+                  "parent": {
+                    "@id": "https://localhost:4443/"
+                  },
+                  "title": "UNESCO Thesaurus domain guides",
+                  "slug": "unesco-domain-guides"
+                }
+              },
+              "expression": 1
+            }
+          },
+          "expression": "url"
+        }
+      }
+    }
+  },
+  {
+    "@op": "ForEach",
+    "args": {
+      "select": {
+        "@op": "SELECT",
+        "args": {
+          "endpoint": {
+            "@id": "https://unesco-thesaurus.demo.linkeddatahub.com/sparql"
+          },
+          "query": "PREFIX skos: <http://www.w3.org/2004/02/skos/core#> SELECT ?domain ?label WHERE { GRAPH ?g { ?domain a <http://vocabularies.unesco.org/ontology#Domain> ; skos:prefLabel ?label FILTER(lang(?label) = \"en\") } } ORDER BY ?label"
+        }
+      },
+      "operation": [
+        {
+          "@op": "Variable",
+          "args": {
+            "name": "guide",
+            "value": {
+              "@op": "Filter",
+              "args": {
+                "input": {
+                  "@op": "Filter",
+                  "args": {
+                    "input": {
+                      "@op": "ldh-CreateItem",
+                      "args": {
+                        "container": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "$guides"
+                          }
+                        },
+                        "title": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "label"
+                          }
+                        },
+                        "slug": {
+                          "@op": "Replace",
+                          "args": {
+                            "input": {
+                              "@op": "Str",
+                              "args": {
+                                "input": {
+                                  "@op": "Value",
+                                  "args": {
+                                    "name": "domain"
+                                  }
+                                }
+                              }
+                            },
+                            "pattern": "^.*/(domain[0-9]+)/#this$",
+                            "replacement": "$1"
+                          }
+                        }
+                      }
+                    },
+                    "expression": 1
+                  }
+                },
+                "expression": "url"
+              }
+            }
+          }
+        },
+        {
+          "@op": "POST",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "$guide"
+              }
+            },
+            "data": {
+              "@op": "CONSTRUCT",
+              "args": {
+                "endpoint": {
+                  "@id": "https://unesco-thesaurus.demo.linkeddatahub.com/sparql"
+                },
+                "query": {
+                  "@op": "Substitute",
+                  "args": {
+                    "query": "PREFIX skos: <http://www.w3.org/2004/02/skos/core#> CONSTRUCT { ?area a skos:Collection ; skos:prefLabel ?label ; skos:notation ?notation } WHERE { GRAPH ?g { ?domain skos:member ?area } GRAPH ?g2 { ?area skos:prefLabel ?label FILTER(lang(?label) = \"en\") OPTIONAL { ?area skos:notation ?notation } } }",
+                    "var": "domain",
+                    "binding": {
+                      "@op": "Value",
+                      "args": {
+                        "name": "domain"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "@op": "ldh-AddXHTMLBlock",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "$guide"
+              }
+            },
+            "value": {
+              "@op": "Concat",
+              "args": {
+                "inputs": [
+                  "<div xmlns=\"http://www.w3.org/1999/xhtml\">",
+                  "<p>The subject areas of the UNESCO Thesaurus domain <i>",
+                  {
+                    "@op": "Value",
+                    "args": {
+                      "name": "label"
+                    }
+                  },
+                  "</i>.</p>",
+                  "</div>"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "@op": "ldh-AddSelect",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "$guide"
+              }
+            },
+            "title": "Subject areas",
+            "fragment": "areas-query",
+            "query": {
+              "@op": "Substitute",
+              "args": {
+                "query": "PREFIX skos: <http://www.w3.org/2004/02/skos/core#> SELECT ?area WHERE { GRAPH ?doc { ?area a skos:Collection ; skos:prefLabel ?label } } ORDER BY ?label",
+                "var": "doc",
+                "binding": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$guide"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "@op": "ldh-AddView",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "$guide"
+              }
+            },
+            "query": {
+              "@op": "ResolveURI",
+              "args": {
+                "base": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$guide"
+                  }
+                },
+                "relative": "#areas-query"
+              }
+            },
+            "title": "Subject areas",
+            "fragment": "areas",
+            "mode": {
+              "@id": "https://w3id.org/atomgraph/client#ListMode"
+            }
+          }
+        },
+        {
+          "@op": "ldh-AddObjectBlock",
+          "args": {
+            "url": {
+              "@op": "Value",
+              "args": {
+                "name": "$guide"
+              }
+            },
+            "value": {
+              "@op": "ResolveURI",
+              "args": {
+                "base": {
+                  "@op": "Value",
+                  "args": {
+                    "name": "$guide"
+                  }
+                },
+                "relative": "#areas"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+]

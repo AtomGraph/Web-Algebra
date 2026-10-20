@@ -29,10 +29,10 @@ The system is built around the `Operation` abstract base class in `src/web_algeb
 poetry install
 
 # Run standalone with JSON file
-poetry run python src/web_algebra/main.py --from-json ./examples/example.json
+uv run python src/web_algebra/main.py --from-json ./examples/city-profiles/plan.json
 
 # Run with LinkedDataHub integration
-poetry run python src/web_algebra/main.py --from-json ./examples/denmark-cities.json \
+uv run python src/web_algebra/main.py --from-json ./examples/northwind-category-catalogue/plan.json \
   --cert_pem_path ../LinkedDataHub/ssl/owner/cert.pem \
   --cert_password Marchius
 

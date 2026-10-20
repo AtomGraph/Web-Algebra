@@ -1,0 +1,13 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX sioc: <http://rdfs.org/sioc/ns#>
+PREFIX ldh: <https://w3id.org/atomgraph/linkeddatahub#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX sp: <http://spinrdf.org/sp#>
+ASK {
+  FILTER NOT EXISTS {
+    GRAPH ?page { ?page sioc:has_container <https://localhost:4443/city-profiles/> }
+    FILTER NOT EXISTS {
+      GRAPH ?page { ?page rdf:_1 ?picture ; rdf:_2 ?map . ?picture rdf:value ?image . ?map rdf:value ?view . ?view a ldh:View }
+    }
+  }
+}

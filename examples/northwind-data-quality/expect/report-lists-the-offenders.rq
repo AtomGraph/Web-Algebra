@@ -1,0 +1,13 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX sioc: <http://rdfs.org/sioc/ns#>
+PREFIX ldh: <https://w3id.org/atomgraph/linkeddatahub#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX sp: <http://spinrdf.org/sp#>
+ASK {
+  GRAPH <https://localhost:4443/northwind-data-quality/customer-contacts/> {
+    <https://localhost:4443/northwind-data-quality/customer-contacts/> rdf:_2 ?list .
+    ?list rdf:value <https://localhost:4443/northwind-data-quality/customer-contacts/#missing-contact-list> .
+    <https://localhost:4443/northwind-data-quality/customer-contacts/#missing-contact-list> a ldh:View ; spin:query <https://localhost:4443/northwind-data-quality/customer-contacts/#missing-contact> .
+    <https://localhost:4443/northwind-data-quality/customer-contacts/#missing-contact> ldh:service <https://localhost:4443/northwind-data-quality/customer-contacts/#northwind> .
+  }
+}

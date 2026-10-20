@@ -1,0 +1,256 @@
+[
+  {
+    "@op": "Variable",
+    "args": {
+      "name": "dashboard",
+      "value": {
+        "@op": "Filter",
+        "args": {
+          "input": {
+            "@op": "Filter",
+            "args": {
+              "input": {
+                "@op": "ldh-CreateContainer",
+                "args": {
+                  "parent": {
+                    "@id": "https://localhost:4443/"
+                  },
+                  "title": "Northwind sales",
+                  "slug": "northwind-sales-dashboard"
+                }
+              },
+              "expression": 1
+            }
+          },
+          "expression": "url"
+        }
+      }
+    }
+  },
+  {
+    "@op": "Variable",
+    "args": {
+      "name": "doc",
+      "value": {
+        "@op": "Filter",
+        "args": {
+          "input": {
+            "@op": "Filter",
+            "args": {
+              "input": {
+                "@op": "ldh-CreateItem",
+                "args": {
+                  "container": {
+                    "@op": "Value",
+                    "args": {
+                      "name": "$dashboard"
+                    }
+                  },
+                  "title": "Sales overview",
+                  "slug": "overview"
+                }
+              },
+              "expression": 1
+            }
+          },
+          "expression": "url"
+        }
+      }
+    }
+  },
+  {
+    "@op": "ldh-AddGenericService",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "endpoint": {
+        "@id": "https://northwind-traders.demo.linkeddatahub.com/sparql"
+      },
+      "title": "Northwind Traders",
+      "fragment": "northwind"
+    }
+  },
+  {
+    "@op": "ldh-AddXHTMLBlock",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "value": {
+        "@op": "Concat",
+        "args": {
+          "inputs": [
+            "<div xmlns=\"http://www.w3.org/1999/xhtml\">",
+            "<h2>Sales overview</h2><p>Revenue from all Northwind orders, by product category and by customer. Both charts query the Northwind endpoint each time the page is viewed.</p>",
+            "</div>"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "@op": "ldh-AddSelect",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "title": "Revenue by category",
+      "fragment": "revenue-by-category",
+      "service": {
+        "@op": "ResolveURI",
+        "args": {
+          "base": {
+            "@op": "Value",
+            "args": {
+              "name": "$doc"
+            }
+          },
+          "relative": "#northwind"
+        }
+      },
+      "query": "PREFIX schema: <https://schema.org/> SELECT ?categoryName (ROUND(SUM(?price * ?quantity)) AS ?revenue) WHERE { GRAPH ?g1 { ?order schema:orderedItem ?item } GRAPH ?g2 { ?item schema:orderedItem ?product ; schema:price ?price ; schema:orderQuantity ?quantity } GRAPH ?g3 { ?product schema:category ?category } GRAPH ?g4 { ?category schema:name ?categoryName } } GROUP BY ?categoryName ORDER BY DESC(?revenue)"
+    }
+  },
+  {
+    "@op": "ldh-AddResultSetChart",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "query": {
+        "@op": "ResolveURI",
+        "args": {
+          "base": {
+            "@op": "Value",
+            "args": {
+              "name": "$doc"
+            }
+          },
+          "relative": "#revenue-by-category"
+        }
+      },
+      "title": "Revenue by category",
+      "chart_type": {
+        "@id": "https://w3id.org/atomgraph/client#BarChart"
+      },
+      "category_var_name": "categoryName",
+      "series_var_name": "revenue",
+      "fragment": "revenue-chart"
+    }
+  },
+  {
+    "@op": "ldh-AddObjectBlock",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "value": {
+        "@op": "ResolveURI",
+        "args": {
+          "base": {
+            "@op": "Value",
+            "args": {
+              "name": "$doc"
+            }
+          },
+          "relative": "#revenue-chart"
+        }
+      }
+    }
+  },
+  {
+    "@op": "ldh-AddSelect",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "title": "Top customers",
+      "fragment": "top-customers",
+      "service": {
+        "@op": "ResolveURI",
+        "args": {
+          "base": {
+            "@op": "Value",
+            "args": {
+              "name": "$doc"
+            }
+          },
+          "relative": "#northwind"
+        }
+      },
+      "query": "PREFIX schema: <https://schema.org/> SELECT ?customerName (ROUND(SUM(?price * ?quantity)) AS ?revenue) WHERE { GRAPH ?g1 { ?order schema:customer ?customer ; schema:orderedItem ?item } GRAPH ?g2 { ?item schema:price ?price ; schema:orderQuantity ?quantity } GRAPH ?g3 { ?customer schema:legalName ?customerName } } GROUP BY ?customerName ORDER BY DESC(?revenue) LIMIT 10"
+    }
+  },
+  {
+    "@op": "ldh-AddResultSetChart",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "query": {
+        "@op": "ResolveURI",
+        "args": {
+          "base": {
+            "@op": "Value",
+            "args": {
+              "name": "$doc"
+            }
+          },
+          "relative": "#top-customers"
+        }
+      },
+      "title": "Top ten customers by revenue",
+      "chart_type": {
+        "@id": "https://w3id.org/atomgraph/client#Table"
+      },
+      "category_var_name": "customerName",
+      "series_var_name": "revenue",
+      "fragment": "customers-table"
+    }
+  },
+  {
+    "@op": "ldh-AddObjectBlock",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "value": {
+        "@op": "ResolveURI",
+        "args": {
+          "base": {
+            "@op": "Value",
+            "args": {
+              "name": "$doc"
+            }
+          },
+          "relative": "#customers-table"
+        }
+      }
+    }
+  }
+]

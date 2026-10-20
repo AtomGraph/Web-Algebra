@@ -33,7 +33,7 @@ The system is built around the `Operation` abstract base class that provides:
 - **[Formal Semantics](formal-semantics.md)**: Complete type system and operation catalog
 - **[Operation Interface](src/web_algebra/operation.py)**: Base class and JSON interpreter
 - **[Operation Implementations](src/web_algebra/operations/)**: Directory containing all available operations
-- **[JSON Examples](examples/)**: Sample operation compositions
+- **[Examples](examples/)**: Real-world plans over live Linked Data, each with its result and checks
 
 ### Operations
 
@@ -113,25 +113,27 @@ uv run python src/web_algebra/main.py
 Then enter instruction, for example:
 > Select random 10 UK cities from DBpedia
 
-See [more examples](examples.md)
+See the instructions of the [examples](examples/).
 
 _Currently requires OpenAI API access. `OPENAI_API_KEY` env value has to be set._
 
 #### Execute JSON
 
 ```bash
-uv run python src/web_algebra/main.py --from-json ./examples/united-kingdom-cities.json
+uv run python src/web_algebra/main.py --from-json ./examples/city-profiles/plan.json \
+  --cert_pem_path ../LinkedDataHub/ssl/owner/cert.pem \
+  --cert_password **********
 ```
 
-See [JSON examples](examples).
+See the [examples](examples/): each has the instruction it answers, its plan, the result of a run, and checks.
 
 #### With [LinkedDataHub](https://atomgraph.github.io/LinkedDataHub/)
 
-1. Run LinkedDataHub v5
+1. Run LinkedDataHub v6
 2. Execute `src/web_algebra/main.py`, it expects the path to your LDH's owner certificate and its password as arguments. For example:
 
 ```bash
-uv run python src/web_algebra/main.py --from-json ./examples/united-kingdom-cities.json \
+uv run python src/web_algebra/main.py --from-json ./examples/northwind-category-catalogue/plan.json \
   --cert_pem_path ../LinkedDataHub/ssl/owner/cert.pem \
   --cert_password **********
 ```

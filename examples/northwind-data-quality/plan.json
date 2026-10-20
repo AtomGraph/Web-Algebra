@@ -1,0 +1,262 @@
+[
+  {
+    "@op": "Variable",
+    "args": {
+      "name": "audit",
+      "value": {
+        "@op": "Filter",
+        "args": {
+          "input": {
+            "@op": "Filter",
+            "args": {
+              "input": {
+                "@op": "ldh-CreateContainer",
+                "args": {
+                  "parent": {
+                    "@id": "https://localhost:4443/"
+                  },
+                  "title": "Northwind data quality",
+                  "slug": "northwind-data-quality"
+                }
+              },
+              "expression": 1
+            }
+          },
+          "expression": "url"
+        }
+      }
+    }
+  },
+  {
+    "@op": "Variable",
+    "args": {
+      "name": "doc",
+      "value": {
+        "@op": "Filter",
+        "args": {
+          "input": {
+            "@op": "Filter",
+            "args": {
+              "input": {
+                "@op": "ldh-CreateItem",
+                "args": {
+                  "container": {
+                    "@op": "Value",
+                    "args": {
+                      "name": "$audit"
+                    }
+                  },
+                  "title": "Customer contact data",
+                  "slug": "customer-contacts"
+                }
+              },
+              "expression": 1
+            }
+          },
+          "expression": "url"
+        }
+      }
+    }
+  },
+  {
+    "@op": "Variable",
+    "args": {
+      "name": "stats",
+      "value": {
+        "@op": "SELECT",
+        "args": {
+          "endpoint": {
+            "@id": "https://northwind-traders.demo.linkeddatahub.com/sparql"
+          },
+          "query": "PREFIX schema: <https://schema.org/> SELECT (COUNT(?company) AS ?companies) (SUM(IF(BOUND(?phone), 0, 1)) AS ?withoutPhone) (SUM(IF(BOUND(?contact), 0, 1)) AS ?withoutContact) WHERE { GRAPH ?g { ?company a schema:Corporation OPTIONAL { ?company schema:telephone ?phone } OPTIONAL { ?company schema:contactPoint ?contact } } }"
+        }
+      }
+    }
+  },
+  {
+    "@op": "ldh-AddXHTMLBlock",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "value": {
+        "@op": "Concat",
+        "args": {
+          "inputs": [
+            "<div xmlns=\"http://www.w3.org/1999/xhtml\">",
+            "<h2>Contact data audit</h2><p>Of ",
+            {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Filter",
+                  "args": {
+                    "input": {
+                      "@op": "Filter",
+                      "args": {
+                        "input": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "$stats"
+                          }
+                        },
+                        "expression": 1
+                      }
+                    },
+                    "expression": "companies"
+                  }
+                }
+              }
+            },
+            " companies, ",
+            {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Filter",
+                  "args": {
+                    "input": {
+                      "@op": "Filter",
+                      "args": {
+                        "input": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "$stats"
+                          }
+                        },
+                        "expression": 1
+                      }
+                    },
+                    "expression": "withoutPhone"
+                  }
+                }
+              }
+            },
+            " have no telephone number and ",
+            {
+              "@op": "Str",
+              "args": {
+                "input": {
+                  "@op": "Filter",
+                  "args": {
+                    "input": {
+                      "@op": "Filter",
+                      "args": {
+                        "input": {
+                          "@op": "Value",
+                          "args": {
+                            "name": "$stats"
+                          }
+                        },
+                        "expression": 1
+                      }
+                    },
+                    "expression": "withoutContact"
+                  }
+                }
+              }
+            },
+            " have no contact point.</p>",
+            "</div>"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "@op": "ldh-AddGenericService",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "endpoint": {
+        "@id": "https://northwind-traders.demo.linkeddatahub.com/sparql"
+      },
+      "title": "Northwind Traders",
+      "fragment": "northwind"
+    }
+  },
+  {
+    "@op": "ldh-AddSelect",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "title": "Companies without a contact point",
+      "fragment": "missing-contact",
+      "service": {
+        "@op": "ResolveURI",
+        "args": {
+          "base": {
+            "@op": "Value",
+            "args": {
+              "name": "$doc"
+            }
+          },
+          "relative": "#northwind"
+        }
+      },
+      "query": "PREFIX schema: <https://schema.org/> SELECT ?company WHERE { GRAPH ?g { ?company a schema:Corporation ; schema:legalName ?name FILTER NOT EXISTS { ?company schema:contactPoint ?contact } } } ORDER BY ?name"
+    }
+  },
+  {
+    "@op": "ldh-AddView",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "query": {
+        "@op": "ResolveURI",
+        "args": {
+          "base": {
+            "@op": "Value",
+            "args": {
+              "name": "$doc"
+            }
+          },
+          "relative": "#missing-contact"
+        }
+      },
+      "title": "Companies without a contact point",
+      "fragment": "missing-contact-list",
+      "mode": {
+        "@id": "https://w3id.org/atomgraph/client#ListMode"
+      }
+    }
+  },
+  {
+    "@op": "ldh-AddObjectBlock",
+    "args": {
+      "url": {
+        "@op": "Value",
+        "args": {
+          "name": "$doc"
+        }
+      },
+      "value": {
+        "@op": "ResolveURI",
+        "args": {
+          "base": {
+            "@op": "Value",
+            "args": {
+              "name": "$doc"
+            }
+          },
+          "relative": "#missing-contact-list"
+        }
+      }
+    }
+  }
+]

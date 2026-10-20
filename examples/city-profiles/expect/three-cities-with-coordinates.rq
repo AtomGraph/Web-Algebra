@@ -1,0 +1,11 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX sioc: <http://rdfs.org/sioc/ns#>
+PREFIX ldh: <https://w3id.org/atomgraph/linkeddatahub#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX sp: <http://spinrdf.org/sp#>
+PREFIX geo: <http://www.w3.org/2003/01/geo/wgs84_pos#>
+ASK {
+  GRAPH <https://localhost:4443/city-profiles/Copenhagen/> { <http://dbpedia.org/resource/Copenhagen> geo:lat ?lat1 ; geo:long ?long1 }
+  GRAPH <https://localhost:4443/city-profiles/Aarhus/> { <http://dbpedia.org/resource/Aarhus> geo:lat ?lat2 ; geo:long ?long2 }
+  GRAPH <https://localhost:4443/city-profiles/Odense/> { <http://dbpedia.org/resource/Odense> geo:lat ?lat3 ; geo:long ?long3 }
+}

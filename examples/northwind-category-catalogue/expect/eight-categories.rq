@@ -1,0 +1,6 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX sioc: <http://rdfs.org/sioc/ns#>
+PREFIX ldh: <https://w3id.org/atomgraph/linkeddatahub#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX sp: <http://spinrdf.org/sp#>
+ASK { { SELECT (COUNT(DISTINCT ?item) AS ?n) WHERE { GRAPH ?item { ?item sioc:has_container <https://localhost:4443/northwind-category-catalogue/> } } } FILTER(?n = 8) }

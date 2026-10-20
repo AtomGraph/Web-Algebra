@@ -1,0 +1,6 @@
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX sioc: <http://rdfs.org/sioc/ns#>
+SELECT ?guide (COUNT(DISTINCT ?area) AS ?subjectAreas) (SAMPLE(?label) AS ?forExample) WHERE {
+  GRAPH ?doc { ?doc sioc:has_container <https://localhost:4443/unesco-domain-guides/> ; dct:title ?guide . ?area a skos:Collection ; skos:prefLabel ?label }
+} GROUP BY ?guide ORDER BY ?guide

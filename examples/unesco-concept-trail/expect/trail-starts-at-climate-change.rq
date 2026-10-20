@@ -1,0 +1,14 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX sioc: <http://rdfs.org/sioc/ns#>
+PREFIX ldh: <https://w3id.org/atomgraph/linkeddatahub#>
+PREFIX spin: <http://spinrdf.org/spin#>
+PREFIX sp: <http://spinrdf.org/sp#>
+PREFIX dct: <http://purl.org/dc/terms/>
+ASK {
+  GRAPH <https://localhost:4443/unesco-concept-trail/climate-change/> {
+    <https://localhost:4443/unesco-concept-trail/climate-change/> rdf:_1 ?intro ; rdf:_2 ?first ; rdf:_3 ?second .
+    ?intro a ldh:XHTML .
+    ?first rdf:value <https://unesco-thesaurus.demo.linkeddatahub.com/concepts/concept4559/#this> ; dct:title ?title . FILTER(STR(?title) = "Climate change")
+    ?second rdf:value <https://unesco-thesaurus.demo.linkeddatahub.com/concepts/concept207/#this> .
+  }
+}
