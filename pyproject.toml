@@ -26,6 +26,8 @@ dependencies = [
     "pydantic<2.14",  # mcp 1.10.1 imports pydantic._internal._typing_extra.eval_type_backport, removed in 2.14
     "pydantic-settings",
     "urllib3",
+    "fastapi",
+    "uvicorn[standard]",
 ]
 
 [project.urls]
