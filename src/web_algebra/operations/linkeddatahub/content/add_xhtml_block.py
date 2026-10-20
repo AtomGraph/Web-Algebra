@@ -141,13 +141,13 @@ class AddXHTMLBlock(POST):
                 f"AddXHTMLBlock.execute expects value to be XMLLiteral, got {type(value)}"
             )
         if title is not None and (
-            not Operation.is_string_literal(title)
+            not Operation.is_string_compatible(title)
         ):
             raise TypeError(
                 f"AddXHTMLBlock.execute expects title to be string Literal, got {type(title)}"
             )
         if description is not None and (
-            not Operation.is_string_literal(description)
+            not Operation.is_string_compatible(description)
         ):
             raise TypeError(
                 f"AddXHTMLBlock.execute expects description to be string Literal, got {type(description)}"
@@ -161,8 +161,8 @@ class AddXHTMLBlock(POST):
 
         url_str = str(url)
         value_str = str(value)
-        title_str = str(title) if title else None
-        description_str = str(description) if description else None
+        title_str = Operation.jsonld_text(title) if title else None
+        description_str = Operation.jsonld_text(description) if description else None
         fragment_str = fragment_id(fragment)
 
         logging.info("Creating XHTML block for document <%s>", url_str)

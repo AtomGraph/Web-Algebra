@@ -89,7 +89,7 @@ class CreateItem(PUT):
             },
             "@id": url,
             "@type": "dh:Item",
-            "dct:title": str(title),
+            "dct:title": Operation.jsonld_text(title),
         }
 
         # Convert the document to a Graph and call parent PUT operation

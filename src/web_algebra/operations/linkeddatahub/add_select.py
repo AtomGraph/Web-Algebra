@@ -134,12 +134,12 @@ class AddSelect(POST):
             raise TypeError(
                 f"AddSelect.execute expects query to be string Literal, got {type(query)}"
             )
-        if not Operation.is_string_literal(title):
+        if not Operation.is_string_compatible(title):
             raise TypeError(
                 f"AddSelect.execute expects title to be string Literal, got {type(title)}"
             )
         if description is not None and (
-            not Operation.is_string_literal(description)
+            not Operation.is_string_compatible(description)
         ):
             raise TypeError(
                 f"AddSelect.execute expects description to be string Literal, got {type(description)}"
@@ -157,8 +157,8 @@ class AddSelect(POST):
 
         url_str = str(url)
         query_str = str(query)
-        title_str = str(title)
-        description_str = str(description) if description else None
+        title_str = Operation.jsonld_text(title)
+        description_str = Operation.jsonld_text(description) if description else None
         fragment_str = fragment_id(fragment)
         service_str = str(service) if service else None
 

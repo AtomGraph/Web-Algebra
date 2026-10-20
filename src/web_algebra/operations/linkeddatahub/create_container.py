@@ -102,12 +102,12 @@ class CreateContainer(PUT):
             },
             "@id": url,
             "@type": "dh:Container",
-            "dct:title": str(title),
+            "dct:title": Operation.jsonld_text(title),
             "rdf:_1": {"@type": "ldh:Object", "rdf:value": {"@id": "ldh:ChildrenView"}},
         }
 
         if description:
-            data["dct:description"] = str(description)
+            data["dct:description"] = Operation.jsonld_text(description)
 
         # Convert the document to a Graph and call parent PUT operation
         graph = self.to_graph(data, base=url)

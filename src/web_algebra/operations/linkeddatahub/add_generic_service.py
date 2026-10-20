@@ -158,12 +158,12 @@ class AddGenericService(POST):
             raise TypeError(
                 f"AddGenericService.execute expects endpoint to be URIRef, got {type(endpoint)}"
             )
-        if not Operation.is_string_literal(title):
+        if not Operation.is_string_compatible(title):
             raise TypeError(
                 f"AddGenericService.execute expects title to be string Literal, got {type(title)}"
             )
         if description is not None and (
-            not Operation.is_string_literal(description)
+            not Operation.is_string_compatible(description)
         ):
             raise TypeError(
                 f"AddGenericService.execute expects description to be string Literal, got {type(description)}"
@@ -193,8 +193,8 @@ class AddGenericService(POST):
 
         url_str = str(url)
         endpoint_str = str(endpoint)
-        title_str = str(title)
-        description_str = str(description) if description else None
+        title_str = Operation.jsonld_text(title)
+        description_str = Operation.jsonld_text(description) if description else None
         fragment_str = fragment_id(fragment)
         graph_store_str = str(graph_store) if graph_store else None
         auth_user_str = str(auth_user) if auth_user else None
