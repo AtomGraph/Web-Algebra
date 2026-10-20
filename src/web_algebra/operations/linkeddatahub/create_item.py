@@ -1,6 +1,7 @@
 from typing import Any, Optional
 import logging
 import urllib.parse
+import uuid
 from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
@@ -38,7 +39,7 @@ class CreateItem(PUT):
                 "title": {"type": "string", "description": "The title of the item"},
                 "slug": {
                     "type": "string",
-                    "description": "URL path segment (optional)",
+                    "description": "URL path segment (optional). Defaults to a random UUID. A document that already exists at this path is replaced.",
                 },
             },
             "required": ["container", "title"],
@@ -64,8 +65,9 @@ class CreateItem(PUT):
                 f"CreateItem.execute expects slug to be Literal or None, got {type(slug)}"
             )
 
-        # URL-encode slug or use title
-        slug_str = urllib.parse.quote(str(slug) if slug else str(title), safe="")
+        # URL-encode slug, or mint a fresh one - a lowercase UUID, as the LinkedDataHub CLI does - so that
+        # leaving it out never lands on an existing document; deriving it from the title did, on a repeated title
+        slug_str = urllib.parse.quote(str(slug) if slug else str(uuid.uuid4()), safe="")
 
         # Construct URL
         container_str = str(container_uri)

@@ -689,7 +689,7 @@ Result: Returns a SPARQL results table with children documents.
 
 ## ldh-CreateContainer(parent: str, title: str, slug?: str, description?: str) -> Dict
 
-Creates a LinkedDataHub Container document with proper structure. Uses parent URL + slug instead of full URL. If slug is not provided, uses title as default. Slugs are automatically URL-encoded (no need for EncodeForURI).
+Creates a LinkedDataHub Container document with proper structure. Uses parent URL + slug instead of full URL. If slug is not provided, a random UUID is used. A document that already exists at that URL is replaced. Slugs are automatically URL-encoded (no need for EncodeForURI).
 
 ### Example JSON
 
@@ -720,7 +720,7 @@ Result:
 
 ## ldh-CreateItem(container: str, title: str, slug?: str, description?: str) -> Dict
 
-Creates a LinkedDataHub Item document with proper structure. Uses container URL + slug instead of full URL. If slug is not provided, uses title as default. Slugs are automatically URL-encoded (no need for EncodeForURI).
+Creates a LinkedDataHub Item document with proper structure. Uses container URL + slug instead of full URL. If slug is not provided, a random UUID is used. A document that already exists at that URL is replaced. Slugs are automatically URL-encoded (no need for EncodeForURI).
 
 ### Example JSON
 
