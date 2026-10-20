@@ -33,7 +33,7 @@ class AddSelect(POST):
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URI of the document to append the SELECT query to.",
+                    "description": "The URI of the document to write the SELECT query to.",
                 },
                 "query": {
                     "type": "string",

@@ -13,7 +13,9 @@ class AddResultSetChart(POST):
 
     @classmethod
     def description(cls) -> str:
-        return """Appends a chart for SPARQL SELECT query results to a LinkedDataHub document.
+        return """Writes a chart of SPARQL SELECT query results to a LinkedDataHub document.
+        The chart is a resource the document holds, not one of its content blocks: to show it in the content mode,
+        place it with ldh-AddObjectBlock, the chart's URI as its value - so give the chart a fragment identifier.
         
         This tool creates a ResultSetChart that visualizes data from SPARQL SELECT query resources.
         The chart references an existing sp:Select resource (not a query string) and can display 
@@ -41,7 +43,7 @@ class AddResultSetChart(POST):
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URI of the document to append the chart to.",
+                    "description": "The URI of the document to write the chart to.",
                 },
                 "query": {
                     "type": "string",
