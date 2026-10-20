@@ -1,125 +1,160 @@
-"""Spec: formal-semantics.md "Values - Append a VALUES data block to a SPARQL query"
-Abstract: Literal × Result × Maybe (Sequence Literal) → Literal
-Python:   def execute(self, query: Literal, data: Result, vars: Optional[List[str]] = None) -> Literal
+"""Spec: formal-semantics.md §4.3 "Binding restriction" and "Values".
 
-Values renders a trailing SPARQL VALUES block from a result set and appends it to a
-query. Tests build a Result with rdflib's Graph.query and assert on the produced
-query string. ORDER BY is used wherever row order is asserted, since SPARQL is
-otherwise unordered.
+Values restricts the variables of a query or update to the rows of a Result:
+the set-valued Substitute. Columns default to the result's variables; `vars`
+selects and orders them; a row that does not bind a column has UNDEF there;
+a blank node raises ValueError; only columns that occur in the query are
+restricted, and if none does the query is unchanged.
+
+Checked by what the restricted query answers over a small graph.
 """
 
 from __future__ import annotations
 
 import pytest
 from rdflib import BNode, Graph, Literal, URIRef
+from rdflib.namespace import RDF, RDFS
+from rdflib.plugins.sparql import prepareQuery
 
 from web_algebra.operation import Operation
 
-EX_A = "http://ex/a"
-EX_B = "http://ex/b"
-EX_P = "http://ex/p"
-EX_Q = "http://ex/q"
+EX = "http://example.org/"
+A, B, C = (URIRef(EX + x) for x in "ABC")
+CITY, MAYOR = URIRef(EX + "City"), URIRef(EX + "mayor")
+P = f"PREFIX ex: <{EX}> PREFIX rdfs: <{RDFS}> "
 
 
-def _op(settings):
-    return Operation.get("Values")(settings=settings)
-
-
-def _one_var_two_rows():
+@pytest.fixture
+def graph():
     g = Graph()
-    g.add((URIRef(EX_A), URIRef(EX_P), Literal("v1")))
-    g.add((URIRef(EX_B), URIRef(EX_P), Literal("v2")))
-    return g.query(f"SELECT ?s WHERE {{ ?s <{EX_P}> ?o }} ORDER BY ?s")
+    for city, label in ((A, "A"), (B, "B"), (C, "C")):
+        g.add((city, RDF.type, CITY))
+        g.add((city, RDFS.label, Literal(label)))
+    g.add((A, MAYOR, URIRef(EX + "M")))
+    return g
 
 
-def _two_var_two_rows():
+def data(query, graph=None):
+    """A Result to restrict with, from a query over its own small graph."""
+    g = graph if graph is not None else Graph()
+    return g.query(query)
+
+
+def values(settings, query, result, vars=None):
+    out = Operation.get("Values")(settings=settings).execute(Literal(query), result, vars)
+    assert isinstance(out, Literal)
+    return str(out)
+
+
+def rows(query, graph):
+    return sorted(tuple(str(v) if v is not None else None for v in row) for row in graph.query(prepareQuery(query)))
+
+
+def cities(*items):
     g = Graph()
-    g.add((URIRef(EX_A), URIRef(EX_P), Literal("v1")))
-    g.add((URIRef(EX_B), URIRef(EX_P), Literal("v2")))
-    return g.query(f"SELECT ?s ?o WHERE {{ ?s <{EX_P}> ?o }} ORDER BY ?s")
+    for i, city in enumerate(items):
+        g.add((city, RDFS.label, Literal(f"x{i}")))
+    return g
 
 
-def _ragged_two_rows():
-    # row a has ?x via the OPTIONAL; row b does not -> UNDEF
+def test_the_query_is_restricted_to_the_rows(settings, graph):
+    d = data("SELECT ?city WHERE { ?city ?p ?o }", cities(A, C))
+    q = values(settings, P + "SELECT ?city ?label WHERE { ?city rdfs:label ?label }", d)
+    assert rows(q, graph) == [(str(A), "A"), (str(C), "C")]
+
+
+def test_several_columns_restrict_together(settings, graph):
     g = Graph()
-    g.add((URIRef(EX_A), URIRef(EX_P), Literal("v1")))
-    g.add((URIRef(EX_A), URIRef(EX_Q), Literal("x1")))
-    g.add((URIRef(EX_B), URIRef(EX_P), Literal("v2")))
-    return g.query(
-        f"SELECT ?s ?x WHERE {{ ?s <{EX_P}> ?o . OPTIONAL {{ ?s <{EX_Q}> ?x }} }} ORDER BY ?s"
-    )
+    g.add((A, RDFS.label, Literal("A")))
+    g.add((B, RDFS.label, Literal("nope")))
+    d = data("SELECT ?city ?label WHERE { ?city ?p ?label }", g)
+    q = values(settings, P + "SELECT ?city ?label WHERE { ?city rdfs:label ?label }", d)
+    assert rows(q, graph) == [(str(A), "A")]
 
 
-def _empty():
+def test_a_row_that_does_not_bind_a_column_is_undef_there(settings, graph):
     g = Graph()
-    return g.query(f"SELECT ?s WHERE {{ ?s <{EX_P}> ?o }}")
+    g.add((A, URIRef(EX + "p"), Literal(1)))
+    g.add((B, URIRef(EX + "p"), Literal(2)))
+    g.add((A, URIRef(EX + "q"), Literal("A")))
+    d = data(f"SELECT ?city ?label WHERE {{ ?city <{EX}p> ?o OPTIONAL {{ ?city <{EX}q> ?label }} }}", g)
+    q = values(settings, P + "SELECT ?city ?label WHERE { ?city rdfs:label ?label }", d)
+    # row A binds both; row B binds only ?city, so any label of B matches
+    assert rows(q, graph) == [(str(A), "A"), (str(B), "B")]
 
 
-def _bnode_value():
+def test_vars_selects_the_columns(settings, graph):
     g = Graph()
-    g.add((URIRef(EX_A), URIRef(EX_P), BNode("b1")))
-    return g.query(f"SELECT ?o WHERE {{ <{EX_A}> <{EX_P}> ?o }}")
+    g.add((A, RDFS.label, Literal("ignored")))
+    d = data("SELECT ?city ?label WHERE { ?city ?p ?label }", g)
+    q = values(settings, P + "SELECT ?city ?label WHERE { ?city rdfs:label ?label }", d, ["city"])
+    assert rows(q, graph) == [(str(A), "A")]
 
 
-class TestValuesPure:
-    def test_returns_literal(self, settings):
-        result = _op(settings).execute(Literal("DESCRIBE ?s WHERE { ?s ?p ?o }"), _one_var_two_rows())
-        assert isinstance(result, Literal)
-
-    def test_single_var_short_form(self, settings):
-        q = "DESCRIBE ?s WHERE { ?s ?p ?o }"
-        result = str(_op(settings).execute(Literal(q), _one_var_two_rows()))
-        assert result.startswith(q + " ")
-        assert result.endswith(f"VALUES ?s {{ <{EX_A}> <{EX_B}> }}")
-
-    def test_multi_var_long_form(self, settings):
-        result = str(_op(settings).execute(Literal("SELECT * WHERE { ?s ?p ?o }"), _two_var_two_rows()))
-        assert "VALUES (?s ?o) {" in result
-        assert f'( <{EX_A}> "v1" )' in result
-        assert f'( <{EX_B}> "v2" )' in result
-
-    def test_unbound_cell_becomes_undef(self, settings):
-        result = str(_op(settings).execute(Literal("SELECT * WHERE { ?s ?p ?o }"), _ragged_two_rows()))
-        assert "VALUES (?s ?x) {" in result
-        assert f'( <{EX_A}> "x1" )' in result
-        assert f"( <{EX_B}> UNDEF )" in result
-
-    def test_empty_result_renders_empty_block(self, settings):
-        result = str(_op(settings).execute(Literal("DESCRIBE ?s WHERE { ?s ?p ?o }"), _empty()))
-        assert result.endswith("VALUES ?s {  }")
-
-    def test_vars_override_selects_and_orders_columns(self, settings):
-        result = str(
-            _op(settings).execute(Literal("SELECT * WHERE { ?s ?p ?o }"), _two_var_two_rows(), ["o", "s"])
-        )
-        assert "VALUES (?o ?s) {" in result
-        assert f'( "v1" <{EX_A}> )' in result
-
-    def test_bnode_value_raises(self, settings):
-        # Blank nodes are not permitted in a SPARQL VALUES data block.
-        with pytest.raises(ValueError):
-            _op(settings).execute(Literal("SELECT * WHERE { ?s ?p ?o }"), _bnode_value())
-
-    def test_literal_with_quote_is_escaped(self, settings):
-        # The whole point over Concat: a literal containing a quote must be escaped.
-        g = Graph()
-        g.add((URIRef(EX_A), URIRef(EX_P), Literal('a"b')))
-        data = g.query(f"SELECT ?o WHERE {{ ?s <{EX_P}> ?o }}")
-        result = str(_op(settings).execute(Literal("SELECT * WHERE { ?o ?p ?x }"), data))
-        assert r"\"" in result  # the embedded quote is backslash-escaped
-
-    def test_wrong_query_type_raises(self, settings):
-        with pytest.raises(TypeError):
-            _op(settings).execute(URIRef("not-a-query"), _one_var_two_rows())
-
-    def test_wrong_data_type_raises(self, settings):
-        with pytest.raises(TypeError):
-            _op(settings).execute(Literal("SELECT * WHERE { ?s ?p ?o }"), [{"s": URIRef(EX_A)}])
+def test_vars_with_a_sigil(settings, graph):
+    d = data("SELECT ?city WHERE { ?city ?p ?o }", cities(B))
+    q = values(settings, P + "SELECT ?city WHERE { ?city a ex:City }", d, ["?city"])
+    assert rows(q, graph) == [(str(B),)]
 
 
-class TestValuesJson:
-    @pytest.mark.skip(
-        reason="execute_json resolves `data` from a nested SELECT, which requires a live endpoint (network-marked)"
-    )
-    def test_json_dispatch(self, settings):
-        pass
+def test_an_empty_result_restricts_to_nothing(settings, graph):
+    d = data(f"SELECT ?city WHERE {{ ?city <{EX}none> ?o }}", Graph())
+    q = values(settings, P + "SELECT ?city WHERE { ?city a ex:City }", d)
+    assert rows(q, graph) == []
+
+
+def test_columns_that_do_not_occur_leave_the_query_unchanged(settings):
+    d = data("SELECT ?other WHERE { ?other ?p ?o }", cities(A))
+    query = P + "SELECT ?city WHERE { ?city a ex:City }"
+    assert values(settings, query, d) == query
+
+
+def test_a_subquery_that_does_not_project_a_column_is_independent(settings, graph):
+    d = data("SELECT ?city WHERE { ?city ?p ?o }", cities(B))
+    q = values(settings, P + "SELECT ?city ?n WHERE { ?city a ex:City { SELECT (COUNT(?city) AS ?n) WHERE { ?city a ex:City } } }", d)
+    assert rows(q, graph) == [(str(B), "3")]
+
+
+def test_exists_is_correlated(settings, graph):
+    d = data("SELECT ?city WHERE { ?city ?p ?o }", cities(A, B))
+    q = values(settings, P + "SELECT ?city WHERE { ?city a ex:City FILTER EXISTS { ?city ex:mayor ?m } }", d)
+    assert rows(q, graph) == [(str(A),)]
+
+
+def test_assigning_a_column_raises(settings):
+    d = data("SELECT ?city WHERE { ?city ?p ?o }", cities(A))
+    with pytest.raises(ValueError):
+        values(settings, P + "SELECT ?city WHERE { BIND(ex:A AS ?city) }", d)
+
+
+def test_an_update_is_batched_over_the_rows(settings, graph):
+    d = data("SELECT ?city WHERE { ?city ?p ?o }", cities(A, B))
+    update = values(settings, P + "DELETE { ?city rdfs:label ?l } WHERE { ?city rdfs:label ?l }", d)
+    graph.update(update)
+    assert {str(s) for s in graph.subjects(RDFS.label)} == {str(C)}
+
+
+def test_a_literal_with_a_quote_arrives_intact(settings):
+    g = Graph()
+    g.add((A, URIRef(EX + "p"), Literal('a"b\nc')))
+    d = data(f"SELECT ?o WHERE {{ ?s <{EX}p> ?o }}", g)
+    q = values(settings, "SELECT ?s WHERE { ?s ?p ?o }", d)
+    assert rows(q, g) == [(str(A),)]
+
+
+def test_a_bnode_raises(settings):
+    g = Graph()
+    g.add((A, URIRef(EX + "p"), BNode("b1")))
+    d = data(f"SELECT ?o WHERE {{ ?s <{EX}p> ?o }}", g)
+    with pytest.raises(ValueError):
+        values(settings, "SELECT * WHERE { ?s ?p ?o }", d)
+
+
+def test_wrong_query_type_raises(settings):
+    with pytest.raises(TypeError):
+        Operation.get("Values")(settings=settings).execute(URIRef("not-a-query"), data("SELECT ?s WHERE { ?s ?p ?o }"))
+
+
+def test_wrong_data_type_raises(settings):
+    with pytest.raises(TypeError):
+        Operation.get("Values")(settings=settings).execute(Literal("SELECT * WHERE { ?s ?p ?o }"), [{"s": A}])

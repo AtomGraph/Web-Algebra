@@ -7,29 +7,24 @@ from mcp import types
 from web_algebra.mcp_tool import MCPTool
 from web_algebra.operation import Operation
 from web_algebra.json_result import JSONResult
+from web_algebra.sparql_restrict import restrict
 
 
 class Values(Operation, MCPTool):
     """
-    Appends a SPARQL `VALUES` data block, built from a result set, to a query.
+    Restricts variables of a SPARQL query or update to the rows of a result set
+    (formal-semantics.md §4.3, binding restriction): the variables stay
+    variables, and an inline `VALUES` block with the rows is joined into every
+    group of the query, subqueries that do not project a column keeping their
+    own copy. `Substitute` is the one-row, one-column case.
 
-    `Values` is the set-valued counterpart of `Substitute`: where `Substitute`
-    injects a single term for a single variable, `Values` injects a whole solution
-    sequence (rows × variables) as inline data. Every cell is serialized from its
-    RDFLib term (never string-spliced), so IRIs and literals are escaped correctly.
-
-    The block is appended as a trailing `ValuesClause` (`... WHERE { ... } VALUES
-    ...`), which joins with the query's outermost group. This is the only `VALUES`
-    position reachable without deconstructing the query into its algebra; interior
-    placement (inside an OPTIONAL / sub-SELECT) is intentionally not supported.
-
-    Example: Values("DESCRIBE ?s ?o WHERE { ?s ?p ?o }", <result over ?s>) produces
-    "DESCRIBE ?s ?o WHERE { ?s ?p ?o } VALUES ?s { <a> <b> }".
+    Example: Values("DESCRIBE ?s WHERE { ?s ?p ?o }", <result over ?s>) produces
+    "DESCRIBE ?s WHERE { VALUES (?s) { (<a>) (<b>) } ?s ?p ?o }".
     """
 
     @classmethod
     def description(cls) -> str:
-        return """Appends a SPARQL VALUES data block, built from a SPARQL result set, to a query string. This is the set-valued counterpart of Substitute: it injects a whole solution sequence (rows of variable bindings) as inline data instead of a single term, enabling one query to be constrained by, or batched over, the results of another. The block is appended as a trailing VALUES clause that joins with the query's outermost group. Each value is serialized from its RDF term with correct escaping; blank nodes are rejected as they are not permitted in a VALUES block."""
+        return """Restricts variables of a SPARQL query or update to the rows of a SPARQL result set, so one query is constrained by, or batched over, the results of another: an inline VALUES block with the rows is joined into every group of the query. The variables stay variables (still projected, still in templates). Columns default to the result's variables; vars selects and orders them; a row that does not bind a column leaves it free (UNDEF). Subqueries that do not project a column keep their own copy; the query must not assign a restricted variable itself (AS or VALUES). Blank nodes are rejected. Substitute is the one-variable, one-value case."""
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -41,7 +36,7 @@ class Values(Operation, MCPTool):
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "The SPARQL query string to append the VALUES block to. It must not already end with a VALUES clause.",
+                    "description": "The SPARQL query or update whose variables are restricted. It must not assign them itself (AS, VALUES).",
                 },
                 "data": {
                     "type": "object",
@@ -59,7 +54,7 @@ class Values(Operation, MCPTool):
     def execute(
         self, query: Literal, data: Result, vars: Optional[List[str]] = None
     ) -> Literal:
-        """Pure function: append a VALUES block rendered from `data` to `query`."""
+        """Pure function: restrict `query`'s variables to the rows of `data`."""
         if not isinstance(query, Literal):
             raise TypeError(
                 f"Values.execute expects query to be Literal, got {type(query)}"
@@ -81,8 +76,23 @@ class Values(Operation, MCPTool):
             for binding in (data.bindings or [])
         ]
 
-        block = self.render_values(columns, rows)
-        return Literal(f"{str(query)} {block}", datatype=XSD.string)
+        table = []
+        for row in rows:
+            cells = [row.get(col) for col in columns]
+            for term in cells:
+                if isinstance(term, BNode):
+                    raise ValueError(
+                        "Values: blank nodes are not allowed in a SPARQL VALUES data block"
+                    )
+                if term is not None and not isinstance(term, (URIRef, Literal)):
+                    raise TypeError(
+                        f"Values expects RDF terms (URIRef/Literal) in bindings, got {type(term)}"
+                    )
+            table.append(cells)
+
+        # binding restriction (formal-semantics.md §4.3): the columns stay
+        # variables, restricted to the rows in every group of the query
+        return Literal(restrict(str(query), columns, table), datatype=XSD.string)
 
     @classmethod
     def render_values(cls, columns: List[str], rows: List[dict]) -> str:
