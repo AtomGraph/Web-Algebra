@@ -184,6 +184,29 @@ class LinkedDataClient:
         """
         return send(self.opener, request, self.recorder)
 
+    def _write(
+        self,
+        method: str,
+        url: str,
+        body: Optional[bytes] = None,
+        content_type: Optional[str] = None,
+        accept: str = "application/n-triples",
+    ) -> HTTPResponse:
+        """Send a write, conditional on the resource's current entity tag.
+
+        Every mutating request goes through here, whatever its body, so none of
+        them can leave out the `If-Match` a server like LinkedDataHub requires of
+        a write to an existing document (formal-semantics.md §4.4) - as the
+        LinkedDataHub CLI's `LDHClient` adds it in each of its write methods.
+        """
+        headers = {"Accept": accept}
+        if content_type is not None:
+            headers["Content-Type"] = content_type
+        headers.update(self.conditional(url, accept))
+        request = urllib.request.Request(url, data=body, headers=headers, method=method)
+
+        return self._send(request)
+
     def conditional(self, url: str, accept: str) -> dict:
         """The headers a write to `url` carries: `If-Match` with the resource's
         current entity tag, when it has one (formal-semantics.md §4.4).
@@ -255,18 +278,8 @@ class LinkedDataClient:
         :param data: An RDFLib Graph containing the data to send.
         :return: The HTTPResponse object.
         """
-        # Serialize the RDF data to N-Triples
         data = graph.serialize(format="nt")
-        headers = {
-            "Content-Type": "application/n-triples",
-            "Accept": "application/n-triples",
-        }
-        headers.update(self.conditional(url, headers["Accept"]))
-        request = urllib.request.Request(
-            url, data=data.encode("utf-8"), headers=headers, method="POST"
-        )
-
-        return self._send(request)
+        return self._write("POST", url, data.encode("utf-8"), "application/n-triples")
 
     def put(self, url: str, graph: Graph) -> HTTPResponse:
         """
@@ -276,18 +289,8 @@ class LinkedDataClient:
         :param data: An RDFLib Graph containing the data to send.
         :return: The HTTPResponse object.
         """
-        # Serialize the RDF data to N-Triples
         data = graph.serialize(format="nt")
-        headers = {
-            "Content-Type": "application/n-triples",
-            "Accept": "application/n-triples",
-        }
-        headers.update(self.conditional(url, headers["Accept"]))
-        request = urllib.request.Request(
-            url, data=data.encode("utf-8"), headers=headers, method="PUT"
-        )
-
-        return self._send(request)
+        return self._write("PUT", url, data.encode("utf-8"), "application/n-triples")
 
     def delete(self, url: str) -> HTTPResponse:
         """
@@ -296,9 +299,7 @@ class LinkedDataClient:
         :param url: The URL to send the DELETE request to.
         :return: The HTTPResponse object.
         """
-        request = urllib.request.Request(url, method="DELETE")
-
-        return self._send(request)
+        return self._write("DELETE", url)
 
     def patch(self, url: str, sparql_update: str) -> HTTPResponse:
         """
@@ -308,26 +309,18 @@ class LinkedDataClient:
         :param sparql_update: The SPARQL UPDATE query string.
         :return: The HTTPResponse object.
         """
-        headers = {
-            "Content-Type": "application/sparql-update",
-            "Accept": "application/n-triples",
-        }
-        headers.update(self.conditional(url, headers["Accept"]))
-        request = urllib.request.Request(
-            url, data=sparql_update.encode("utf-8"), headers=headers, method="PATCH"
+        return self._write(
+            "PATCH", url, sparql_update.encode("utf-8"), "application/sparql-update"
         )
 
-        return self._send(request)
 
-
-class FileClient:
+class FileClient(LinkedDataClient):
     """Multipart RDF/POST file upload for LinkedDataHub file resources.
 
-    Files are not Linked Data — request bodies are bytes with a Content-Type
-    rather than RDF graphs — so they get their own client surface instead
-    of being grafted onto `LinkedDataClient`. Auth and TLS setup duplicate
-    `LinkedDataClient` / `SPARQLClient` by convention: each client in this
-    module configures its own ssl_context + opener inline.
+    The upload is a write like any other - a POST to the target document - so
+    it goes out through `LinkedDataClient._write` with the same TLS, recorder
+    and `If-Match`; only the body differs. The LinkedDataHub CLI does the same:
+    its `AddFile` posts the multipart body through `LDHClient.post`.
 
     Wire format matches LinkedDataHub's `bin/add-file.sh` script: a
     multipart/form-data body using LDH's RDF/POST dialect where each
@@ -344,40 +337,6 @@ class FileClient:
     _DCT_TITLE = "http://purl.org/dc/terms/title"
     _DCT_DESCRIPTION = "http://purl.org/dc/terms/description"
     _RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-
-    def __init__(
-        self,
-        cert_pem_path: Optional[str] = None,
-        cert_password: Optional[str] = None,
-        verify_ssl: bool = True,
-        ca_bundle: Optional[str] = None,
-        recorder: Optional[WriteRecorder] = None,
-    ):
-        """Initialize TLS context + opener; mirrors `LinkedDataClient.__init__`."""
-        self.recorder = recorder
-        self.ssl_context = ssl.create_default_context(cafile=ca_bundle)
-
-        if cert_pem_path and cert_password:
-            self.ssl_context.load_cert_chain(
-                certfile=cert_pem_path, password=cert_password
-            )
-
-        if not verify_ssl:
-            self.ssl_context.check_hostname = False
-            self.ssl_context.verify_mode = ssl.CERT_NONE
-
-        self.opener = urllib.request.build_opener(
-            urllib.request.HTTPSHandler(context=self.ssl_context),
-            HTTPRedirectHandler308(),
-            RetryAfterHandler(),
-        )
-
-        self.opener.addheaders = [
-            (
-                "User-Agent",
-                "Web-Algebra/1.0 (LinkedData Processing System; https://github.com/atomgraph/Web-Algebra)",
-            )
-        ]
 
     def add_file(
         self,
@@ -430,14 +389,9 @@ class FileClient:
             ])
 
         body, content_type_header = encode_multipart_formdata(fields)
-        headers = {
-            "Content-Type": content_type_header,
-            "Accept": "text/turtle",
-        }
-        request = urllib.request.Request(
-            target_url, data=body, headers=headers, method="POST"
+        response = self._write(
+            "POST", target_url, body, content_type_header, accept="text/turtle"
         )
-        response = send(self.opener, request, self.recorder)
         return response, sha1
 
 
