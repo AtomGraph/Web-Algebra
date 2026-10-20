@@ -39,8 +39,20 @@ class OperationKind(str, Enum):
     def severity(self) -> int:
         return _KIND_SEVERITY[self]
 
+    # All four, not just __lt__: as a `str` the enum inherits str's comparisons,
+    # which order the values alphabetically ("destructive" < "read" < "write")
+    # wherever one is not overridden here.
     def __lt__(self, other: "OperationKind") -> bool:
         return self.severity < other.severity
+
+    def __le__(self, other: "OperationKind") -> bool:
+        return self.severity <= other.severity
+
+    def __gt__(self, other: "OperationKind") -> bool:
+        return self.severity > other.severity
+
+    def __ge__(self, other: "OperationKind") -> bool:
+        return self.severity >= other.severity
 
 
 _KIND_SEVERITY = {
