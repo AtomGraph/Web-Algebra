@@ -13,7 +13,7 @@ class AddGenericService(POST):
 
     @classmethod
     def description(cls) -> str:
-        return """Appends a generic SPARQL service to a LinkedDataHub document using service description.
+        return """Writes a generic SPARQL service description to a LinkedDataHub document.
         
         This tool creates a SPARQL service description that can be referenced and used within LinkedDataHub.
         The service description includes endpoint information and supported capabilities.
@@ -31,7 +31,7 @@ class AddGenericService(POST):
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URI of the document to append the service to.",
+                    "description": "The URI of the document to write the service to.",
                 },
                 "endpoint": {
                     "type": "string",

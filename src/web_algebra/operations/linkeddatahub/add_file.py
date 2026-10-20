@@ -46,6 +46,8 @@ class AddFile(ClientOperation, Operation, MCPTool):
         Appends `a nfo:FileDataObject ; nfo:fileName ; dct:title ; ...`
         to the target document and stores the file bytes at
         `<base>/uploads/{sha1}` (LDH's built-in upload namespace).
+        The file is a resource the document holds, not one of its content blocks: to show it in the content mode,
+        place it with ldh-AddObjectBlock, the returned `url` as its value.
 
         Arguments:
         - `url` — URI of the target document to add the file's description to.

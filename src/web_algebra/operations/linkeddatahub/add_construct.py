@@ -33,7 +33,7 @@ class AddConstruct(POST):
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URI of the document to append the CONSTRUCT query to.",
+                    "description": "The URI of the document to write the CONSTRUCT query to.",
                 },
                 "query": {
                     "type": "string",
