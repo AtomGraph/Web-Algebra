@@ -45,7 +45,15 @@ class WriteRecorder(Protocol):
 
 class HTTPRedirectHandler308(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        """Handle 308 Permanent Redirect by preserving method and body"""
+        """Follow a redirect for a read only; 308 preserves the method.
+
+        A write is not followed: its body was written against the request URI,
+        so resending it elsewhere writes a different resource from the one the
+        program named (formal-semantics.md §4.4). Returning None leaves the 3xx
+        as an HTTPError, which `send` reports as a refused write.
+        """
+        if req.get_method() not in ("GET", "HEAD"):
+            return None
         if code == 308:
             return urllib.request.Request(
                 newurl, data=req.data, headers=req.headers, method=req.get_method()
