@@ -171,8 +171,7 @@ Environment variables:
 |------|----------|-------------|
 | `CERT_PEM_PATH` | No | Path to the LinkedDataHub owner certificate (PEM). Only needed for LinkedDataHub operations. |
 | `CERT_PASSWORD` | No | Password for the certificate above. |
-
-The MCP server does not need `OPENAI_API_KEY`; that is only used by the standalone natural-language mode.
+| `OPENAI_API_KEY` | No | OpenAI API key. Only needed for the `SPARQLString` tool, which asks a model to write the query. |
 
 #### stdio transport
 
