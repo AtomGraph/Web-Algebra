@@ -1,10 +1,8 @@
 """Spec: formal-semantics.md Appendix A - the options the ldh-* operations share
 with LinkedDataHub's CLI, written as the CLI writes them:
 
-- ldh-CreateContainer's first content block, rdf:_1: `block` when given;
-  else an ldh:Object whose rdf:value is a new ldh:View of ldh:SelectChildren
-  in ac:mode `mode`, titled "Children view", when given; else an ldh:Object
-  of ldh:ChildrenView.
+- ldh-CreateContainer's first content block, rdf:_1: an ldh:Object of
+  ldh:ChildrenView, unless `children_view` is false, when there is none.
 - `primary_topic` (CreateContainer, CreateItem): a URI reference resolved
   against the document's URI, the document's one foaf:primaryTopic.
 - ldh-CreateItem's `description`: dct:description.
@@ -19,15 +17,13 @@ Checked offline: every write is recorded and its body read as RDF.
 from __future__ import annotations
 
 import pytest
-from rdflib import BNode, Graph, Literal, Namespace, URIRef
+from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCTERMS, FOAF, RDF, XSD
 
 from tests.http_stub import request_body_text, request_header
 from web_algebra.operation import Operation
 
 LDH = Namespace("https://w3id.org/atomgraph/linkeddatahub#")
-AC = Namespace("https://w3id.org/atomgraph/client#")
-SPIN = Namespace("http://spinrdf.org/spin#")
 EX = "https://example.org/"
 DOC = EX + "doc/"
 QUERY = DOC + "#q"
@@ -67,28 +63,16 @@ def test_a_container_shows_its_children_by_default(settings, http_stub):
     assert (block, RDF.value, LDH.ChildrenView) in g
 
 
-def test_a_given_block_is_the_first(settings, http_stub):
-    g, doc = container(settings, http_stub, block={"@id": EX + "blocks#b"})
-    assert list(g.objects(doc, SEQ_1)) == [URIRef(EX + "blocks#b")]
-    assert (None, RDF.value, LDH.ChildrenView) not in g
-
-
-def test_a_mode_makes_a_children_view_in_that_mode(settings, http_stub):
-    g, doc = container(settings, http_stub, mode={"@id": str(AC.GridMode)})
+def test_a_container_shows_its_children_when_asked(settings, http_stub):
+    g, doc = container(settings, http_stub, children_view=True)
     (block,) = g.objects(doc, SEQ_1)
-    assert (block, RDF.type, LDH.Object) in g
-    (view,) = g.objects(block, RDF.value)
-    assert isinstance(view, BNode)
-    assert (view, RDF.type, LDH.View) in g
-    assert (view, SPIN.query, LDH.SelectChildren) in g
-    assert (view, AC.mode, AC.GridMode) in g
-    assert list(g.objects(view, DCTERMS.title)) == [Literal("Children view")]
+    assert (block, RDF.value, LDH.ChildrenView) in g
 
 
-def test_a_block_takes_precedence_over_a_mode(settings, http_stub):
-    g, doc = container(settings, http_stub, block={"@id": EX + "blocks#b"}, mode={"@id": str(AC.GridMode)})
-    assert list(g.objects(doc, SEQ_1)) == [URIRef(EX + "blocks#b")]
-    assert (None, AC.mode, AC.GridMode) not in g
+def test_a_container_without_the_children_view_has_no_content(settings, http_stub):
+    g, doc = container(settings, http_stub, children_view=False)
+    assert list(g.objects(doc, SEQ_1)) == []
+    assert (None, RDF.value, LDH.ChildrenView) not in g
 
 
 # --- primary_topic
@@ -185,7 +169,7 @@ def test_show_when_empty_is_a_boolean(settings, http_stub):
 @pytest.mark.parametrize(
     "op, options",
     [
-        ("ldh-CreateContainer", {"block", "mode", "primary_topic"}),
+        ("ldh-CreateContainer", {"children_view", "primary_topic"}),
         ("ldh-CreateItem", {"description", "primary_topic"}),
         ("ldh-AddObjectBlock", {"graph"}),
         ("ldh-AddView", {"show_when_empty"}),

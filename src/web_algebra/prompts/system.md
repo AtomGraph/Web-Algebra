@@ -560,9 +560,9 @@ The classes, datatype properties and object properties of the data at a SPARQL e
 
 These write to a LinkedDataHub instance. Every write returns the one-row `status`/`url` result. A document's **content** (what its page shows) is its sequence of blocks: only `ldh-AddXHTMLBlock` and `ldh-AddObjectBlock` add to it. The other `ldh-Add*` operations write a resource *into* the document (a query, a view, a chart, a service, a file) without showing it; to show it, place it with `ldh-AddObjectBlock`, its URI as `value` — so give it a `fragment`.
 
-## ldh-CreateContainer(parent: URI, title: Literal, slug?: Literal, description?: Literal, block?: URI, mode?: URI, primary_topic?: Literal) → Result
+## ldh-CreateContainer(parent: URI, title: Literal, slug?: Literal, description?: Literal, children_view?: Literal, primary_topic?: Literal) → Result
 
-Creates a container document at `parent` + `slug` + `/` (without `slug`, a random UUID), showing its children. A document that already exists at that URL is replaced. Its first content block is `block` when given; otherwise its children: through the shared `ldh:ChildrenView`, or, when `mode` (a view mode such as `https://w3id.org/atomgraph/client#GridMode`) is given, through a new view in that layout. `primary_topic` is what the container is about, a URI reference resolved against its URL (`#this` for a resource described in it).
+Creates a container document at `parent` + `slug` + `/` (without `slug`, a random UUID), showing its children. A document that already exists at that URL is replaced. Its first content block lists its children through the shared `ldh:ChildrenView`, unless `children_view` is `false`. To list them in another layout, pass `false`, add a view of `https://w3id.org/atomgraph/linkeddatahub#SelectChildren` in that mode to the container with `ldh-AddView` (with a `fragment`), and place it with `ldh-AddObjectBlock`. `primary_topic` is what the container is about, a URI reference resolved against its URL (`#this` for a resource described in it).
 
 ### Example JSON
 ```json

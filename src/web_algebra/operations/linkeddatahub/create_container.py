@@ -49,13 +49,9 @@ class CreateContainer(PUT):
                     "type": "string",
                     "description": "Description (optional)",
                 },
-                "block": {
-                    "type": "string",
-                    "description": "URI of the container's first content block (optional). Without it, the block lists the container's children.",
-                },
-                "mode": {
-                    "type": "string",
-                    "description": "URI of the view mode the children are listed in, e.g. https://w3id.org/atomgraph/client#GridMode (optional; ignored when block is given). Without it, the shared ldh:ChildrenView is used.",
+                "children_view": {
+                    "type": "boolean",
+                    "description": "Optional: whether the container's first content block lists its children (the shared ldh:ChildrenView). It does unless this is false; the content is then added with ldh-AddObjectBlock and ldh-AddXHTMLBlock, as to any document.",
                 },
                 "primary_topic": {
                     "type": "string",
@@ -71,8 +67,7 @@ class CreateContainer(PUT):
         title: Literal,
         slug: Optional[Literal] = None,
         description: Optional[Literal] = None,
-        block: Optional[URIRef] = None,
-        mode: Optional[URIRef] = None,
+        children_view: Optional[Literal] = None,
         primary_topic: Optional[Literal] = None,
     ) -> Result:
         """Pure function: create container with RDFLib terms"""
@@ -92,11 +87,16 @@ class CreateContainer(PUT):
             raise TypeError(
                 f"CreateContainer.execute expects description to be Literal or None, got {type(description)}"
             )
-        for name, term, typ in (("block", block, URIRef), ("mode", mode, URIRef), ("primary_topic", primary_topic, Literal)):
-            if term is not None and not isinstance(term, typ):
-                raise TypeError(
-                    f"CreateContainer.execute expects {name} to be {typ.__name__} or None, got {type(term)}"
-                )
+        if children_view is not None and not (
+            isinstance(children_view, Literal) and children_view.datatype == XSD.boolean
+        ):
+            raise TypeError(
+                f"CreateContainer.execute expects children_view to be an xsd:boolean Literal, got {children_view!r}"
+            )
+        if primary_topic is not None and not isinstance(primary_topic, Literal):
+            raise TypeError(
+                f"CreateContainer.execute expects primary_topic to be Literal or None, got {type(primary_topic)}"
+            )
 
         # URL-encode slug, or mint a fresh one - a lowercase UUID, as the LinkedDataHub CLI does - so that
         # leaving it out never lands on an existing document; deriving it from the title did, on a repeated title
@@ -121,32 +121,15 @@ class CreateContainer(PUT):
                 "dct": "http://purl.org/dc/terms/",
                 "sioc": "http://rdfs.org/sioc/ns#",
                 "xsd": "http://www.w3.org/2001/XMLSchema#",
-                "spin": "http://spinrdf.org/spin#",
-                "ac": "https://w3id.org/atomgraph/client#",
                 "foaf": "http://xmlns.com/foaf/0.1/",
             },
             "@id": url,
             "@type": "dh:Container",
             "dct:title": Operation.jsonld_text(title),
         }
-        # the first content block, as the LinkedDataHub CLI writes it: the given
-        # block; else a view of the children in the given mode; else the
-        # children view (formal-semantics.md Appendix A)
-        if block is not None:
-            data["rdf:_1"] = {"@id": str(block)}
-        elif mode is not None:
-            data["rdf:_1"] = {
-                "@type": "ldh:Object",
-                # titled as ldh:ChildrenView is labelled; untitled, a client heads
-                # the block with the ID the server mints for the blank node
-                "rdf:value": {
-                    "@type": "ldh:View",
-                    "dct:title": "Children view",
-                    "spin:query": {"@id": "ldh:SelectChildren"},
-                    "ac:mode": {"@id": str(mode)},
-                },
-            }
-        else:
+        # the first content block, as the LinkedDataHub CLI writes it: the children
+        # view, unless children_view is false (formal-semantics.md Appendix A)
+        if children_view is None or children_view.toPython():
             data["rdf:_1"] = {"@type": "ldh:Object", "rdf:value": {"@id": "ldh:ChildrenView"}}
 
         if description:
@@ -208,29 +191,12 @@ class CreateContainer(PUT):
                 )
 
 
-        # Process optional block
-        block = None
-        if "block" in arguments:
-            block_data = Operation.process_json(
-                self.settings, arguments["block"], self.context, variable_stack
-            )
-            block = Operation.json_to_rdflib(block_data)
-            if not isinstance(block, URIRef):
-                raise TypeError(
-                    f"ldh-CreateContainer operation expects 'block' to be URIRef, got {type(block)}"
-                )
-
-        # Process optional mode
-        mode = None
-        if "mode" in arguments:
-            mode_data = Operation.process_json(
-                self.settings, arguments["mode"], self.context, variable_stack
-            )
-            mode = Operation.json_to_rdflib(mode_data)
-            if not isinstance(mode, URIRef):
-                raise TypeError(
-                    f"ldh-CreateContainer operation expects 'mode' to be URIRef, got {type(mode)}"
-                )
+        # Process optional children_view
+        children_view = None
+        if "children_view" in arguments:
+            children_view = Operation.json_to_rdflib(Operation.process_json(
+                self.settings, arguments["children_view"], self.context, variable_stack
+            ))
 
         # Process optional primary_topic
         primary_topic = None
@@ -244,7 +210,7 @@ class CreateContainer(PUT):
                     f"ldh-CreateContainer operation expects 'primary_topic' to be Literal, got {type(primary_topic)}"
                 )
 
-        return self.execute(parent_uri, title, slug, description, block, mode, primary_topic)
+        return self.execute(parent_uri, title, slug, description, children_view, primary_topic)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
@@ -261,14 +227,15 @@ class CreateContainer(PUT):
             else None
         )
 
-        block = URIRef(arguments["block"]) if "block" in arguments else None
-        mode = URIRef(arguments["mode"]) if "mode" in arguments else None
+        children_view = (
+            Literal(bool(arguments["children_view"])) if "children_view" in arguments else None
+        )
         primary_topic = (
             Literal(arguments["primary_topic"], datatype=XSD.string)
             if "primary_topic" in arguments
             else None
         )
-        result = self.execute(parent_uri, title, slug, description, block, mode, primary_topic)
+        result = self.execute(parent_uri, title, slug, description, children_view, primary_topic)
 
         # Extract URL from PUT result
         url_binding = result.bindings[0]["url"]

@@ -1197,7 +1197,7 @@ operations' MCP tools, and an MCP tool name allows only ASCII letters, digits,
 
 | Operation | JSON args (`Maybe` = optional) |
 |-----------|--------------------------------|
-| `ldh-CreateContainer` | `parent: URI · title: Literal · slug: Maybe Literal · description: Maybe Literal · block: Maybe URI · mode: Maybe URI · primary_topic: Maybe Literal` |
+| `ldh-CreateContainer` | `parent: URI · title: Literal · slug: Maybe Literal · description: Maybe Literal · children_view: Maybe Literal (xsd:boolean) · primary_topic: Maybe Literal` |
 | `ldh-CreateItem` | `container: URI · title: Literal · slug: Maybe Literal · description: Maybe Literal · primary_topic: Maybe Literal` |
 | `ldh-List` *(query)* | `url: URI · endpoint: URI` (or `base: Literal`, from which `endpoint` = `base` + `sparql`) |
 | `ldh-AddFile` | `url: URI · file: Literal (path) · title: Literal · description: Maybe Literal · content_type: Maybe Literal` |
@@ -1222,10 +1222,9 @@ What the operations write is what LinkedDataHub's CLI writes for the same
 inputs (its `rdf` module), so a document made either way is the same:
 
 - `ldh-CreateContainer` gives the container its first content block,
-  `rdf:_1`: `block` itself when given; otherwise an `ldh:Object` whose
-  `rdf:value` is a new `ldh:View` of `ldh:SelectChildren` in `ac:mode` `mode`,
-  titled `Children view` (the label of `ldh:ChildrenView`), when `mode` is
-  given; otherwise an `ldh:Object` of `ldh:ChildrenView`.
+  `rdf:_1`, an `ldh:Object` of `ldh:ChildrenView`, unless `children_view` is
+  false: then it has no content, which `ldh-AddObjectBlock` and
+  `ldh-AddXHTMLBlock` append as to any document.
 - `primary_topic` (`ldh-CreateContainer`, `ldh-CreateItem`) is a URI
   reference resolved against the document's URI (RFC 3986), written as the
   document's one `foaf:primaryTopic` — `#this` names the conventional

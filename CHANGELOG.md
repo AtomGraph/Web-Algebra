@@ -94,7 +94,7 @@ many are breaking.
 ### Added
 
 - **The `ldh-*` operations take the LinkedDataHub CLI's options**, and write
-  them as it does: `ldh-CreateContainer` `block`, `mode` and `primary_topic`;
+  them as it does: `ldh-CreateContainer` `children_view` and `primary_topic`;
   `ldh-CreateItem` `description` and `primary_topic`; `ldh-AddObjectBlock`
   `graph`; several series for `ldh-AddResultSetChart`; and
   `ldh-AddView` `show_when_empty`. A view's `mode` may also be `ac:TableMode`

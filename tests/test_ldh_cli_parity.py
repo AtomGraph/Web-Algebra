@@ -136,11 +136,10 @@ def parent(ldh):
     [
         ({}, []),
         ({"description": "A container"}, ["--description", "A container"]),
-        ({"mode": "@" + AC + "GridMode"}, ["--mode", AC + "GridMode"]),
-        ({"block": "@https://example.org/blocks#b"}, ["--block", "https://example.org/blocks#b"]),
+        ({"children_view": False}, ["--no-children-view"]),
         ({"primary_topic": "#this"}, ["--primary-topic", "#this"]),
     ],
-    ids=["plain", "description", "mode", "block", "primary-topic"],
+    ids=["plain", "description", "no-children-view", "primary-topic"],
 )
 def test_create_container(ldh, parent, options, cli_options):
     slug = uuid.uuid4().hex[:8]
