@@ -5,6 +5,15 @@ All notable changes to Web Algebra are recorded here. The format follows
 [Semantic Versioning](https://semver.org/). The normative definition of every
 operation is [formal-semantics.md](formal-semantics.md).
 
+## [2.0.2] - Unreleased
+
+### Added
+
+- **A release lists itself in the MCP Registry**: the release workflow
+  publishes `server.json` after the PyPI upload, logged in with GitHub OIDC.
+  Run by hand with a released tag, it publishes that tag's `server.json` and
+  nothing else.
+
 ## [2.0.1] - 2026-10-21
 
 ### Added

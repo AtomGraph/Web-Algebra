@@ -4,10 +4,17 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  # publishes a released tag's server.json to the MCP Registry, and nothing else
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Released tag to list in the MCP Registry (e.g. v2.0.1)
+        required: true
 
 jobs:
   build:
     name: Build distributions
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -27,6 +34,7 @@ jobs:
   publish:
     name: Publish to PyPI
     needs: build
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -44,6 +52,7 @@ jobs:
   github-release:
     name: GitHub Release
     needs: publish
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -57,3 +66,38 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+
+  mcp-registry:
+    name: Publish to the MCP Registry
+    needs: publish
+    if: ${{ !cancelled() && (needs.publish.result == 'success' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      MCP_PUBLISHER: v1.8.1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Install mcp-publisher
+        run: curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/download/$MCP_PUBLISHER/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+
+      # the registry checks the package on PyPI, which may lag the upload
+      - name: Wait for the version on PyPI
+        run: |
+          version="${TAG#v}"
+          for _ in $(seq 30); do
+            curl -fsS "https://pypi.org/pypi/web-algebra/$version/json" > /dev/null && exit 0
+            sleep 10
+          done
+          echo "web-algebra $version is not on PyPI" >&2
+          exit 1
+
+      - name: Log in with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server.json
+        run: ./mcp-publisher publish
