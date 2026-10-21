@@ -1238,8 +1238,9 @@ That is the URI an `ldh-AddObjectBlock` places. A document that does not
 describe the upload after a 2xx answer raises `ValueError`. LinkedDataHub appends an upload rather than
 rewriting the document, and asks no `If-Match` of it.
 
-`ldh-GenerateOntologyViews` *(pure)* returns, without a request, the views of the object properties of
-`ontology`, for writing into the application's namespace ontology, where
+`ldh-GenerateOntologyViews` *(pure)* builds, from its arguments alone, the
+views of the object properties of `ontology`, for writing into the
+application's namespace ontology, where
 LinkedDataHub's client looks them up: a property's `ldh:view` is shown on a
 resource whose type is the property's `rdfs:domain`, its `ldh:inverseView` on
 one whose type is its `rdfs:range`. Their queries read the resource shown as
