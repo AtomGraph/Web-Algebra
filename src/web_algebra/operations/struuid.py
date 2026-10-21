@@ -7,10 +7,13 @@ from web_algebra.operation import Operation
 from web_algebra.mcp_tool import MCPTool
 
 
-class STRUUID(Operation, MCPTool):
+class StrUUID(Operation, MCPTool):
     """
     Generates a fresh UUID (Universally Unique Identifier) as a string, following SPARQL's STRUUID() behavior.
     """
+
+    # the 1.x name: SPARQL's spelling rather than the operation names' PascalCase
+    deprecated_names = ("STRUUID",)
 
     @classmethod
     def description(cls) -> str:

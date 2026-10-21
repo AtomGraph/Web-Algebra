@@ -75,7 +75,7 @@ class TestOperationCallForm:
         with pytest.raises(ValueError):
             Operation.process_json(
                 settings,
-                {"@op": "Execute", "args": {"operation": {"@op": "STRUUID"}}},
+                {"@op": "Execute", "args": {"operation": {"@op": "StrUUID"}}},
             )
 
 

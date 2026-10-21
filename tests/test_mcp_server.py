@@ -127,13 +127,21 @@ def test_a_call_answers_with_the_operations_text(stdio):
 
 
 def test_each_now_call_is_its_own_evaluation(stdio):
-    # formal-semantics.md §4.2 NOW: two MCP tool calls each have their own time
+    # formal-semantics.md §4.2 Now: two MCP tool calls each have their own time
     first, second = (
-        stdio.request("tools/call", {"name": "NOW", "arguments": {}})["result"]["content"][0]["text"]
+        stdio.request("tools/call", {"name": "Now", "arguments": {}})["result"]["content"][0]["text"]
         for _ in range(2)
     )
     assert datetime.fromisoformat(first).utcoffset() is not None
     assert datetime.fromisoformat(second) > datetime.fromisoformat(first)
+
+
+def test_a_deprecated_alias_is_callable(stdio):
+    # formal-semantics.md §4 Names: an alias is accepted wherever the name is,
+    # though only the name is listed
+    result = stdio.request("tools/call", {"name": "STRUUID", "arguments": {}})["result"]
+    assert not result.get("isError")
+    assert len(result["content"][0]["text"]) == 36
 
 
 def test_a_string_call(stdio):

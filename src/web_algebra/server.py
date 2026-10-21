@@ -40,8 +40,9 @@ async def list_tools(ctx, params) -> types.ListToolsResult:
 
 
 async def call_tool(ctx, params: types.CallToolRequestParams) -> types.CallToolResult:
-    tool_class = mcp_tools().get(params.name)
-    if tool_class is None:
+    # by name or deprecated alias (formal-semantics.md §4, Names)
+    tool_class = Operation.get(params.name)
+    if tool_class is None or not issubclass(tool_class, MCPTool):
         raise MCPError(types.INVALID_PARAMS, f"Unknown tool: {params.name}")
 
     try:

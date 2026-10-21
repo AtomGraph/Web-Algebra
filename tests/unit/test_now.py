@@ -1,11 +1,11 @@
-"""Spec: formal-semantics.md §4.2 "NOW", §3.8 (τ).
+"""Spec: formal-semantics.md §4.2 "Now", §3.8 (τ).
 Abstract: () → Literal
 Python:   def execute(self) -> Literal
 JSON:     (no arguments)
 
-NOW is the current date and time, per SPARQL NOW() and XPath
+Now is the current date and time, per SPARQL NOW() and XPath
 fn:current-dateTime(): an xsd:dateTime literal with a timezone, the time at
-which evaluation of the document began. Every NOW in one evaluation returns
+which evaluation of the document began. Every Now in one evaluation returns
 the same value — across sequence elements and ForEach / Iterate iterations;
 separate evaluations each have their own; outside any evaluation it is the
 time of the call.
@@ -21,7 +21,7 @@ from rdflib.namespace import XSD
 
 from web_algebra.operation import Operation
 
-NOW = {"@op": "NOW", "args": {}}
+NOW = {"@op": "Now", "args": {}}
 
 
 def evaluate(settings, plan):
@@ -38,20 +38,20 @@ def as_datetime(term) -> datetime:
 
 class TestNOWPure:
     def test_returns_a_datetime_literal(self, settings):
-        as_datetime(Operation.get("NOW")(settings=settings).execute())
+        as_datetime(Operation.get("Now")(settings=settings).execute())
 
     def test_has_a_timezone(self, settings):
-        value = as_datetime(Operation.get("NOW")(settings=settings).execute())
+        value = as_datetime(Operation.get("Now")(settings=settings).execute())
         assert value.tzinfo is not None and value.utcoffset() is not None
 
     def test_is_the_time_of_the_call(self, settings):
         before = datetime.now(timezone.utc)
-        value = as_datetime(Operation.get("NOW")(settings=settings).execute())
+        value = as_datetime(Operation.get("Now")(settings=settings).execute())
         after = datetime.now(timezone.utc)
         assert before <= value <= after
 
     def test_outside_an_evaluation_each_call_has_its_own_time(self, settings):
-        op = Operation.get("NOW")(settings=settings)
+        op = Operation.get("Now")(settings=settings)
         first = as_datetime(op.execute())
         time.sleep(0.01)
         second = as_datetime(op.execute())
@@ -78,7 +78,7 @@ class TestNOWIsFixedForAnEvaluation:
 
     def test_across_time_spent_in_between(self, settings):
         # the elements between the two NOWs take measurable time
-        slow = {"@op": "ForEach", "args": {"select": list(range(200)), "operation": {"@op": "STRUUID", "args": {}}}}
+        slow = {"@op": "ForEach", "args": {"select": list(range(200)), "operation": {"@op": "StrUUID", "args": {}}}}
         result = evaluate(settings, [NOW, slow, NOW])
         assert result[0] == result[-1]
 
@@ -111,7 +111,7 @@ class TestNOWIsFixedForAnEvaluation:
     def test_through_a_variable(self, settings):
         plan = [
             {"@op": "Variable", "args": {"name": "t", "value": NOW}},
-            {"@op": "ForEach", "args": {"select": list(range(50)), "operation": {"@op": "STRUUID", "args": {}}}},
+            {"@op": "ForEach", "args": {"select": list(range(50)), "operation": {"@op": "StrUUID", "args": {}}}},
             {"@op": "Value", "args": {"name": "$t"}},
             NOW,
         ]

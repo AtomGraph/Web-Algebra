@@ -286,8 +286,8 @@ The focus accessors, named after their XSLT/XPath counterparts:
 Operations are marked in the catalog as **pure** (no observable effect),
 **query** (reads external state: HTTP GET, SPARQL query), or **update**
 (writes external state: HTTP POST/PUT/PATCH). `SPARQLString` calls an external
-LLM service and is additionally **non-deterministic**, as is `STRUUID`.
-`NOW` is fixed within one evaluation of a document and differs between
+LLM service and is additionally **non-deterministic**, as is `StrUUID`.
+`Now` is fixed within one evaluation of a document and differs between
 evaluations (§4.2).
 
 Ordering guarantees:
@@ -407,8 +407,8 @@ operator with an interpretation
 ```
 
 *Pure* operations neither read nor write the World; *query* operations read
-it; *update* operations read and write it; `STRUUID` and `SPARQLString` are
-relations rather than functions (non-determinism, §3.6). `NOW` is the one
+it; *update* operations read and write it; `StrUUID` and `SPARQLString` are
+relations rather than functions (non-determinism, §3.6). `Now` is the one
 operation that reads τ; since τ is constant for an evaluation, it is left out
 of the judgments below.
 
@@ -527,6 +527,18 @@ Catalog entry conventions: the *Abstract* signature is in the type language of
 §1.1; *JSON args* lists the argument keys of the JSON serialization with their
 expected value types after evaluation; ⟨quoted⟩ marks quoted operands (§3.3).
 `Maybe τ` marks optional arguments. Effects per §3.6 are noted when not pure.
+
+**Names.** An operation's name is in PascalCase: each word capitalized, an
+acronym (URI, UUID, SPARQL, XHTML) kept whole — `ForEach`, `ResolveURI`,
+`SPARQLString`. An operation named after a SPARQL or XPath function takes that
+function's name in PascalCase: `STR` → `Str`, `ENCODE_FOR_URI` →
+`EncodeForURI`, `STRUUID` → `StrUUID`, `NOW` → `Now`. Upper case is kept only
+for the names of protocol operations, as the protocols spell them: the HTTP
+methods (`GET`, `POST`, `PUT`, `PATCH`) and the SPARQL query forms (`SELECT`,
+`CONSTRUCT`, `DESCRIBE`). An extension family's operations carry the family's
+prefix (Appendix A) before a PascalCase name. A deprecated alias, where the
+catalog lists one, names the same operation and is accepted wherever the name
+is.
 
 ### 4.1 Control flow, variables, context
 
@@ -737,7 +749,8 @@ JSON:     input: string-compatible Literal
   `simple literal ENCODE_FOR_URI(string literal ltrl)`, the result is a
   simple literal.
 
-**STRUUID** — fresh UUID string, per SPARQL `STRUUID()`. Non-deterministic.
+**StrUUID** — fresh UUID string, per SPARQL `STRUUID()`. Non-deterministic.
+`STRUUID` is a deprecated alias.
 ```
 Abstract: () → Literal
 Python:   def execute(self) -> Literal
@@ -747,7 +760,7 @@ JSON:     (no arguments)
   RFC 4122 version-4 UUID in lowercase hyphenated form. Successive
   invocations differ.
 
-**NOW** — the current date and time, per SPARQL `NOW()` and XPath
+**Now** — the current date and time, per SPARQL `NOW()` and XPath
 `fn:current-dateTime()`.
 ```
 Abstract: () → Literal
@@ -756,7 +769,7 @@ JSON:     (no arguments)
 ```
 - An `xsd:dateTime` literal with a timezone: τ, the time at which evaluation
   of the document began (§3.8).
-- Every `NOW` in one evaluation returns the same value, wherever it occurs:
+- Every `Now` in one evaluation returns the same value, wherever it occurs:
   in successive elements of a sequence, in every `ForEach` and `Iterate`
   iteration, before and after any update. SPARQL requires this of one query
   execution, and XPath of one execution scope.
@@ -1096,8 +1109,8 @@ datatype and object properties) as one graph, each scoped by the same
   two concrete syntaxes of the same abstract algebra. They share operation
   names and abstract signatures, and both implement the whole catalog of §4.
   The XML serialization spells the sequence form as a `Sequence` element,
-  since XML has no arrays, and keeps `StrUUID` as a deprecated alias of
-  `STRUUID`.
+  since XML has no arrays. Both accept `STRUUID` as a deprecated alias of
+  `StrUUID`.
 - Extension families (Appendix A) are named differently in the two
   serializations, since JSON has no namespaces: a family's XML namespace and
   prefix correspond to a fixed JSON name prefix, given in the family's
