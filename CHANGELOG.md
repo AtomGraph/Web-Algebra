@@ -96,6 +96,9 @@ many are breaking.
   marker, so type checkers read the package's annotations.
 - **GitHub Releases**, made by the release workflow from the version's
   section of this file.
+- **`NOW`**: the current date and time as an `xsd:dateTime`, per SPARQL
+  `NOW()`: fixed when a run begins, so every `NOW` in one run returns the
+  same value.
 - **`Iterate`**: stateful iteration with parameters, `next-iteration` and
   `break`, after XSLT 3.0's `xsl:iterate`.
 - **`Position` and `Last`**: the XPath focus accessors inside `ForEach`.

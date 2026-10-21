@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from contextvars import ContextVar
+from datetime import datetime, timezone
 from enum import Enum
 import json
 import logging
@@ -21,6 +23,14 @@ from web_algebra.exceptions import (
 # of these is a strong, unambiguous signal — they are JSON-LD reserved terms
 # with no legitimate meaning in non-RDF JSON.
 _JSONLD_KEYS = ("@context", "@graph", "@id", "@type")
+
+# τ, the evaluation's current dateTime (formal-semantics.md §3.8): taken when
+# evaluation of a document begins and read by NOW throughout it. A context
+# variable rather than an argument, so it reaches every nested evaluation; a
+# parallel ForEach must run its iterations in copies of the current context.
+_current_datetime: ContextVar[Optional[datetime]] = ContextVar(
+    "current_datetime", default=None
+)
 
 
 class OperationKind(str, Enum):
@@ -139,6 +149,14 @@ class Operation(ABC, BaseModel):
         variable_stack: list = None,
     ) -> Any:
         """Class method for processing JSON with @op structures"""
+        if _current_datetime.get() is None:
+            # evaluation of a document begins: fix τ for all of it
+            token = _current_datetime.set(datetime.now(timezone.utc))
+            try:
+                return cls.process_json(settings, json_data, context, variable_stack)
+            finally:
+                _current_datetime.reset(token)
+
         if context is None:
             context = {}
         if variable_stack is None:
@@ -218,6 +236,12 @@ class Operation(ABC, BaseModel):
         else:
             # Convert plain values to RDFLib terms
             return cls.json_to_rdflib(json_data)
+
+    @staticmethod
+    def current_datetime() -> datetime:
+        """τ of the evaluation in progress (formal-semantics.md §3.8), or, outside
+        any evaluation, the time of the call."""
+        return _current_datetime.get() or datetime.now(timezone.utc)
 
     @staticmethod
     def concatenate(items: list, value: Any) -> None:
