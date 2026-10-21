@@ -32,18 +32,20 @@ live.
 - **Live-service behavior** — §3.7 pins transport failures to
   `urllib.error.HTTPError`/`URLError` propagating unwrapped, and §4.3–4.4 pin the
   response contract (RDF-only, transparent conneg, non-RDF → `ValueError`); still
-  unspecified: timeouts, retry policy beyond 429, and redirect handling beyond 308.
-- **XPath regex dialect coverage** — `Replace` compiles patterns with Python's `re`.
-  The common syntax is shared with XPath regular expressions, but XPath-only
-  constructs (`\p{...}` category escapes, `\i`/`\c`, character-class subtraction
-  `[a-z-[aeiou]]`) are not supported and surface as `ValueError` (invalid pattern).
-  This is an implementation gap against the normative fn:replace behavior, not
-  sanctioned spec behavior.
+  unspecified: timeouts and retry policy beyond 429
+  ([#53](https://github.com/AtomGraph/Web-Algebra/issues/53)).
 
 ## Resolved in the 2026-10 spec revision
 
 These supersede the corresponding 2026-07 entries below.
 
+- **XPath regular expressions** (§4.2 `Replace`): patterns are XSD regular
+  expressions, translated for Python's `re` with elementpath, so `\p{…}`,
+  `\i`/`\c` and class subtraction work; flags and `$N` replacements follow
+  F&O. Supersedes "XPath regex dialect coverage".
+- **Redirects on writes** (§4.4): a write does not follow a 3xx; `303 See Other`
+  is success with the `Location` as the written URL; any other 3xx is an
+  error. Supersedes "redirect handling beyond 308" under *Live-service behavior*.
 - **Flat sequences** (§3.1, §3.2, §3.8 SEQ): sequences are XDM-flat; Unit and
   `Variable` leave no item, a sequence-valued element contributes its items, and a
   `Result` is one item (never dissolved). Supersedes "sequence-valued results stay
