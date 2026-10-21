@@ -94,13 +94,14 @@ many are breaking.
 ### Added
 
 - **The `ldh-*` operations take the LinkedDataHub CLI's options**, and write
-  them as it does: `ldh-CreateContainer` `children_view` and `primary_topic`;
-  `ldh-CreateItem` `description` and `primary_topic`; `ldh-AddObjectBlock`
-  `graph`; several series for `ldh-AddResultSetChart`; and
-  `ldh-AddView` `show_when_empty`. A view's `mode` may also be `ac:TableMode`
+  them as the CLI of LinkedDataHub 6.2.3 does: `ldh-CreateContainer`
+  `children_view` and `primary_topic`; `ldh-CreateItem` `description` and
+  `primary_topic`; `ldh-AddObjectBlock` `graph`; several series for
+  `ldh-AddResultSetChart`; and `ldh-AddView` `show_when_empty`. A view's `mode` may also be `ac:TableMode`
   or `ac:ChartMode`.
   `tests/test_ldh_cli_parity.py` runs each operation against the CLI on a live
   LinkedDataHub and requires the same document.
+  ([#61](https://github.com/AtomGraph/Web-Algebra/pull/61))
 - **[formal-semantics.md](formal-semantics.md)**: abstract syntax, value
   domains, big-step evaluation rules, effects and ordering, the error table,
   the full catalog with an `Abstract:` signature per operation, and the
