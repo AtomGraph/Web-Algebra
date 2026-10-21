@@ -19,6 +19,7 @@ catalogue. Appendix A covers the LinkedDataHub (`ldh-`) operations.
 
 ```bash
 uv sync --group dev                     # install, with pytest and ruff
+uv run ruff check                       # lint, as CI runs it
 uv run pytest                           # the offline suite, as CI runs it
 uv run pytest -m ldh                    # against a LinkedDataHub (see below)
 uv run web-algebra --from-json examples/city-profiles/plan.json
@@ -26,9 +27,14 @@ uv run web-algebra-mcp                  # MCP server, stdio
 uv run uvicorn web_algebra.server:app --reload   # MCP server, streamable HTTP
 ```
 
-CI runs `uv run pytest` on Python 3.10 to 3.13. A `v*` tag publishes to
-PyPI (`.github/workflows/release.yml`): it cannot be undone, so never push a
-tag without being asked.
+CI runs `ruff check` and `pytest` on Python 3.10 to 3.14, from the locked
+environment (`uv sync --locked`: change `pyproject.toml`, then `uv lock`).
+
+A `v*` tag publishes to PyPI and makes a GitHub Release from the version's
+section of `CHANGELOG.md` (`.github/workflows/release.yml`). It cannot be
+undone, so never push a tag without being asked. A release bumps the version
+in `pyproject.toml` and `server.json` (the MCP Registry entry) together;
+`tests/test_packaging.py` checks they agree.
 
 ### Certificates and secrets
 

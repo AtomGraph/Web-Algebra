@@ -1,5 +1,10 @@
-__pycache__
-src/web_algebra/operations/.DS_Store
 /dist/
 /build/
 *.egg-info/
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+.claude/settings.local.json

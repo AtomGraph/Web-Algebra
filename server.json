@@ -1,0 +1,42 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.AtomGraph/web-algebra",
+  "title": "Web Algebra",
+  "description": "Composable Linked Data and SPARQL operations, and LinkedDataHub content tools",
+  "repository": {
+    "url": "https://github.com/AtomGraph/Web-Algebra",
+    "source": "github"
+  },
+  "version": "2.0.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "web-algebra",
+      "version": "2.0.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "CERT_PEM_PATH",
+          "description": "Path to the LinkedDataHub client certificate (PEM), for authenticated requests",
+          "isRequired": false,
+          "format": "filepath"
+        },
+        {
+          "name": "CERT_PASSWORD",
+          "description": "Password of the client certificate",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "description": "OpenAI API key, used by SPARQLString to write queries",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

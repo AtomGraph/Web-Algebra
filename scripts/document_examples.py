@@ -16,7 +16,6 @@ time may differ in the details (counts, names), not in shape.
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
 import sys
@@ -171,7 +170,7 @@ def document(example: Path, opener, settings) -> None:
     plan = json.loads((example / "plan.json").read_text())
     out = [f"# {example.name}", "", "## Instruction", ""]
     out += ["> " + line if line else ">" for line in (example / "instruction.md").read_text().strip().splitlines()]
-    out += ["", "## Plan", "", f"[`plan.json`](plan.json)"
+    out += ["", "## Plan", "", "[`plan.json`](plan.json)"
             + (" runs after [`setup.json`](setup.json), which creates the starting state." if (example / "setup.json").exists() else "."),
             "", *steps(plan), "", "Operations used: " + ", ".join(f"`{o}`" for o in operations_used(example)) + ".", ""]
     out += ["## Result", "",
@@ -185,7 +184,7 @@ def document(example: Path, opener, settings) -> None:
         blocks = "<br>".join(f"{i}. {b}" for i, b in enumerate(d["blocks"], 1)) or "—"
         out.append(f"| `{d['path']}` | {d['title']} | {blocks} | {d['resources'] or '—'} | {d['triples']} |")
     if key:
-        out += ["", f"Key data ([`result.rq`](result.rq)):", "", "| " + " | ".join(columns) + " |", "|" + "---|" * len(columns)]
+        out += ["", "Key data ([`result.rq`](result.rq)):", "", "| " + " | ".join(columns) + " |", "|" + "---|" * len(columns)]
         out += ["| " + " | ".join(cell(row.get(c, ""), container) for c in columns) + " |" for row in key]
     out += ["", "## Checks", "", "After the run, these hold on the instance ([`expect/`](expect/)):", ""]
     out += [f"- {'✅' if held else '❌'} `{name}`" for name, held in checks]
