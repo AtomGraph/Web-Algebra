@@ -136,6 +136,12 @@ def main(settings: BaseSettings, json_data: Optional[str]):
 def cli() -> None:
     parser = argparse.ArgumentParser(description="Run the AI-powered DSL interpreter.")
     parser.add_argument(
+        "command",
+        nargs="?",
+        choices=["mcp"],
+        help="mcp: run the MCP server on stdio, as web-algebra-mcp does",
+    )
+    parser.add_argument(
         "--from-json",
         type=str,
         help="JSON input file to execute",
@@ -151,6 +157,12 @@ def cli() -> None:
         help="Password for the client certificate",
     )
     args = parser.parse_args()
+
+    if args.command == "mcp":
+        from web_algebra.__main__ import main as serve
+
+        serve()
+        return
 
     # the flags override CERT_PEM_PATH / CERT_PASSWORD, which the settings
     # read from the environment, as the MCP server and the tests do
