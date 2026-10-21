@@ -17,7 +17,7 @@ Instead of agents executing semantic workflows step-by-step through individual M
 
 ## Demo
 
-[![ Agentic Content Management with Web-Algebra MCP](https://img.youtube.com/vi/eRMrSqKc9_E/0.jpg)](https://www.youtube.com/watch?v=eRMrSqKc9_E)
+[![Web-Algebra in action: an AI agent builds Linked Data pages over MCP](https://img.youtube.com/vi/zSbvl5kmKic/maxresdefault.jpg)](https://www.youtube.com/watch?v=zSbvl5kmKic)
 
 *See WebAlgebra in action - translating natural language into RDF operations.*
 
