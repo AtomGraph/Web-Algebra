@@ -1,5 +1,7 @@
 # Web-Algebra
 
+[![Web-Algebra - Listed on Claude AI Directory](https://www.claudeai.directory/badge/web-algebra?theme=dark)](https://www.claudeai.directory/launches/web-algebra)
+
 <!-- mcp-name: io.github.AtomGraph/web-algebra -->
 
 A composable RDF operations system that translates natural language instructions into JSON-formatted domain-specific language operations for loading, querying, and writing RDF Linked Data.
