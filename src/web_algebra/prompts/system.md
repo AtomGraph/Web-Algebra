@@ -748,19 +748,19 @@ Removes a content block from the document; without `block`, removes all of them.
 
 ## ldh-GenerateOntologyViews(ontology: Graph, base_uri: URI, service_uri: URI) → Graph
 
-Generates, for an ontology's properties, a stored query and a view per property that lists the property's values, as a graph to `POST` into an ontology document.
+Generates the views of an ontology's object properties, as a graph to `POST` into the application's namespace ontology document (on LinkedDataHub, `ontologies/namespace/` in the admin app), where its client looks them up. A property with an `rdfs:domain` gets a view listing its values, shown on resources of that domain (not for an `owl:FunctionalProperty`); one with an `rdfs:range` gets an inverse view listing what points to the resource, shown on resources of that range (not for an `owl:InverseFunctionalProperty`). A view is hidden while it has no results. The graph carries the domains and ranges, which the client needs to find the views.
 
 ### Example JSON
 ```json
 {
   "@op": "POST",
   "args": {
-    "url": {"@id": "https://localhost:4443/ns"},
+    "url": {"@id": "https://admin.localhost:4443/ontologies/namespace/"},
     "data": {
       "@op": "ldh-GenerateOntologyViews",
       "args": {
         "ontology": {"@op": "ExtractOntology", "args": {"endpoint": {"@id": "https://localhost:4443/sparql"}}},
-        "base_uri": {"@id": "https://localhost:4443/ns"},
+        "base_uri": {"@id": "https://admin.localhost:4443/ontologies/namespace/"},
         "service_uri": {"@id": "https://localhost:4443/services/#dbpedia"}
       }
     }
@@ -787,7 +787,7 @@ Creates, under `parent_container`, one item per class of the ontology, each show
 
 ## ldh-GeneratePortal(endpoint: URI, ontology_namespace: URI, parent_container: URI) → Result
 
-Builds a browsing portal for a SPARQL endpoint: extracts its ontology, writes property views into `ontology_namespace`, and creates a container per class under `parent_container`.
+Builds a browsing portal for a SPARQL endpoint: writes an `sd:Service` for it at `ontology_namespace#Service`, extracts its ontology, writes the property views (as `ldh-GenerateOntologyViews`) into `ontology_namespace` — the namespace ontology document — and creates a container per class under `parent_container`.
 
 ### Example JSON
 ```json
@@ -795,7 +795,7 @@ Builds a browsing portal for a SPARQL endpoint: extracts its ontology, writes pr
   "@op": "ldh-GeneratePortal",
   "args": {
     "endpoint": {"@id": "https://dbpedia.org/sparql"},
-    "ontology_namespace": {"@id": "https://localhost:4443/ns"},
+    "ontology_namespace": {"@id": "https://admin.localhost:4443/ontologies/namespace/"},
     "parent_container": {"@id": "https://localhost:4443/classes/"}
   }
 }

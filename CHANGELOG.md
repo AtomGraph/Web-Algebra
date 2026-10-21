@@ -151,6 +151,15 @@ many are breaking.
 
 ### Fixed
 
+- **`ldh-GenerateOntologyViews` and `ldh-GeneratePortal` make views
+  LinkedDataHub v6 shows.** Its client finds a property's views together with
+  the property's `rdfs:domain` and `rdfs:range`, which the views graph now
+  carries; a property gets an `ldh:inverseView` too, listing what points to
+  the resource; and a view is made only for a property with a domain (or, for
+  the inverse view, a range), where the client can show it. A generated view
+  is hidden while it has no results (`ldh:showWhenEmpty false`). The guide's
+  examples write to the namespace ontology document rather than to `/ns`,
+  which is its SPARQL endpoint.
 - **The prompts are part of the package**, so `web-algebra` without
   `--from-json` runs when installed, not only from a checkout.
 - **An MCP tool's error** is the tool's result (`isError`), which the model
