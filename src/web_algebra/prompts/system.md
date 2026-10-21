@@ -562,11 +562,20 @@ These write to a LinkedDataHub instance. Every write returns the one-row `status
 
 ## ldh-CreateContainer(parent: URI, title: Literal, slug?: Literal, description?: Literal, children_view?: Literal, primary_topic?: Literal) → Result
 
-Creates a container document at `parent` + `slug` + `/` (without `slug`, a random UUID), showing its children. A document that already exists at that URL is replaced. Its first content block lists its children through the shared `ldh:ChildrenView`, unless `children_view` is `false`. To list them in another layout, pass `false`, add a view of `https://w3id.org/atomgraph/linkeddatahub#SelectChildren` in that mode to the container with `ldh-AddView` (with a `fragment`), and place it with `ldh-AddObjectBlock`. `primary_topic` is what the container is about, a URI reference resolved against its URL (`#this` for a resource described in it).
+Creates a container document at `parent` + `slug` + `/` (without `slug`, a random UUID), showing its children. A document that already exists at that URL is replaced. Its first content block lists its children through the shared `ldh:ChildrenView`, unless `children_view` is `false` — a JSON boolean, never the string `"false"`. To list them in another layout, pass `false`, add a view of `https://w3id.org/atomgraph/linkeddatahub#SelectChildren` in that mode to the container with `ldh-AddView` (with a `fragment`), and place it with `ldh-AddObjectBlock`. `primary_topic` is what the container is about, a URI reference resolved against its URL (`#this` for a resource described in it).
 
 ### Example JSON
 ```json
 {"@op": "ldh-CreateContainer", "args": {"parent": {"@id": "https://localhost:4443/"}, "title": "Danish cities", "slug": "denmark"}}
+```
+
+A container whose children are listed in another layout, here on a map:
+```json
+[
+  {"@op": "ldh-CreateContainer", "args": {"parent": {"@id": "https://localhost:4443/"}, "title": "Danish cities", "slug": "denmark", "children_view": false}},
+  {"@op": "ldh-AddView", "args": {"url": {"@id": "https://localhost:4443/denmark/"}, "query": {"@id": "https://w3id.org/atomgraph/linkeddatahub#SelectChildren"}, "title": "Danish cities", "fragment": "cities", "mode": {"@id": "https://w3id.org/atomgraph/client#MapMode"}}},
+  {"@op": "ldh-AddObjectBlock", "args": {"url": {"@id": "https://localhost:4443/denmark/"}, "value": {"@id": "https://localhost:4443/denmark/#cities"}}}
+]
 ```
 
 ## ldh-CreateItem(container: URI, title: Literal, slug?: Literal, description?: Literal, primary_topic?: Literal) → Result
@@ -629,7 +638,7 @@ Writes a stored SPARQL `CONSTRUCT` query (`sp:Construct`) into the document, as 
 
 ## ldh-AddView(url: URI, query: URI, title: Literal, description?: Literal, fragment?: Literal, mode?: URI, show_when_empty?: Literal) → Result
 
-Writes a view of a stored `SELECT` query's results into the document. `query` is the URI of a stored query (from `ldh-AddSelect`), not query text. A view lists resources: the query's first variable must bind URIs (`SELECT ?item …`), not values such as titles or numbers; to show values, chart them with `ldh-AddResultSetChart` instead. `mode` is the layout of the results, a view mode: `https://w3id.org/atomgraph/client#ListMode` (the default), `#TableMode`, `#GridMode`, `#ReadMode`, `#GraphMode`, `#MapMode` or `#ChartMode`. `show_when_empty: false` hides the view while its query has no results. To show the view, place it with `ldh-AddObjectBlock`.
+Writes a view of a stored `SELECT` query's results into the document. `query` is the URI of a stored query (from `ldh-AddSelect`), not query text. A view lists resources: the query's first variable must bind URIs (`SELECT ?item …`), not values such as titles or numbers; to show values, chart them with `ldh-AddResultSetChart` instead. `mode` is the layout of the results, a view mode: `https://w3id.org/atomgraph/client#ListMode` (the default), `#TableMode`, `#GridMode`, `#ReadMode`, `#GraphMode`, `#MapMode` or `#ChartMode`. `show_when_empty: false` (a JSON boolean, never the string `"false"`) hides the view while its query has no results. To show the view, place it with `ldh-AddObjectBlock`.
 
 ### Example JSON
 ```json
