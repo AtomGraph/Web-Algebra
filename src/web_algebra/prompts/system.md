@@ -308,6 +308,15 @@ A fresh UUID string (SPARQL `STRUUID()`), different every time.
 {"@op": "STRUUID", "args": {}}
 ```
 
+## NOW() → Literal
+
+The current date and time as an `xsd:dateTime` (SPARQL `NOW()`). It is fixed for a run: every `NOW` in one program returns the same value, the time the run began, so it can stamp several documents or every `ForEach` row alike.
+
+### Example JSON
+```json
+{"@op": "NOW", "args": {}}
+```
+
 ## URI(input: URI + Literal) → URI
 
 Makes a URI from a string (SPARQL `URI()`); a URI is returned as it is.

@@ -287,6 +287,8 @@ Operations are marked in the catalog as **pure** (no observable effect),
 **query** (reads external state: HTTP GET, SPARQL query), or **update**
 (writes external state: HTTP POST/PUT/PATCH). `SPARQLString` calls an external
 LLM service and is additionally **non-deterministic**, as is `STRUUID`.
+`NOW` is fixed within one evaluation of a document and differs between
+evaluations (§4.2).
 
 Ordering guarantees:
 
@@ -391,6 +393,10 @@ v ⧺ w                            sequence concatenation, XDM-style: a sequence
 φ ∈ Focus⊥ = (Value × ℕ⁺ × ℕ⁺) + ⊥    (item, position, size), or absent
 σ ∈ World                        external web state (graphs behind URIs,
                                  endpoint contents); opaque
+τ ∈ DateTime                     the evaluation's current dateTime: taken
+                                 when evaluation of a document begins and
+                                 constant throughout it (XPath's dynamic
+                                 context component *current dateTime*)
 ```
 
 Each catalog operation `op` that is not treated by a rule below is a plain
@@ -402,7 +408,9 @@ operator with an interpretation
 
 *Pure* operations neither read nor write the World; *query* operations read
 it; *update* operations read and write it; `STRUUID` and `SPARQLString` are
-relations rather than functions (non-determinism, §3.6).
+relations rather than functions (non-determinism, §3.6). `NOW` is the one
+operation that reads τ; since τ is constant for an evaluation, it is left out
+of the judgments below.
 
 **Judgments.**
 
@@ -502,7 +510,7 @@ rule (propagation rules are omitted below).
 by its normative iteration cap, every evaluation terminates provided every
 δ_op does (structural induction on forms, with (FOREACH) measured by the
 size of `items(C)` and (ITERATE) by `CAP − k`). Evaluation is deterministic
-up to the declared non-deterministic operators and the World's own behavior. In
+up to the declared non-deterministic operators, τ, and the World's own behavior. In
 (FOREACH), each iteration's environment writes are confined to its fresh
 scope and results are concatenated in item order, so evaluating iterations
 concurrently is observationally equivalent to evaluating them in sequence
@@ -738,6 +746,23 @@ JSON:     (no arguments)
 - A simple literal (per the signature `simple literal STRUUID()`) holding an
   RFC 4122 version-4 UUID in lowercase hyphenated form. Successive
   invocations differ.
+
+**NOW** — the current date and time, per SPARQL `NOW()` and XPath
+`fn:current-dateTime()`.
+```
+Abstract: () → Literal
+Python:   def execute(self) -> Literal
+JSON:     (no arguments)
+```
+- An `xsd:dateTime` literal with a timezone: τ, the time at which evaluation
+  of the document began (§3.8).
+- Every `NOW` in one evaluation returns the same value, wherever it occurs:
+  in successive elements of a sequence, in every `ForEach` and `Iterate`
+  iteration, before and after any update. SPARQL requires this of one query
+  execution, and XPath of one execution scope.
+- Separate evaluations, such as two runs of a program or two MCP tool calls,
+  each have their own τ. Outside any evaluation (a direct `execute()` call),
+  τ is the time of the call.
 
 **URI** — cast a Term to a URI, like SPARQL `URI()`/`IRI()`.
 ```
