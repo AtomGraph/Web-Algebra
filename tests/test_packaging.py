@@ -39,6 +39,11 @@ def test_server_json_names_the_pypi_package():
     assert [p["identifier"] for p in SERVER["packages"] if p["registryType"] == "pypi"] == ["web-algebra"]
 
 
+def test_server_json_runs_the_mcp_command():
+    # `uvx web-algebra` alone would start the planner, not the server
+    assert [p.get("packageArguments") for p in SERVER["packages"]] == [[{"type": "positional", "value": "mcp"}]]
+
+
 def test_readme_carries_the_server_name():
     assert f"mcp-name: {SERVER['name']} " in (ROOT / "README.md").read_text().replace("-->", " -->")
 

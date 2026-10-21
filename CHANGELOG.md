@@ -5,6 +5,15 @@ All notable changes to Web Algebra are recorded here. The format follows
 [Semantic Versioning](https://semver.org/). The normative definition of every
 operation is [formal-semantics.md](formal-semantics.md).
 
+## [2.0.1] - 2026-10-21
+
+### Added
+
+- **`web-algebra mcp`** runs the MCP server on stdio, as `web-algebra-mcp`
+  does. The MCP Registry entry (`server.json`) runs it: a registry client
+  starts a PyPI package as `uvx web-algebra`, which on its own starts the
+  planner.
+
 ## [2.0.0] - 2026-10-21
 
 Web Algebra now has a formal semantics, and the Python implementation conforms

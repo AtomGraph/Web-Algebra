@@ -48,9 +48,9 @@ def mcp_tools():
 
 
 class Stdio:
-    def __init__(self):
+    def __init__(self, command=("-m", "web_algebra")):
         self.proc = subprocess.Popen(
-            [sys.executable, "-m", "web_algebra"],
+            [sys.executable, *command],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
@@ -104,6 +104,16 @@ def test_initialize_names_the_server_and_its_version(stdio):
     info = stdio.initialized["result"]["serverInfo"]
     assert info["name"] == "web-algebra"
     assert info["version"] == version("web-algebra")
+
+
+def test_the_cli_mcp_command_is_the_stdio_server():
+    # `web-algebra mcp` is what an MCP Registry client runs (server.json)
+    server = Stdio(("-m", "web_algebra.main", "mcp"))
+    try:
+        answer = server.request("initialize", INITIALIZE, timeout=60)
+    finally:
+        server.close()
+    assert answer["result"]["serverInfo"]["name"] == "web-algebra"
 
 
 def test_initialize_offers_tools(stdio):

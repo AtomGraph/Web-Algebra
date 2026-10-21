@@ -169,6 +169,8 @@ or with Claude Code:
 claude mcp add web-algebra -e CERT_PEM_PATH=/path/to/LinkedDataHub/ssl/owner/cert.pem -e CERT_PASSWORD=******** -- uvx --from web-algebra web-algebra-mcp
 ```
 
+`uvx web-algebra mcp` runs the same server.
+
 Environment variables:
 
 | Name | Required | Description |
