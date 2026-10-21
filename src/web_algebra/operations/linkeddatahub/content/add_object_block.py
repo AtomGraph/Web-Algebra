@@ -65,7 +65,14 @@ class AddObjectBlock(POST):
                 },
                 "mode": {
                     "type": "string",
-                    "description": "Optional URI of the block's layout mode, e.g. https://w3id.org/atomgraph/client#ReadMode (the default), #GraphMode, #MapMode, #ChartMode, #TableMode, #GridMode, #ListMode.",
+                    "description": "Optional URI of the mode the block shows its resource in (an object mode, not a view's layout). Defaults to ReadMode.",
+                    "enum": [
+                        "https://w3id.org/atomgraph/client#ReadMode",
+                        "https://w3id.org/atomgraph/client#GraphMode",
+                        "https://w3id.org/atomgraph/client#MapMode",
+                        "https://w3id.org/atomgraph/client#ChartMode",
+                    ],
+                    "default": "https://w3id.org/atomgraph/client#ReadMode",
                 },
                 "graph": {
                     "type": "string",

@@ -97,7 +97,8 @@ many are breaking.
   them as it does: `ldh-CreateContainer` `block`, `mode` and `primary_topic`;
   `ldh-CreateItem` `description` and `primary_topic`; `ldh-AddObjectBlock`
   `graph`; several series for `ldh-AddResultSetChart`; and
-  `ldh-AddView` `show_when_empty`. A `mode` is any layout URI.
+  `ldh-AddView` `show_when_empty`. A view's `mode` may also be `ac:TableMode`
+  or `ac:ChartMode`.
   `tests/test_ldh_cli_parity.py` runs each operation against the CLI on a live
   LinkedDataHub and requires the same document.
 - **[formal-semantics.md](formal-semantics.md)**: abstract syntax, value

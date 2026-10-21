@@ -66,7 +66,16 @@ class AddView(POST):
                 },
                 "mode": {
                     "type": "string",
-                    "description": "Optional URI of the view's layout mode, e.g. https://w3id.org/atomgraph/client#TableMode, #ListMode, #GridMode, #ReadMode, #GraphMode, #MapMode.",
+                    "description": "Optional URI of the layout the view shows its results in (a view mode, not an object block's mode). Defaults to ListMode.",
+                    "enum": [
+                        "https://w3id.org/atomgraph/client#ListMode",
+                        "https://w3id.org/atomgraph/client#TableMode",
+                        "https://w3id.org/atomgraph/client#GridMode",
+                        "https://w3id.org/atomgraph/client#ReadMode",
+                        "https://w3id.org/atomgraph/client#GraphMode",
+                        "https://w3id.org/atomgraph/client#MapMode",
+                        "https://w3id.org/atomgraph/client#ChartMode",
+                    ],
                 },
                 "show_when_empty": {
                     "type": "boolean",

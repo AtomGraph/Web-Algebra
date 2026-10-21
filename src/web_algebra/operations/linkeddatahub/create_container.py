@@ -55,7 +55,7 @@ class CreateContainer(PUT):
                 },
                 "mode": {
                     "type": "string",
-                    "description": "URI of the layout mode (e.g. ac:GridMode) the children are listed in (optional; ignored when block is given).",
+                    "description": "URI of the view mode the children are listed in, e.g. https://w3id.org/atomgraph/client#GridMode (optional; ignored when block is given). Without it, the shared ldh:ChildrenView is used.",
                 },
                 "primary_topic": {
                     "type": "string",
