@@ -146,7 +146,8 @@ many are breaking.
   interactive planner and `SPARQLString`, and `OPENAI_MODEL` overrides it; the
   planner used to ignore the setting. The planner no longer asks for JSON mode,
   which admits only an object: a plan of several steps written as an array
-  came back as its first step alone.
+  came back as its first step alone. A reply fenced as a Markdown code block
+  is read as the plan inside the fence.
 - **`ldh-*` titles and descriptions** may carry a language tag, and keep it.
   ([#35](https://github.com/AtomGraph/Web-Algebra/pull/35))
 - **A `fragment`** may be given with or without its `#`. ([#35](https://github.com/AtomGraph/Web-Algebra/pull/35))
