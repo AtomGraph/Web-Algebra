@@ -299,22 +299,22 @@ Percent-encodes a string for use as a URI path segment (SPARQL `ENCODE_FOR_URI()
 "N%C3%B8rrebro%20%2F%20%C3%98sterbro"
 ```
 
-## STRUUID() → Literal
+## StrUUID() → Literal
 
-A fresh UUID string (SPARQL `STRUUID()`), different every time.
+A fresh UUID string (SPARQL `STRUUID()`), different every time. (`STRUUID` is a deprecated alias.)
 
 ### Example JSON
 ```json
-{"@op": "STRUUID", "args": {}}
+{"@op": "StrUUID", "args": {}}
 ```
 
-## NOW() → Literal
+## Now() → Literal
 
-The current date and time as an `xsd:dateTime` (SPARQL `NOW()`). It is fixed for a run: every `NOW` in one program returns the same value, the time the run began, so it can stamp several documents or every `ForEach` row alike.
+The current date and time as an `xsd:dateTime` (SPARQL `NOW()`). It is fixed for a run: every `Now` in one program returns the same value, the time the run began, so it can stamp several documents or every `ForEach` row alike.
 
 ### Example JSON
 ```json
-{"@op": "NOW", "args": {}}
+{"@op": "Now", "args": {}}
 ```
 
 ## URI(input: URI + Literal) → URI

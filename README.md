@@ -64,10 +64,10 @@ The operations cover read-write Linked Data, SPARQL queries, URI manipulation, a
   - `Concat`
   - `Replace`
   - `Str`
-  - `STRUUID`
+  - `StrUUID`
   - `URI`
 - Date/Time
-  - `NOW`
+  - `Now`
 - Control Flow & Variables
   - `Value`
   - `Variable`

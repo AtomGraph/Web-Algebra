@@ -69,10 +69,10 @@ def check_static(node, problems, path="$"):
         return
     if "@op" in node:
         name = node["@op"]
-        if name not in Operation.registry:
+        if Operation.get(name) is None:
             problems.append(f"{path}: unknown operation {name}")
             return
-        schema = Operation.registry[name].inputSchema()
+        schema = Operation.get(name).inputSchema()
         args = node.get("args", {})
         properties = set(schema.get("properties", {}))
         for key in args:

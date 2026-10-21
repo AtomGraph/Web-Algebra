@@ -18,6 +18,11 @@ many are breaking.
 
 - **`Execute` is removed.** It was the MCP-era "run this program" operation and
   is the identity in the algebra.
+- **`STRUUID` is renamed `StrUUID`**, by the naming rule the spec now states
+  (§4): operations are PascalCase, a SPARQL or XPath function's name included
+  (`STR` → `Str`, `STRUUID` → `StrUUID`), and only the HTTP methods and SPARQL
+  query forms keep upper case. `STRUUID` remains a deprecated alias, so 1.x
+  plans still run.
 - **Sequences are flat** (XDM): the sequence form, `ForEach` and `Iterate`
   yield the concatenation of their values, and `Unit` (what `Variable`
   returns) is the empty sequence, contributing nothing. A `Result` is never
@@ -38,7 +43,7 @@ many are breaking.
   - `Str` returns a simple literal without the language tag, and raises
     `TypeError` for a blank node.
   - `Concat` follows `CONCAT()`'s result-kind rules.
-  - `EncodeForURI` and `STRUUID` return simple literals.
+  - `EncodeForURI` and `StrUUID` return simple literals.
   - `Replace` is XPath's `fn:replace`: XSD regular-expression syntax (`\p{L}`,
     `\i`, character-class subtraction; `$` anchors at the end of the string),
     the flags `s m i x q` (`x` removes whitespace, and `#` is literal), the
@@ -96,8 +101,8 @@ many are breaking.
   marker, so type checkers read the package's annotations.
 - **GitHub Releases**, made by the release workflow from the version's
   section of this file.
-- **`NOW`**: the current date and time as an `xsd:dateTime`, per SPARQL
-  `NOW()`: fixed when a run begins, so every `NOW` in one run returns the
+- **`Now`**: the current date and time as an `xsd:dateTime`, per SPARQL
+  `NOW()`: fixed when a run begins, so every `Now` in one run returns the
   same value.
 - **`Iterate`**: stateful iteration with parameters, `next-iteration` and
   `break`, after XSLT 3.0's `xsl:iterate`.

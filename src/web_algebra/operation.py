@@ -25,7 +25,7 @@ from web_algebra.exceptions import (
 _JSONLD_KEYS = ("@context", "@graph", "@id", "@type")
 
 # τ, the evaluation's current dateTime (formal-semantics.md §3.8): taken when
-# evaluation of a document begins and read by NOW throughout it. A context
+# evaluation of a document begins and read by Now throughout it. A context
 # variable rather than an argument, so it reaches every nested evaluation; a
 # parallel ForEach must run its iterations in copies of the current context.
 _current_datetime: ContextVar[Optional[datetime]] = ContextVar(
@@ -82,6 +82,10 @@ class Operation(ABC, BaseModel):
     """
 
     registry: ClassVar[Dict[str, Type["Operation"]]] = {}
+    #: deprecated alias → operation name (formal-semantics.md §4, Names)
+    aliases: ClassVar[Dict[str, str]] = {}
+    #: this operation's deprecated aliases, accepted wherever its name is
+    deprecated_names: ClassVar[tuple] = ()
 
     #: What this operation does to the world, for the plan summary a client shows
     #: before approving a document. Reading is the default because most operations
@@ -130,6 +134,8 @@ class Operation(ABC, BaseModel):
                 f"Cannot register {operation_cls}: Must be a subclass of Operation."
             )
         cls.registry[operation_cls.name()] = operation_cls
+        for alias in operation_cls.deprecated_names:
+            Operation.aliases[alias] = operation_cls.name()
         logging.info(f"Registered operation: {operation_cls.name()}")
 
     @classmethod
@@ -138,6 +144,10 @@ class Operation(ABC, BaseModel):
 
     @classmethod
     def get(cls, name: str) -> Optional[Type["Operation"]]:
+        if name in cls.aliases:
+            # a deprecated alias names the same operation (formal-semantics.md §4)
+            logging.warning("%s is deprecated; use %s", name, cls.aliases[name])
+            name = cls.aliases[name]
         return cls.registry.get(name)
 
     @classmethod
