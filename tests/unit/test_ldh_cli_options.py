@@ -3,7 +3,8 @@ with LinkedDataHub's CLI, written as the CLI writes them:
 
 - ldh-CreateContainer's first content block, rdf:_1: `block` when given;
   else an ldh:Object whose rdf:value is a new ldh:View of ldh:SelectChildren
-  in ac:mode `mode` when given; else an ldh:Object of ldh:ChildrenView.
+  in ac:mode `mode`, titled "Children view", when given; else an ldh:Object
+  of ldh:ChildrenView.
 - `primary_topic` (CreateContainer, CreateItem): a URI reference resolved
   against the document's URI, the document's one foaf:primaryTopic.
 - ldh-CreateItem's `description`: dct:description.
@@ -81,6 +82,7 @@ def test_a_mode_makes_a_children_view_in_that_mode(settings, http_stub):
     assert (view, RDF.type, LDH.View) in g
     assert (view, SPIN.query, LDH.SelectChildren) in g
     assert (view, AC.mode, AC.GridMode) in g
+    assert list(g.objects(view, DCTERMS.title)) == [Literal("Children view")]
 
 
 def test_a_block_takes_precedence_over_a_mode(settings, http_stub):

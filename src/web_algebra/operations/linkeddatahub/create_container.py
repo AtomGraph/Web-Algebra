@@ -137,7 +137,14 @@ class CreateContainer(PUT):
         elif mode is not None:
             data["rdf:_1"] = {
                 "@type": "ldh:Object",
-                "rdf:value": {"@type": "ldh:View", "spin:query": {"@id": "ldh:SelectChildren"}, "ac:mode": {"@id": str(mode)}},
+                # titled as ldh:ChildrenView is labelled; untitled, a client heads
+                # the block with the ID the server mints for the blank node
+                "rdf:value": {
+                    "@type": "ldh:View",
+                    "dct:title": "Children view",
+                    "spin:query": {"@id": "ldh:SelectChildren"},
+                    "ac:mode": {"@id": str(mode)},
+                },
             }
         else:
             data["rdf:_1"] = {"@type": "ldh:Object", "rdf:value": {"@id": "ldh:ChildrenView"}}

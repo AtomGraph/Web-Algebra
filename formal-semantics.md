@@ -1223,8 +1223,9 @@ inputs (its `rdf` module), so a document made either way is the same:
 
 - `ldh-CreateContainer` gives the container its first content block,
   `rdf:_1`: `block` itself when given; otherwise an `ldh:Object` whose
-  `rdf:value` is a new `ldh:View` of `ldh:SelectChildren` in `ac:mode` `mode`
-  when `mode` is given; otherwise an `ldh:Object` of `ldh:ChildrenView`.
+  `rdf:value` is a new `ldh:View` of `ldh:SelectChildren` in `ac:mode` `mode`,
+  titled `Children view` (the label of `ldh:ChildrenView`), when `mode` is
+  given; otherwise an `ldh:Object` of `ldh:ChildrenView`.
 - `primary_topic` (`ldh-CreateContainer`, `ldh-CreateItem`) is a URI
   reference resolved against the document's URI (RFC 3986), written as the
   document's one `foaf:primaryTopic` — `#this` names the conventional
