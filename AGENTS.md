@@ -143,7 +143,8 @@ only the transport, converted at fixed boundaries:
   regenerate their READMEs with `scripts/document_examples.py`.
 - **Verify the code, not its description.** Comments, docs and this file are
   claims; trace or run the code before relying on one.
-- **Changes are recorded** in `CHANGELOG.md` under Unreleased.
+- **Changes are recorded** in `CHANGELOG.md`, in the next version's section,
+  `## [x.y.z] - Unreleased`; the first change after a release adds it.
 
 ## The Java implementation
 

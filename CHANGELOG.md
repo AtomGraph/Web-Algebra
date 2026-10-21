@@ -5,8 +5,6 @@ All notable changes to Web Algebra are recorded here. The format follows
 [Semantic Versioning](https://semver.org/). The normative definition of every
 operation is [formal-semantics.md](formal-semantics.md).
 
-## [Unreleased]
-
 ## [2.0.0] - 2026-10-21
 
 Web Algebra now has a formal semantics, and the Python implementation conforms
@@ -236,7 +234,6 @@ command line or as an MCP server.
   `ldh-RemoveBlock`, and `GenerateClassContainers`, `GenerateOntologyViews`,
   `GeneratePortal`.
 
-[Unreleased]: https://github.com/AtomGraph/Web-Algebra/compare/v2.0.0...HEAD
 [2.0.0]: https://github.com/AtomGraph/Web-Algebra/compare/v1.5.0...v2.0.0
 [1.5.0]: https://github.com/AtomGraph/Web-Algebra/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/AtomGraph/Web-Algebra/compare/v1.4.0...v1.4.1
