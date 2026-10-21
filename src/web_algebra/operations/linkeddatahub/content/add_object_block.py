@@ -65,14 +65,11 @@ class AddObjectBlock(POST):
                 },
                 "mode": {
                     "type": "string",
-                    "description": "Optional URI of the block mode. Defaults to ReadMode if not specified.",
-                    "enum": [
-                        "https://w3id.org/atomgraph/client#GraphMode",
-                        "https://w3id.org/atomgraph/client#MapMode",
-                        "https://w3id.org/atomgraph/client#ChartMode",
-                        "https://w3id.org/atomgraph/client#ReadMode",
-                    ],
-                    "default": "https://w3id.org/atomgraph/client#ReadMode",
+                    "description": "Optional URI of the block's layout mode, e.g. https://w3id.org/atomgraph/client#ReadMode (the default), #GraphMode, #MapMode, #ChartMode, #TableMode, #GridMode, #ListMode.",
+                },
+                "graph": {
+                    "type": "string",
+                    "description": "Optional URI of the document that describes the value, read in place of dereferencing the value's URI (ldh:graph).",
                 },
             },
             "required": ["url", "value"],
@@ -130,6 +127,17 @@ class AddObjectBlock(POST):
                 )
             mode_uri = mode_data
 
+        graph_uri = None
+        if "graph" in arguments:
+            graph_data = Operation.process_json(
+                self.settings, arguments["graph"], self.context, variable_stack
+            )
+            if not isinstance(graph_data, URIRef):
+                raise TypeError(
+                    f"AddObjectBlock operation expects 'graph' to be URIRef, got {type(graph_data)}"
+                )
+            graph_uri = graph_data
+
         return self.execute(
             url_data,
             value_data,
@@ -137,6 +145,7 @@ class AddObjectBlock(POST):
             description_literal,
             fragment_literal,
             mode_uri,
+            graph_uri,
         )
 
     def execute(
@@ -147,6 +156,7 @@ class AddObjectBlock(POST):
         description: Literal = None,
         fragment: Literal = None,
         mode: URIRef = None,
+        graph: URIRef = None,
     ) -> Any:
         """Pure function: create object block with RDFLib terms"""
         if not isinstance(url, URIRef):
@@ -179,6 +189,10 @@ class AddObjectBlock(POST):
             raise TypeError(
                 f"AddObjectBlock.execute expects mode to be URIRef, got {type(mode)}"
             )
+        if graph is not None and not isinstance(graph, URIRef):
+            raise TypeError(
+                f"AddObjectBlock.execute expects graph to be URIRef, got {type(graph)}"
+            )
 
         url_str = str(url)
         value_str = str(value)
@@ -195,12 +209,12 @@ class AddObjectBlock(POST):
 
         # Step 1: Get current document to find next sequence number
         get_op = GET(settings=self.settings, context=self.context)
-        graph = get_op.execute(url)
+        document = get_op.execute(url)
 
         # Convert Graph to JSON-LD for processing
         import json
 
-        jsonld_str = graph.serialize(format="json-ld")
+        jsonld_str = document.serialize(format="json-ld")
         doc = json.loads(jsonld_str)
 
         # Step 2: Extract sequence numbers from rdf:_N properties in JSON-LD list
@@ -267,14 +281,17 @@ class AddObjectBlock(POST):
         if mode_str:
             block["ac:mode"] = {"@id": mode_str}
 
+        if graph is not None:
+            # the document describing the value, read in its place (ldh:graph)
+            block["ldh:graph"] = {"@id": str(graph)}
+
         # Add object block to the data structure
         data[sequence_property] = block
 
         logging.info(f"Posting object block with JSON-LD data: {data}")
 
         # Step 6: Convert the JSON-LD content to a Graph and POST to the target URI
-        graph = self.to_graph(data, base=url_str)
-        return super().execute(url, graph)
+        return super().execute(url, self.to_graph(data, base=url_str))
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
@@ -300,8 +317,10 @@ class AddObjectBlock(POST):
         if "mode" in arguments:
             mode = URIRef(arguments["mode"])
 
+        graph = URIRef(arguments["graph"]) if "graph" in arguments else None
+
         # Call pure function
-        result = self.execute(url, value, title, description, fragment, mode)
+        result = self.execute(url, value, title, description, fragment, mode, graph)
 
         # Return status for MCP response
         status_binding = result.bindings[0]["status"]

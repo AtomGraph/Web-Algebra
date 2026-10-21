@@ -93,6 +93,13 @@ many are breaking.
 
 ### Added
 
+- **The `ldh-*` operations take the LinkedDataHub CLI's options**, and write
+  them as it does: `ldh-CreateContainer` `block`, `mode` and `primary_topic`;
+  `ldh-CreateItem` `description` and `primary_topic`; `ldh-AddObjectBlock`
+  `graph`; several series for `ldh-AddResultSetChart`; and
+  `ldh-AddView` `show_when_empty`. A `mode` is any layout URI.
+  `tests/test_ldh_cli_parity.py` runs each operation against the CLI on a live
+  LinkedDataHub and requires the same document.
 - **[formal-semantics.md](formal-semantics.md)**: abstract syntax, value
   domains, big-step evaluation rules, effects and ordering, the error table,
   the full catalog with an `Abstract:` signature per operation, and the

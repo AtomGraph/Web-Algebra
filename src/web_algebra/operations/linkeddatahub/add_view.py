@@ -66,14 +66,11 @@ class AddView(POST):
                 },
                 "mode": {
                     "type": "string",
-                    "description": "Optional URI of the display mode for the view.",
-                    "enum": [
-                        "https://w3id.org/atomgraph/client#ReadMode",
-                        "https://w3id.org/atomgraph/client#ListMode",
-                        "https://w3id.org/atomgraph/client#GridMode",
-                        "https://w3id.org/atomgraph/client#GraphMode",
-                        "https://w3id.org/atomgraph/client#MapMode",
-                    ],
+                    "description": "Optional URI of the view's layout mode, e.g. https://w3id.org/atomgraph/client#TableMode, #ListMode, #GridMode, #ReadMode, #GraphMode, #MapMode.",
+                },
+                "show_when_empty": {
+                    "type": "boolean",
+                    "description": "Optional: whether the view is shown when its query returns no results (ldh:showWhenEmpty). LinkedDataHub shows it unless this is false.",
                 },
             },
             "required": ["url", "query", "title"],
@@ -129,6 +126,12 @@ class AddView(POST):
                 )
             mode_uri = mode_data
 
+        show_when_empty = None
+        if "show_when_empty" in arguments:
+            show_when_empty = Operation.json_to_rdflib(Operation.process_json(
+                self.settings, arguments["show_when_empty"], self.context, variable_stack
+            ))
+
         return self.execute(
             url_data,
             query_data,
@@ -136,6 +139,7 @@ class AddView(POST):
             description_literal,
             fragment_literal,
             mode_uri,
+            show_when_empty,
         )
 
     def execute(
@@ -146,6 +150,7 @@ class AddView(POST):
         description: Optional[Literal] = None,
         fragment: Optional[Literal] = None,
         mode: Optional[URIRef] = None,
+        show_when_empty: Optional[Literal] = None,
     ) -> Any:
         """Pure function: create SPARQL result set view with RDFLib terms"""
         if not isinstance(url, URIRef):
@@ -175,6 +180,13 @@ class AddView(POST):
         if mode is not None and not isinstance(mode, URIRef):
             raise TypeError(
                 f"AddView.execute expects mode to be URIRef, got {type(mode)}"
+            )
+
+        if show_when_empty is not None and not (
+            isinstance(show_when_empty, Literal) and show_when_empty.datatype == XSD.boolean
+        ):
+            raise TypeError(
+                f"AddView.execute expects show_when_empty to be an xsd:boolean Literal, got {show_when_empty!r}"
             )
 
         url_str = str(url)
@@ -218,6 +230,9 @@ class AddView(POST):
             data["@context"]["ac"] = "https://w3id.org/atomgraph/client#"
             data["ac:mode"] = {"@id": mode_str}
 
+        if show_when_empty is not None:
+            data["ldh:showWhenEmpty"] = show_when_empty.toPython()
+
         logging.info(f"Posting View with JSON-LD data: {data}")
 
         # Convert the JSON-LD content to a Graph and POST to the target URI
@@ -245,8 +260,12 @@ class AddView(POST):
         if "mode" in arguments:
             mode = URIRef(arguments["mode"])
 
+        show_when_empty = (
+            Literal(bool(arguments["show_when_empty"])) if "show_when_empty" in arguments else None
+        )
+
         # Call pure function
-        result = self.execute(url, query, title, description, fragment, mode)
+        result = self.execute(url, query, title, description, fragment, mode, show_when_empty)
 
         # Return status for MCP response
         status_binding = result.bindings[0]["status"]

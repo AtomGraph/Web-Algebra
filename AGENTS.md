@@ -58,6 +58,11 @@ docs, or a commit — use the variables.
 - `ldh` — needs a LinkedDataHub v6 instance and the certificate variables.
   The examples run against `https://localhost:4443/` (`LDH_BASE` selects
   another) and remove what they wrote unless `WA_KEEP_EXAMPLES=1`.
+  `tests/test_ldh_cli_parity.py` also needs `LDH_CLI`, the launcher of
+  LinkedDataHub's CLI (`cli/bin/ldh` of a checkout built with `mvn package`):
+  it runs every `ldh-*` operation and the CLI command for the same inputs and
+  requires the two documents to be the same graph. Run it after changing an
+  `ldh-*` operation, against the LinkedDataHub version you target.
 - `network`, `sparql` — need live HTTP or SPARQL endpoints.
 - `unit` and `integration` are applied automatically to `tests/unit/` and
   `tests/integration/`.

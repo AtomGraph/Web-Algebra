@@ -6,6 +6,7 @@ from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.operation import Operation
+from web_algebra.rfc3986 import resolve
 from web_algebra.operations.linked_data.put import PUT
 from rdflib.query import Result
 
@@ -48,6 +49,18 @@ class CreateContainer(PUT):
                     "type": "string",
                     "description": "Description (optional)",
                 },
+                "block": {
+                    "type": "string",
+                    "description": "URI of the container's first content block (optional). Without it, the block lists the container's children.",
+                },
+                "mode": {
+                    "type": "string",
+                    "description": "URI of the layout mode (e.g. ac:GridMode) the children are listed in (optional; ignored when block is given).",
+                },
+                "primary_topic": {
+                    "type": "string",
+                    "description": "URI reference of what the container is about, resolved against its URI (optional), e.g. #this.",
+                },
             },
             "required": ["parent", "title"],
         }
@@ -58,6 +71,9 @@ class CreateContainer(PUT):
         title: Literal,
         slug: Optional[Literal] = None,
         description: Optional[Literal] = None,
+        block: Optional[URIRef] = None,
+        mode: Optional[URIRef] = None,
+        primary_topic: Optional[Literal] = None,
     ) -> Result:
         """Pure function: create container with RDFLib terms"""
         if not isinstance(parent_uri, URIRef):
@@ -76,6 +92,12 @@ class CreateContainer(PUT):
             raise TypeError(
                 f"CreateContainer.execute expects description to be Literal or None, got {type(description)}"
             )
+        for name, term, typ in (("block", block, URIRef), ("mode", mode, URIRef), ("primary_topic", primary_topic, Literal)):
+            if term is not None and not isinstance(term, typ):
+                raise TypeError(
+                    f"CreateContainer.execute expects {name} to be {typ.__name__} or None, got {type(term)}"
+                )
+
         # URL-encode slug, or mint a fresh one - a lowercase UUID, as the LinkedDataHub CLI does - so that
         # leaving it out never lands on an existing document; deriving it from the title did, on a repeated title
         slug_str = urllib.parse.quote(str(slug) if slug else str(uuid.uuid4()), safe="")
@@ -99,15 +121,32 @@ class CreateContainer(PUT):
                 "dct": "http://purl.org/dc/terms/",
                 "sioc": "http://rdfs.org/sioc/ns#",
                 "xsd": "http://www.w3.org/2001/XMLSchema#",
+                "spin": "http://spinrdf.org/spin#",
+                "ac": "https://w3id.org/atomgraph/client#",
+                "foaf": "http://xmlns.com/foaf/0.1/",
             },
             "@id": url,
             "@type": "dh:Container",
             "dct:title": Operation.jsonld_text(title),
-            "rdf:_1": {"@type": "ldh:Object", "rdf:value": {"@id": "ldh:ChildrenView"}},
         }
+        # the first content block, as the LinkedDataHub CLI writes it: the given
+        # block; else a view of the children in the given mode; else the
+        # children view (formal-semantics.md Appendix A)
+        if block is not None:
+            data["rdf:_1"] = {"@id": str(block)}
+        elif mode is not None:
+            data["rdf:_1"] = {
+                "@type": "ldh:Object",
+                "rdf:value": {"@type": "ldh:View", "spin:query": {"@id": "ldh:SelectChildren"}, "ac:mode": {"@id": str(mode)}},
+            }
+        else:
+            data["rdf:_1"] = {"@type": "ldh:Object", "rdf:value": {"@id": "ldh:ChildrenView"}}
 
         if description:
             data["dct:description"] = Operation.jsonld_text(description)
+        if primary_topic is not None:
+            # a URI reference resolved against the document (RFC 3986)
+            data["foaf:primaryTopic"] = {"@id": resolve(url, str(primary_topic))}
 
         # Convert the document to a Graph and call parent PUT operation
         graph = self.to_graph(data, base=url)
@@ -161,7 +200,44 @@ class CreateContainer(PUT):
                     f"ldh-CreateContainer operation expects 'description' to be Literal, got {type(description)}"
                 )
 
-        return self.execute(parent_uri, title, slug, description)
+
+        # Process optional block
+        block = None
+        if "block" in arguments:
+            block_data = Operation.process_json(
+                self.settings, arguments["block"], self.context, variable_stack
+            )
+            block = Operation.json_to_rdflib(block_data)
+            if not isinstance(block, URIRef):
+                raise TypeError(
+                    f"ldh-CreateContainer operation expects 'block' to be URIRef, got {type(block)}"
+                )
+
+        # Process optional mode
+        mode = None
+        if "mode" in arguments:
+            mode_data = Operation.process_json(
+                self.settings, arguments["mode"], self.context, variable_stack
+            )
+            mode = Operation.json_to_rdflib(mode_data)
+            if not isinstance(mode, URIRef):
+                raise TypeError(
+                    f"ldh-CreateContainer operation expects 'mode' to be URIRef, got {type(mode)}"
+                )
+
+        # Process optional primary_topic
+        primary_topic = None
+        if "primary_topic" in arguments:
+            primary_topic_data = Operation.process_json(
+                self.settings, arguments["primary_topic"], self.context, variable_stack
+            )
+            primary_topic = Operation.json_to_rdflib(primary_topic_data)
+            if not isinstance(primary_topic, Literal):
+                raise TypeError(
+                    f"ldh-CreateContainer operation expects 'primary_topic' to be Literal, got {type(primary_topic)}"
+                )
+
+        return self.execute(parent_uri, title, slug, description, block, mode, primary_topic)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
@@ -178,7 +254,14 @@ class CreateContainer(PUT):
             else None
         )
 
-        result = self.execute(parent_uri, title, slug, description)
+        block = URIRef(arguments["block"]) if "block" in arguments else None
+        mode = URIRef(arguments["mode"]) if "mode" in arguments else None
+        primary_topic = (
+            Literal(arguments["primary_topic"], datatype=XSD.string)
+            if "primary_topic" in arguments
+            else None
+        )
+        result = self.execute(parent_uri, title, slug, description, block, mode, primary_topic)
 
         # Extract URL from PUT result
         url_binding = result.bindings[0]["url"]
