@@ -629,7 +629,7 @@ Writes a stored SPARQL `CONSTRUCT` query (`sp:Construct`) into the document, as 
 
 ## ldh-AddView(url: URI, query: URI, title: Literal, description?: Literal, fragment?: Literal, mode?: URI, show_when_empty?: Literal) → Result
 
-Writes a view of a stored `SELECT` query's results into the document. `query` is the URI of a stored query (from `ldh-AddSelect`), not query text. `mode` is a layout such as `https://w3id.org/atomgraph/client#TableMode`, `#ListMode`, `#GridMode`, `#ReadMode`, `#GraphMode` or `#MapMode`. `show_when_empty: false` hides the view while its query has no results. To show the view, place it with `ldh-AddObjectBlock`.
+Writes a view of a stored `SELECT` query's results into the document. `query` is the URI of a stored query (from `ldh-AddSelect`), not query text. A view lists resources: the query's first variable must bind URIs (`SELECT ?item …`), not values such as titles or numbers; to show values, chart them with `ldh-AddResultSetChart` instead. `mode` is a layout such as `https://w3id.org/atomgraph/client#TableMode`, `#ListMode`, `#GridMode`, `#ReadMode`, `#GraphMode` or `#MapMode`. `show_when_empty: false` hides the view while its query has no results. To show the view, place it with `ldh-AddObjectBlock`.
 
 ### Example JSON
 ```json
