@@ -92,6 +92,10 @@ many are breaking.
   domains, big-step evaluation rules, effects and ordering, the error table,
   the full catalog with an `Abstract:` signature per operation, and the
   conformance notes for the two serializations. ([#25](https://github.com/AtomGraph/Web-Algebra/pull/25), [#34](https://github.com/AtomGraph/Web-Algebra/pull/34))
+- **MCP Registry entry** [server.json](server.json), and a `py.typed`
+  marker, so type checkers read the package's annotations.
+- **GitHub Releases**, made by the release workflow from the version's
+  section of this file.
 - **`Iterate`**: stateful iteration with parameters, `next-iteration` and
   `break`, after XSLT 3.0's `xsl:iterate`.
 - **`Position` and `Last`**: the XPath focus accessors inside `ForEach`.

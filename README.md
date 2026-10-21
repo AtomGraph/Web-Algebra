@@ -1,5 +1,7 @@
 # Web-Algebra
 
+<!-- mcp-name: io.github.AtomGraph/web-algebra -->
+
 A composable RDF operations system that translates natural language instructions into JSON-formatted domain-specific language operations for loading, querying, and writing RDF Linked Data.
 
 ## Overview

@@ -31,7 +31,7 @@ from rdflib import BNode, Literal, URIRef
 from rdflib.namespace import XSD
 
 from tests.http_stub import StubResponse, default_handler
-from tests.plan_check import SPEC, SPEC_ENTRIES, check_static
+from tests.plan_check import SPEC_ENTRIES, check_static
 from web_algebra.operation import Operation
 
 ROOT = Path(__file__).resolve().parent.parent
