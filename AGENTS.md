@@ -62,7 +62,8 @@ docs, or a commit — use the variables.
   LinkedDataHub's CLI (`cli/bin/ldh` of a checkout built with `mvn package`):
   it runs every `ldh-*` operation and the CLI command for the same inputs and
   requires the two documents to be the same graph. Run it after changing an
-  `ldh-*` operation, against the LinkedDataHub version you target.
+  `ldh-*` operation, against the LinkedDataHub version you target; the
+  operations match the CLI of 6.2.3, the first with `--no-children-view`.
 - `network`, `sparql` — need live HTTP or SPARQL endpoints.
 - `unit` and `integration` are applied automatically to `tests/unit/` and
   `tests/integration/`.
