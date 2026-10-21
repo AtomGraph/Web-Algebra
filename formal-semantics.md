@@ -1209,7 +1209,7 @@ operations' MCP tools, and an MCP tool name allows only ASCII letters, digits,
 | `ldh-AddObjectBlock` | `url: URI · value: URI · title/description/fragment: Maybe Literal · mode: Maybe URI` |
 | `ldh-AddXHTMLBlock` | `url: URI · value: Literal (XHTML) · title/description/fragment: Maybe Literal` |
 | `ldh-RemoveBlock` | `url: URI · block: Maybe URI` |
-| `ldh-GenerateOntologyViews` | `ontology: Graph · base_uri: URI · service_uri: URI` |
+| `ldh-GenerateOntologyViews` *(pure)* | `ontology: Graph · base_uri: URI · service_uri: URI` |
 | `ldh-GenerateClassContainers` | `ontology: Graph · parent_container: URI · endpoint: URI · service_uri: URI` |
 | `ldh-GeneratePortal` | `endpoint: URI · ontology_namespace: URI · parent_container: URI` |
 
@@ -1237,3 +1237,33 @@ the application's base URI, which a client cannot assume to be the origin).
 That is the URI an `ldh-AddObjectBlock` places. A document that does not
 describe the upload after a 2xx answer raises `ValueError`. LinkedDataHub appends an upload rather than
 rewriting the document, and asks no `If-Match` of it.
+
+`ldh-GenerateOntologyViews` *(pure)* returns, without a request, the views of the object properties of
+`ontology`, for writing into the application's namespace ontology, where
+LinkedDataHub's client looks them up: a property's `ldh:view` is shown on a
+resource whose type is the property's `rdfs:domain`, its `ldh:inverseView` on
+one whose type is its `rdfs:range`. Their queries read the resource shown as
+`$about`, the variable the client binds. For an `owl:ObjectProperty` `p` with
+local name `n` (suffixed `_` and the first 6 hex digits of the SHA-1 of `p`'s
+URI where two properties share one), with `B` = `base_uri` and
+`S` = `service_uri`:
+
+- If `p` has an `rdfs:domain` and is not an `owl:FunctionalProperty`:
+  `p ldh:view B#n_View`, an `ldh:View` (`dct:title` `n`, `ac:mode`
+  `ac:TableMode`) whose `spin:query` is `B#n_Query`, an `sp:Select`
+  (`dct:title` `Select n`, `ldh:service` `S`) with `sp:text`
+  `SELECT DISTINCT ?related WHERE { GRAPH ?g { $about <p> ?related } }`.
+- If `p` has an `rdfs:range` and is not an `owl:InverseFunctionalProperty`:
+  `p ldh:inverseView B#n_InverseView`, an `ldh:View` (`dct:title`
+  `n (inverse)`, `ac:mode` `ac:TableMode`) whose `spin:query` is
+  `B#n_InverseQuery`, an `sp:Select` (`dct:title` `Select n (inverse)`,
+  `ldh:service` `S`) with `sp:text`
+  `SELECT DISTINCT ?related WHERE { GRAPH ?g { ?related <p> $about } }`.
+- For every `p` given a view, its `rdfs:domain` and `rdfs:range` triples in
+  `ontology`, since the client finds a view only together with them.
+
+A property with neither a domain nor a range gets no view: the client could
+not show one. `ldh-GeneratePortal` writes an `sd:Service` for `endpoint` at
+`ontology_namespace#Service` (`ldh-AddGenericService`), extracts the ontology
+of `endpoint`, `POST`s its views (with that service) to `ontology_namespace`,
+and generates the class containers under `parent_container`.
