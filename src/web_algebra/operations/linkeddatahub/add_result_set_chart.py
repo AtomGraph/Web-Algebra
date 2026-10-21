@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, Sequence, Union
 import logging
 from rdflib import Literal, URIRef
 from rdflib.namespace import XSD
@@ -67,8 +67,9 @@ class AddResultSetChart(POST):
                     "description": "Name of the SPARQL variable used as category (without leading '?').",
                 },
                 "series_var_name": {
-                    "type": "string",
-                    "description": "Name of the SPARQL variable used as series/value (without leading '?').",
+                    "type": ["string", "array"],
+                    "items": {"type": "string"},
+                    "description": "Name of the SPARQL variable used as series/value (without leading '?'), or an array of names for several series.",
                 },
                 "description": {
                     "type": "string",
@@ -129,7 +130,11 @@ class AddResultSetChart(POST):
         series_var_name_data = Operation.process_json(
             self.settings, arguments["series_var_name"], self.context, variable_stack
         )
-        series_var_name_literal = self.to_string_literal(series_var_name_data)
+        # a name, or a sequence of names - one series each
+        if isinstance(series_var_name_data, list):
+            series_var_name_literal = [self.to_string_literal(name) for name in series_var_name_data]
+        else:
+            series_var_name_literal = self.to_string_literal(series_var_name_data)
 
         # Process optional arguments
         description_literal = None
@@ -164,7 +169,7 @@ class AddResultSetChart(POST):
         title: Literal,
         chart_type: URIRef,
         category_var_name: Literal,
-        series_var_name: Literal,
+        series_var_name: Union[Literal, Sequence[Literal]],
         description: Optional[Literal] = None,
         fragment: Optional[Literal] = None,
     ) -> Any:
@@ -191,11 +196,10 @@ class AddResultSetChart(POST):
             raise TypeError(
                 f"AddResultSetChart.execute expects category_var_name to be string Literal, got {type(category_var_name)}"
             )
-        if (
-            not Operation.is_string_literal(series_var_name)
-        ):
+        series_var_names = series_var_name if isinstance(series_var_name, (list, tuple)) else [series_var_name]
+        if not series_var_names or not all(Operation.is_string_literal(name) for name in series_var_names):
             raise TypeError(
-                f"AddResultSetChart.execute expects series_var_name to be string Literal, got {type(series_var_name)}"
+                f"AddResultSetChart.execute expects series_var_name to be a string Literal or a non-empty sequence of them, got {series_var_name!r}"
             )
         if description is not None and (
             not Operation.is_string_compatible(description)
@@ -215,7 +219,7 @@ class AddResultSetChart(POST):
         title_str = Operation.jsonld_text(title)
         chart_type_str = str(chart_type)
         category_var_name_str = str(category_var_name)
-        series_var_name_str = str(series_var_name)
+        series_var_name_strs = [str(name) for name in series_var_names]
         description_str = Operation.jsonld_text(description) if description else None
         fragment_str = fragment_id(fragment)
 
@@ -244,7 +248,7 @@ class AddResultSetChart(POST):
             "spin:query": {"@id": query_str},
             "ldh:chartType": {"@id": chart_type_str},
             "ldh:categoryVarName": category_var_name_str,
-            "ldh:seriesVarName": series_var_name_str,
+            "ldh:seriesVarName": series_var_name_strs if len(series_var_name_strs) > 1 else series_var_name_strs[0],
         }
 
         # Add optional properties - matching shell script conditional logic
@@ -267,7 +271,12 @@ class AddResultSetChart(POST):
         title = Literal(arguments["title"], datatype=XSD.string)
         chart_type = URIRef(arguments["chart_type"])
         category_var_name = Literal(arguments["category_var_name"], datatype=XSD.string)
-        series_var_name = Literal(arguments["series_var_name"], datatype=XSD.string)
+        names = arguments["series_var_name"]
+        series_var_name = (
+            [Literal(name, datatype=XSD.string) for name in names]
+            if isinstance(names, list)
+            else Literal(names, datatype=XSD.string)
+        )
 
         description = None
         if "description" in arguments:

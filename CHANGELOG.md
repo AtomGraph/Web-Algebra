@@ -93,6 +93,14 @@ many are breaking.
 
 ### Added
 
+- **The `ldh-*` operations take the LinkedDataHub CLI's options**, and write
+  them as it does: `ldh-CreateContainer` `children_view` and `primary_topic`;
+  `ldh-CreateItem` `description` and `primary_topic`; `ldh-AddObjectBlock`
+  `graph`; several series for `ldh-AddResultSetChart`; and
+  `ldh-AddView` `show_when_empty`. A view's `mode` may also be `ac:TableMode`
+  or `ac:ChartMode`.
+  `tests/test_ldh_cli_parity.py` runs each operation against the CLI on a live
+  LinkedDataHub and requires the same document.
 - **[formal-semantics.md](formal-semantics.md)**: abstract syntax, value
   domains, big-step evaluation rules, effects and ordering, the error table,
   the full catalog with an `Abstract:` signature per operation, and the
@@ -134,6 +142,12 @@ many are breaking.
   model is given, is rewritten and checked by `tests/test_system_prompt.py`
   against each operation's schema and the spec: every example is
   well-formed, runs, and shows its actual result. ([#36](https://github.com/AtomGraph/Web-Algebra/pull/36))
+- **The model is `gpt-5.5`** by default, from `gpt-4o-mini`, for both the
+  interactive planner and `SPARQLString`, and `OPENAI_MODEL` overrides it; the
+  planner used to ignore the setting. The planner no longer asks for JSON mode,
+  which admits only an object: a plan of several steps written as an array
+  came back as its first step alone. A reply fenced as a Markdown code block
+  is read as the plan inside the fence.
 - **`ldh-*` titles and descriptions** may carry a language tag, and keep it.
   ([#35](https://github.com/AtomGraph/Web-Algebra/pull/35))
 - **A `fragment`** may be given with or without its `#`. ([#35](https://github.com/AtomGraph/Web-Algebra/pull/35))

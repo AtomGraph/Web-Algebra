@@ -560,18 +560,27 @@ The classes, datatype properties and object properties of the data at a SPARQL e
 
 These write to a LinkedDataHub instance. Every write returns the one-row `status`/`url` result. A document's **content** (what its page shows) is its sequence of blocks: only `ldh-AddXHTMLBlock` and `ldh-AddObjectBlock` add to it. The other `ldh-Add*` operations write a resource *into* the document (a query, a view, a chart, a service, a file) without showing it; to show it, place it with `ldh-AddObjectBlock`, its URI as `value` — so give it a `fragment`.
 
-## ldh-CreateContainer(parent: URI, title: Literal, slug?: Literal, description?: Literal) → Result
+## ldh-CreateContainer(parent: URI, title: Literal, slug?: Literal, description?: Literal, children_view?: Literal, primary_topic?: Literal) → Result
 
-Creates a container document at `parent` + `slug` + `/` (without `slug`, a random UUID), showing its children. A document that already exists at that URL is replaced.
+Creates a container document at `parent` + `slug` + `/` (without `slug`, a random UUID), showing its children. A document that already exists at that URL is replaced. Its first content block lists its children through the shared `ldh:ChildrenView`, unless `children_view` is `false` — a JSON boolean, never the string `"false"`. To list them in another layout, pass `false`, add a view of `https://w3id.org/atomgraph/linkeddatahub#SelectChildren` in that mode to the container with `ldh-AddView` (with a `fragment`), and place it with `ldh-AddObjectBlock`. `primary_topic` is what the container is about, a URI reference resolved against its URL (`#this` for a resource described in it).
 
 ### Example JSON
 ```json
 {"@op": "ldh-CreateContainer", "args": {"parent": {"@id": "https://localhost:4443/"}, "title": "Danish cities", "slug": "denmark"}}
 ```
 
-## ldh-CreateItem(container: URI, title: Literal, slug?: Literal) → Result
+A container whose children are listed in another layout, here on a map:
+```json
+[
+  {"@op": "ldh-CreateContainer", "args": {"parent": {"@id": "https://localhost:4443/"}, "title": "Danish cities", "slug": "denmark", "children_view": false}},
+  {"@op": "ldh-AddView", "args": {"url": {"@id": "https://localhost:4443/denmark/"}, "query": {"@id": "https://w3id.org/atomgraph/linkeddatahub#SelectChildren"}, "title": "Danish cities", "fragment": "cities", "mode": {"@id": "https://w3id.org/atomgraph/client#MapMode"}}},
+  {"@op": "ldh-AddObjectBlock", "args": {"url": {"@id": "https://localhost:4443/denmark/"}, "value": {"@id": "https://localhost:4443/denmark/#cities"}}}
+]
+```
 
-Creates an item document at `container` + `slug` + `/` (without `slug`, a random UUID). A document that already exists at that URL is replaced.
+## ldh-CreateItem(container: URI, title: Literal, slug?: Literal, description?: Literal, primary_topic?: Literal) → Result
+
+Creates an item document at `container` + `slug` + `/` (without `slug`, a random UUID). A document that already exists at that URL is replaced. `primary_topic` is what the item is about, a URI reference resolved against its URL (`#this` for a resource described in it).
 
 ### Example JSON
 ```json
@@ -627,9 +636,9 @@ Writes a stored SPARQL `CONSTRUCT` query (`sp:Construct`) into the document, as 
 }
 ```
 
-## ldh-AddView(url: URI, query: URI, title: Literal, description?: Literal, fragment?: Literal, mode?: URI) → Result
+## ldh-AddView(url: URI, query: URI, title: Literal, description?: Literal, fragment?: Literal, mode?: URI, show_when_empty?: Literal) → Result
 
-Writes a view of a stored `SELECT` query's results into the document. `query` is the URI of a stored query (from `ldh-AddSelect`), not query text. `mode` is a layout: `https://w3id.org/atomgraph/client#ReadMode`, `#ListMode`, `#GridMode`, `#GraphMode` or `#MapMode`. To show the view, place it with `ldh-AddObjectBlock`.
+Writes a view of a stored `SELECT` query's results into the document. `query` is the URI of a stored query (from `ldh-AddSelect`), not query text. A view lists resources: the query's first variable must bind URIs (`SELECT ?item …`), not values such as titles or numbers; to show values, chart them with `ldh-AddResultSetChart` instead. `mode` is the layout of the results, a view mode: `https://w3id.org/atomgraph/client#ListMode` (the default), `#TableMode`, `#GridMode`, `#ReadMode`, `#GraphMode`, `#MapMode` or `#ChartMode`. `show_when_empty: false` (a JSON boolean, never the string `"false"`) hides the view while its query has no results. To show the view, place it with `ldh-AddObjectBlock`.
 
 ### Example JSON
 ```json
@@ -654,9 +663,9 @@ Writes a view of a stored `SELECT` query's results into the document. `query` is
 ]
 ```
 
-## ldh-AddResultSetChart(url: URI, query: URI, title: Literal, chart_type: URI, category_var_name: Literal, series_var_name: Literal, description?: Literal, fragment?: Literal) → Result
+## ldh-AddResultSetChart(url: URI, query: URI, title: Literal, chart_type: URI, category_var_name: Literal, series_var_name: Literal + Sequence Literal, description?: Literal, fragment?: Literal) → Result
 
-Writes a chart of a stored `SELECT` query's results into the document. `chart_type` is one of `https://w3id.org/atomgraph/client#Table`, `#BarChart`, `#LineChart`, `#ScatterChart`, `#Timeline`; the category and series are variable names of the query. To show the chart, place it with `ldh-AddObjectBlock`.
+Writes a chart of a stored `SELECT` query's results into the document. `chart_type` is one of `https://w3id.org/atomgraph/client#Table`, `#BarChart`, `#LineChart`, `#ScatterChart`, `#Timeline`; the category and series are variable names of the query, and `series_var_name` may be an array of names for several series. To show the chart, place it with `ldh-AddObjectBlock`.
 
 ### Example JSON
 ```json
@@ -707,9 +716,9 @@ Uploads a local file (an absolute path) and writes its description into the docu
 }
 ```
 
-## ldh-AddObjectBlock(url: URI, value: URI, title?: Literal, description?: Literal, fragment?: Literal, mode?: URI) → Result
+## ldh-AddObjectBlock(url: URI, value: URI, title?: Literal, description?: Literal, fragment?: Literal, mode?: URI, graph?: URI) → Result
 
-Appends a block showing a resource to the document's content: a view, chart or query in the document, an uploaded file, or any RDF resource or web page. `mode` is `https://w3id.org/atomgraph/client#ReadMode`, `#GraphMode`, `#MapMode` or `#ChartMode`.
+Appends a block showing a resource to the document's content: a view, chart or query in the document, an uploaded file, or any RDF resource or web page. `mode` is how the block shows its resource, an object mode: `https://w3id.org/atomgraph/client#ReadMode` (the default), `#GraphMode`, `#MapMode` or `#ChartMode`. It is not a view's layout: a view placed by the block keeps its own `mode`. `graph` is the document that describes `value`, read instead of dereferencing `value`'s URI.
 
 ### Example JSON
 ```json

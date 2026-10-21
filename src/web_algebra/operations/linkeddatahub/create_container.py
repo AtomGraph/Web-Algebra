@@ -6,6 +6,7 @@ from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.operation import Operation
+from web_algebra.rfc3986 import resolve
 from web_algebra.operations.linked_data.put import PUT
 from rdflib.query import Result
 
@@ -48,6 +49,14 @@ class CreateContainer(PUT):
                     "type": "string",
                     "description": "Description (optional)",
                 },
+                "children_view": {
+                    "type": "boolean",
+                    "description": "Optional: whether the container's first content block lists its children (the shared ldh:ChildrenView). It does unless this is false; the content is then added with ldh-AddObjectBlock and ldh-AddXHTMLBlock, as to any document.",
+                },
+                "primary_topic": {
+                    "type": "string",
+                    "description": "URI reference of what the container is about, resolved against its URI (optional), e.g. #this.",
+                },
             },
             "required": ["parent", "title"],
         }
@@ -58,6 +67,8 @@ class CreateContainer(PUT):
         title: Literal,
         slug: Optional[Literal] = None,
         description: Optional[Literal] = None,
+        children_view: Optional[Literal] = None,
+        primary_topic: Optional[Literal] = None,
     ) -> Result:
         """Pure function: create container with RDFLib terms"""
         if not isinstance(parent_uri, URIRef):
@@ -76,6 +87,17 @@ class CreateContainer(PUT):
             raise TypeError(
                 f"CreateContainer.execute expects description to be Literal or None, got {type(description)}"
             )
+        if children_view is not None and not (
+            isinstance(children_view, Literal) and children_view.datatype == XSD.boolean
+        ):
+            raise TypeError(
+                f"CreateContainer.execute expects children_view to be an xsd:boolean Literal, got {children_view!r}"
+            )
+        if primary_topic is not None and not isinstance(primary_topic, Literal):
+            raise TypeError(
+                f"CreateContainer.execute expects primary_topic to be Literal or None, got {type(primary_topic)}"
+            )
+
         # URL-encode slug, or mint a fresh one - a lowercase UUID, as the LinkedDataHub CLI does - so that
         # leaving it out never lands on an existing document; deriving it from the title did, on a repeated title
         slug_str = urllib.parse.quote(str(slug) if slug else str(uuid.uuid4()), safe="")
@@ -99,15 +121,22 @@ class CreateContainer(PUT):
                 "dct": "http://purl.org/dc/terms/",
                 "sioc": "http://rdfs.org/sioc/ns#",
                 "xsd": "http://www.w3.org/2001/XMLSchema#",
+                "foaf": "http://xmlns.com/foaf/0.1/",
             },
             "@id": url,
             "@type": "dh:Container",
             "dct:title": Operation.jsonld_text(title),
-            "rdf:_1": {"@type": "ldh:Object", "rdf:value": {"@id": "ldh:ChildrenView"}},
         }
+        # the first content block, as the LinkedDataHub CLI writes it: the children
+        # view, unless children_view is false (formal-semantics.md Appendix A)
+        if children_view is None or children_view.toPython():
+            data["rdf:_1"] = {"@type": "ldh:Object", "rdf:value": {"@id": "ldh:ChildrenView"}}
 
         if description:
             data["dct:description"] = Operation.jsonld_text(description)
+        if primary_topic is not None:
+            # a URI reference resolved against the document (RFC 3986)
+            data["foaf:primaryTopic"] = {"@id": resolve(url, str(primary_topic))}
 
         # Convert the document to a Graph and call parent PUT operation
         graph = self.to_graph(data, base=url)
@@ -161,7 +190,27 @@ class CreateContainer(PUT):
                     f"ldh-CreateContainer operation expects 'description' to be Literal, got {type(description)}"
                 )
 
-        return self.execute(parent_uri, title, slug, description)
+
+        # Process optional children_view
+        children_view = None
+        if "children_view" in arguments:
+            children_view = Operation.json_to_rdflib(Operation.process_json(
+                self.settings, arguments["children_view"], self.context, variable_stack
+            ))
+
+        # Process optional primary_topic
+        primary_topic = None
+        if "primary_topic" in arguments:
+            primary_topic_data = Operation.process_json(
+                self.settings, arguments["primary_topic"], self.context, variable_stack
+            )
+            primary_topic = Operation.json_to_rdflib(primary_topic_data)
+            if not isinstance(primary_topic, Literal):
+                raise TypeError(
+                    f"ldh-CreateContainer operation expects 'primary_topic' to be Literal, got {type(primary_topic)}"
+                )
+
+        return self.execute(parent_uri, title, slug, description, children_view, primary_topic)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
@@ -178,7 +227,15 @@ class CreateContainer(PUT):
             else None
         )
 
-        result = self.execute(parent_uri, title, slug, description)
+        children_view = (
+            Literal(bool(arguments["children_view"])) if "children_view" in arguments else None
+        )
+        primary_topic = (
+            Literal(arguments["primary_topic"], datatype=XSD.string)
+            if "primary_topic" in arguments
+            else None
+        )
+        result = self.execute(parent_uri, title, slug, description, children_view, primary_topic)
 
         # Extract URL from PUT result
         url_binding = result.bindings[0]["url"]

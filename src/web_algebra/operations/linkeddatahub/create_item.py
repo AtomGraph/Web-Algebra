@@ -6,6 +6,7 @@ from rdflib import URIRef, Literal
 from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.operation import Operation
+from web_algebra.rfc3986 import resolve
 from web_algebra.operations.linked_data.put import PUT
 from rdflib.query import Result
 
@@ -41,6 +42,11 @@ class CreateItem(PUT):
                     "type": "string",
                     "description": "URL path segment (optional). Defaults to a random UUID. A document that already exists at this path is replaced.",
                 },
+                "description": {"type": "string", "description": "Description (optional)"},
+                "primary_topic": {
+                    "type": "string",
+                    "description": "URI reference of what the item is about, resolved against its URI (optional), e.g. #this.",
+                },
             },
             "required": ["container", "title"],
         }
@@ -50,6 +56,8 @@ class CreateItem(PUT):
         container_uri: URIRef,
         title: Literal,
         slug: Optional[Literal] = None,
+        description: Optional[Literal] = None,
+        primary_topic: Optional[Literal] = None,
     ) -> Result:
         """Pure function: create item with RDFLib terms"""
         if not isinstance(container_uri, URIRef):
@@ -63,6 +71,15 @@ class CreateItem(PUT):
         if slug is not None and not isinstance(slug, Literal):
             raise TypeError(
                 f"CreateItem.execute expects slug to be Literal or None, got {type(slug)}"
+            )
+
+        if description is not None and not Operation.is_string_compatible(description):
+            raise TypeError(
+                f"CreateItem.execute expects description to be a string Literal or None, got {type(description)}"
+            )
+        if primary_topic is not None and not isinstance(primary_topic, Literal):
+            raise TypeError(
+                f"CreateItem.execute expects primary_topic to be Literal or None, got {type(primary_topic)}"
             )
 
         # URL-encode slug, or mint a fresh one - a lowercase UUID, as the LinkedDataHub CLI does - so that
@@ -86,11 +103,17 @@ class CreateItem(PUT):
                 "dct": "http://purl.org/dc/terms/",
                 "sioc": "http://rdfs.org/sioc/ns#",
                 "xsd": "http://www.w3.org/2001/XMLSchema#",
+                "foaf": "http://xmlns.com/foaf/0.1/",
             },
             "@id": url,
             "@type": "dh:Item",
             "dct:title": Operation.jsonld_text(title),
         }
+        if description:
+            data["dct:description"] = Operation.jsonld_text(description)
+        if primary_topic is not None:
+            # a URI reference resolved against the document (RFC 3986)
+            data["foaf:primaryTopic"] = {"@id": resolve(url, str(primary_topic))}
 
         # Convert the document to a Graph and call parent PUT operation
         graph = self.to_graph(data, base=url)
@@ -132,7 +155,32 @@ class CreateItem(PUT):
                     f"ldh-CreateItem operation expects 'slug' to be Literal, got {type(slug)}"
                 )
 
-        return self.execute(container_uri, title, slug)
+
+        # Process optional description
+        description = None
+        if "description" in arguments:
+            description_data = Operation.process_json(
+                self.settings, arguments["description"], self.context, variable_stack
+            )
+            description = Operation.json_to_rdflib(description_data)
+            if not isinstance(description, Literal):
+                raise TypeError(
+                    f"ldh-CreateItem operation expects 'description' to be Literal, got {type(description)}"
+                )
+
+        # Process optional primary_topic
+        primary_topic = None
+        if "primary_topic" in arguments:
+            primary_topic_data = Operation.process_json(
+                self.settings, arguments["primary_topic"], self.context, variable_stack
+            )
+            primary_topic = Operation.json_to_rdflib(primary_topic_data)
+            if not isinstance(primary_topic, Literal):
+                raise TypeError(
+                    f"ldh-CreateItem operation expects 'primary_topic' to be Literal, got {type(primary_topic)}"
+                )
+
+        return self.execute(container_uri, title, slug, description, primary_topic)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
@@ -144,7 +192,17 @@ class CreateItem(PUT):
             else None
         )
 
-        result = self.execute(container_uri, title, slug)
+        description = (
+            Literal(arguments["description"], datatype=XSD.string)
+            if "description" in arguments
+            else None
+        )
+        primary_topic = (
+            Literal(arguments["primary_topic"], datatype=XSD.string)
+            if "primary_topic" in arguments
+            else None
+        )
+        result = self.execute(container_uri, title, slug, description, primary_topic)
 
         # Extract URL from PUT result
         url_binding = result.bindings[0]["url"]

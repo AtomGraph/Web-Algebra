@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import json
+import re
 from types import ModuleType
 from typing import List, Type, Optional
 import pkgutil
@@ -27,7 +28,7 @@ class LinkedDataHubSettings(BaseSettings):
     cert_pem_path: Optional[str] = None
     cert_password: Optional[str] = None
     openai_client: Optional[OpenAI] = None
-    openai_model: str = "gpt-4o-mini"
+    openai_model: str = "gpt-5.5"
 
 
 def list_operation_subclasses(
@@ -57,6 +58,20 @@ def register(classes: List[Type[Operation]]):
         Operation.register(cls)
 
 
+# a Markdown code fence around the whole reply, which a model may add without JSON mode
+FENCE = re.compile(r"\A```[\w-]*\s*\n(.*)\n\s*```\Z", re.S)
+
+
+def parse_plan(reply: str):
+    """The plan in a model's reply: its JSON, fenced or not, an object or an array of steps."""
+    text = reply.strip()
+    fenced = FENCE.match(text)
+    plan = json.loads(fenced.group(1) if fenced else text)
+    if not isinstance(plan, (dict, list)):
+        raise ValueError(f"A plan is a JSON object or array, got {type(plan).__name__}")
+    return plan
+
+
 def main(settings: BaseSettings, json_data: Optional[str]):
     register(list_operation_subclasses(web_algebra.operations, Operation))
 
@@ -83,7 +98,7 @@ def main(settings: BaseSettings, json_data: Optional[str]):
             sys.exit("Error: Environment variable OPENAI_API_KEY is not set.")
 
         client = OpenAI(api_key=api_key)
-        model = "gpt-4o-mini"
+        model = settings.openai_model
 
         # Load prompts
         # the prompts are package data, found wherever the package is installed
@@ -105,14 +120,13 @@ def main(settings: BaseSettings, json_data: Optional[str]):
                     {"role": "user", "content": user_prompt},
                 )
 
+                # no JSON mode: it admits only an object, and a plan may be an array of steps
                 chat_completion = client.chat.completions.create(
                     model=model,
                     messages=messages,
-                    response_format={"type": "json_object"},
                 )
 
-                reply_json = json.loads(chat_completion.choices[0].message.content)
-                assert isinstance(reply_json, dict)
+                reply_json = parse_plan(chat_completion.choices[0].message.content)
                 logging.info("Generated response: %s", reply_json)
 
                 # Execute the generated operation

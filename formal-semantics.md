@@ -1197,16 +1197,16 @@ operations' MCP tools, and an MCP tool name allows only ASCII letters, digits,
 
 | Operation | JSON args (`Maybe` = optional) |
 |-----------|--------------------------------|
-| `ldh-CreateContainer` | `parent: URI · title: Literal · slug: Maybe Literal · description: Maybe Literal` |
-| `ldh-CreateItem` | `container: URI · title: Literal · slug: Maybe Literal` |
+| `ldh-CreateContainer` | `parent: URI · title: Literal · slug: Maybe Literal · description: Maybe Literal · children_view: Maybe Literal (xsd:boolean) · primary_topic: Maybe Literal` |
+| `ldh-CreateItem` | `container: URI · title: Literal · slug: Maybe Literal · description: Maybe Literal · primary_topic: Maybe Literal` |
 | `ldh-List` *(query)* | `url: URI · endpoint: URI` (or `base: Literal`, from which `endpoint` = `base` + `sparql`) |
 | `ldh-AddFile` | `url: URI · file: Literal (path) · title: Literal · description: Maybe Literal · content_type: Maybe Literal` |
 | `ldh-AddGenericService` | `url: URI · endpoint: URI · title: Literal · description/fragment: Maybe Literal · graph_store: Maybe URI · auth_user/auth_pwd: Maybe Literal` |
-| `ldh-AddResultSetChart` | `url: URI · query: URI · title: Literal · chart_type: URI · category_var_name: Literal · series_var_name: Literal · description/fragment: Maybe Literal` |
+| `ldh-AddResultSetChart` | `url: URI · query: URI · title: Literal · chart_type: URI · category_var_name: Literal · series_var_name: Literal + Sequence Literal · description/fragment: Maybe Literal` |
 | `ldh-AddSelect` | `url: URI · query: Literal · title: Literal · description/fragment: Maybe Literal · service: Maybe URI` |
 | `ldh-AddConstruct` | `url: URI · query: Literal · title: Literal · description/fragment: Maybe Literal · service: Maybe URI` |
-| `ldh-AddView` | `url: URI · query: URI · title: Literal · description/fragment: Maybe Literal · mode: Maybe URI` |
-| `ldh-AddObjectBlock` | `url: URI · value: URI · title/description/fragment: Maybe Literal · mode: Maybe URI` |
+| `ldh-AddView` | `url: URI · query: URI · title: Literal · description/fragment: Maybe Literal · mode: Maybe URI · show_when_empty: Maybe Literal (xsd:boolean)` |
+| `ldh-AddObjectBlock` | `url: URI · value: URI · title/description/fragment: Maybe Literal · mode: Maybe URI · graph: Maybe URI` |
 | `ldh-AddXHTMLBlock` | `url: URI · value: Literal (XHTML) · title/description/fragment: Maybe Literal` |
 | `ldh-RemoveBlock` | `url: URI · block: Maybe URI` |
 | `ldh-GenerateOntologyViews` *(pure)* | `ontology: Graph · base_uri: URI · service_uri: URI` |
@@ -1217,6 +1217,24 @@ operations' MCP tools, and an MCP tool name allows only ASCII letters, digits,
 URI extended by `slug` and `/`; without a `slug` the segment is a fresh
 lowercase UUID, as in the LinkedDataHub CLI. The write is a `PUT`, so a
 document already at that URI is replaced.
+
+What the operations write is what LinkedDataHub's CLI writes for the same
+inputs (its `rdf` module), so a document made either way is the same:
+
+- `ldh-CreateContainer` gives the container its first content block,
+  `rdf:_1`, an `ldh:Object` of `ldh:ChildrenView`, unless `children_view` is
+  false: then it has no content, which `ldh-AddObjectBlock` and
+  `ldh-AddXHTMLBlock` append as to any document.
+- `primary_topic` (`ldh-CreateContainer`, `ldh-CreateItem`) is a URI
+  reference resolved against the document's URI (RFC 3986), written as the
+  document's one `foaf:primaryTopic` — `#this` names the conventional
+  fragment.
+- `ldh-AddObjectBlock`'s `graph` is the block's `ldh:graph`: the document
+  that describes `value`, read in its place.
+- `ldh-AddResultSetChart` writes one `ldh:seriesVarName` per name of
+  `series_var_name`, a name or a sequence of names.
+- `ldh-AddView`'s `show_when_empty` is the view's `ldh:showWhenEmpty`
+  (LinkedDataHub shows an empty view unless it is `false`).
 
 A `fragment` names the resource an operation creates in the document,
 `url#fragment`; it is given with or without the leading `#`. Without one the
