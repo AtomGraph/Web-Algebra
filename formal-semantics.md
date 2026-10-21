@@ -1250,20 +1250,23 @@ URI where two properties share one), with `B` = `base_uri` and
 
 - If `p` has an `rdfs:domain` and is not an `owl:FunctionalProperty`:
   `p ldh:view B#n_View`, an `ldh:View` (`dct:title` `n`, `ac:mode`
-  `ac:TableMode`) whose `spin:query` is `B#n_Query`, an `sp:Select`
+  `ac:TableMode`, `ldh:showWhenEmpty` `false`) whose `spin:query` is
+  `B#n_Query`, an `sp:Select`
   (`dct:title` `Select n`, `ldh:service` `S`) with `sp:text`
   `SELECT DISTINCT ?related WHERE { GRAPH ?g { $about <p> ?related } }`.
 - If `p` has an `rdfs:range` and is not an `owl:InverseFunctionalProperty`:
   `p ldh:inverseView B#n_InverseView`, an `ldh:View` (`dct:title`
-  `n (inverse)`, `ac:mode` `ac:TableMode`) whose `spin:query` is
+  `n (inverse)`, `ac:mode` `ac:TableMode`, `ldh:showWhenEmpty` `false`) whose
+  `spin:query` is
   `B#n_InverseQuery`, an `sp:Select` (`dct:title` `Select n (inverse)`,
   `ldh:service` `S`) with `sp:text`
   `SELECT DISTINCT ?related WHERE { GRAPH ?g { ?related <p> $about } }`.
 - For every `p` given a view, its `rdfs:domain` and `rdfs:range` triples in
   `ontology`, since the client finds a view only together with them.
 
-A property with neither a domain nor a range gets no view: the client could
-not show one. `ldh-GeneratePortal` writes an `sd:Service` for `endpoint` at
+A view is hidden while its query matches nothing (`ldh:showWhenEmpty`
+`false`), so a resource shows only the relationships it has. A property with
+neither a domain nor a range gets no view: the client could not show one. `ldh-GeneratePortal` writes an `sd:Service` for `endpoint` at
 `ontology_namespace#Service` (`ldh-AddGenericService`), extracts the ontology
 of `endpoint`, `POST`s its views (with that service) to `ontology_namespace`,
 and generates the class containers under `parent_container`.

@@ -133,6 +133,9 @@ class GenerateOntologyViews(Operation):
         g.add((view_uri, DCTERMS.title, Literal(title)))
         g.add((view_uri, SPIN.query, query_uri))
         g.add((view_uri, AC.mode, AC.TableMode))
+        # hidden while the query matches nothing, so a resource shows only the
+        # relationships it has (LinkedDataHub shows an empty view by default)
+        g.add((view_uri, LDH.showWhenEmpty, Literal(False)))
         g.add((query_uri, RDF.type, SP.Select))
         g.add((query_uri, DCTERMS.title, Literal(f"Select {title}")))
         g.add((query_uri, SP.text, Literal(f"SELECT DISTINCT ?related WHERE {{ GRAPH ?g {{ {pattern} }} }}", datatype=XSD.string)))

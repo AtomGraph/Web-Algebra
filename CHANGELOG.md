@@ -156,7 +156,8 @@ many are breaking.
   the property's `rdfs:domain` and `rdfs:range`, which the views graph now
   carries; a property gets an `ldh:inverseView` too, listing what points to
   the resource; and a view is made only for a property with a domain (or, for
-  the inverse view, a range), where the client can show it. The guide's
+  the inverse view, a range), where the client can show it. A generated view
+  is hidden while it has no results (`ldh:showWhenEmpty false`). The guide's
   examples write to the namespace ontology document rather than to `/ns`,
   which is its SPARQL endpoint.
 - **The prompts are part of the package**, so `web-algebra` without

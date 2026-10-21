@@ -748,7 +748,7 @@ Removes a content block from the document; without `block`, removes all of them.
 
 ## ldh-GenerateOntologyViews(ontology: Graph, base_uri: URI, service_uri: URI) → Graph
 
-Generates the views of an ontology's object properties, as a graph to `POST` into the application's namespace ontology document (on LinkedDataHub, `ontologies/namespace/` in the admin app), where its client looks them up. A property with an `rdfs:domain` gets a view listing its values, shown on resources of that domain (not for an `owl:FunctionalProperty`); one with an `rdfs:range` gets an inverse view listing what points to the resource, shown on resources of that range (not for an `owl:InverseFunctionalProperty`). The graph carries the domains and ranges, which the client needs to find the views.
+Generates the views of an ontology's object properties, as a graph to `POST` into the application's namespace ontology document (on LinkedDataHub, `ontologies/namespace/` in the admin app), where its client looks them up. A property with an `rdfs:domain` gets a view listing its values, shown on resources of that domain (not for an `owl:FunctionalProperty`); one with an `rdfs:range` gets an inverse view listing what points to the resource, shown on resources of that range (not for an `owl:InverseFunctionalProperty`). A view is hidden while it has no results. The graph carries the domains and ranges, which the client needs to find the views.
 
 ### Example JSON
 ```json

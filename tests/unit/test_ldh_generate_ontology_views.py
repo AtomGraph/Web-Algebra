@@ -11,6 +11,7 @@ looks them up: for an `owl:ObjectProperty` p with local name n,
 - with an rdfs:range and not inverse-functional: `p ldh:inverseView
   B#n_InverseView` (dct:title "n (inverse)"), query `B#n_InverseQuery`
   (dct:title "Select n (inverse)") with `?related <p> $about`;
+- every view hidden while its query matches nothing (ldh:showWhenEmpty false);
 - the rdfs:domain and rdfs:range triples of every p given a view;
 - no view for a property with neither; a shared local name is suffixed `_`
   and the first 6 hex digits of the SHA-1 of the property's URI.
@@ -92,6 +93,7 @@ class TestForwardView:
         assert (view, DCTERMS.title, Literal("knows")) in out
         assert (view, AC.mode, AC.TableMode) in out
         assert (view, SPIN.query, node("knows_Query")) in out
+        assert list(out.objects(view, LDH.showWhenEmpty)) == [Literal(False)]
 
     def test_the_query(self, settings):
         out = generate(settings, *KNOWS)
@@ -134,6 +136,7 @@ class TestInverseView:
         assert (view, DCTERMS.title, Literal("knows (inverse)")) in out
         assert (view, AC.mode, AC.TableMode) in out
         assert (view, SPIN.query, node("knows_InverseQuery")) in out
+        assert list(out.objects(view, LDH.showWhenEmpty)) == [Literal(False)]
 
     def test_the_inverse_query(self, settings):
         out = generate(settings, *KNOWS)
