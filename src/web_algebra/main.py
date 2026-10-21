@@ -27,7 +27,7 @@ class LinkedDataHubSettings(BaseSettings):
     cert_pem_path: Optional[str] = None
     cert_password: Optional[str] = None
     openai_client: Optional[OpenAI] = None
-    openai_model: str = "gpt-4o-mini"
+    openai_model: str = "gpt-5.5"
 
 
 def list_operation_subclasses(
@@ -83,7 +83,7 @@ def main(settings: BaseSettings, json_data: Optional[str]):
             sys.exit("Error: Environment variable OPENAI_API_KEY is not set.")
 
         client = OpenAI(api_key=api_key)
-        model = "gpt-4o-mini"
+        model = settings.openai_model
 
         # Load prompts
         # the prompts are package data, found wherever the package is installed
@@ -105,14 +105,14 @@ def main(settings: BaseSettings, json_data: Optional[str]):
                     {"role": "user", "content": user_prompt},
                 )
 
+                # no JSON mode: it admits only an object, and a plan may be an array of steps
                 chat_completion = client.chat.completions.create(
                     model=model,
                     messages=messages,
-                    response_format={"type": "json_object"},
                 )
 
                 reply_json = json.loads(chat_completion.choices[0].message.content)
-                assert isinstance(reply_json, dict)
+                assert isinstance(reply_json, (dict, list))
                 logging.info("Generated response: %s", reply_json)
 
                 # Execute the generated operation

@@ -142,6 +142,11 @@ many are breaking.
   model is given, is rewritten and checked by `tests/test_system_prompt.py`
   against each operation's schema and the spec: every example is
   well-formed, runs, and shows its actual result. ([#36](https://github.com/AtomGraph/Web-Algebra/pull/36))
+- **The model is `gpt-5.5`** by default, from `gpt-4o-mini`, for both the
+  interactive planner and `SPARQLString`, and `OPENAI_MODEL` overrides it; the
+  planner used to ignore the setting. The planner no longer asks for JSON mode,
+  which admits only an object: a plan of several steps written as an array
+  came back as its first step alone.
 - **`ldh-*` titles and descriptions** may carry a language tag, and keep it.
   ([#35](https://github.com/AtomGraph/Web-Algebra/pull/35))
 - **A `fragment`** may be given with or without its `#`. ([#35](https://github.com/AtomGraph/Web-Algebra/pull/35))
