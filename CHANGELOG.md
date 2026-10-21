@@ -5,7 +5,7 @@ All notable changes to Web Algebra are recorded here. The format follows
 [Semantic Versioning](https://semver.org/). The normative definition of every
 operation is [formal-semantics.md](formal-semantics.md).
 
-## [2.0.1] - Unreleased
+## [2.0.1] - 2026-10-21
 
 ### Added
 
