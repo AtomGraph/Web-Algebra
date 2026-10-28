@@ -18,9 +18,10 @@ class AddResultSetChart(POST):
         The chart is a resource the document holds, not one of its content blocks: to show it in the content mode,
         place it with ldh-AddObjectBlock, the chart's URI as its value - so give the chart a fragment identifier.
         
-        This tool creates a ResultSetChart that visualizes data from SPARQL SELECT query resources.
-        The chart references an existing sp:Select resource (not a query string) and can display 
-        results using different chart types (bar, line, pie, etc.) with variable mappings.
+        A chart shows values: the query's bindings themselves, as a table or a plot, the way a spreadsheet would.
+        It is the fit for aggregates and measurements - totals, counts, sums per shop or per month. A resource in
+        a chart is a bare cell, with no image, label or links of its own: to show resources themselves (things,
+        people, places), use ldh-AddView, whose modes render each one as itself.
         
         This tool:
         - Creates an ldh:ResultSetChart resource linked to an existing sp:Select query resource
