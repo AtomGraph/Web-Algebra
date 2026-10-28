@@ -5,6 +5,23 @@ All notable changes to Web Algebra are recorded here. The format follows
 [Semantic Versioning](https://semver.org/). The normative definition of every
 operation is [formal-semantics.md](formal-semantics.md).
 
+## [Unreleased]
+
+### Changed
+
+- **`ldh-CreateContainer` and `ldh-CreateItem` only create**: the `PUT`
+  carries `If-None-Match: *` and no `If-Match`, as LinkedDataHub's CLI create
+  commands and its client's create forms send it, so a document already at
+  the URI is refused `412` and left as it is, and the operation fails. They
+  read the document's entity tag and quoted it before, which made a create on
+  an existing URI replace the document whole, its content blocks with it. A
+  new `if_absent` argument (xsd:boolean) accepts the existing document as the
+  result instead, like `mkdir -p`, and does not count it as a write to an
+  enclosing `ForEach`. Their kind is `write`, no longer `destructive`. A
+  pipeline that relied on a create replacing a document `PUT`s it;
+  `ldh-GenerateClassContainers`, which creates through `ldh-CreateItem`, now
+  stops on a class whose item already exists instead of replacing it.
+
 ## [2.0.2] - 2026-10-28
 
 ### Added

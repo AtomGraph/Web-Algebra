@@ -1197,8 +1197,8 @@ operations' MCP tools, and an MCP tool name allows only ASCII letters, digits,
 
 | Operation | JSON args (`Maybe` = optional) |
 |-----------|--------------------------------|
-| `ldh-CreateContainer` | `parent: URI · title: Literal · slug: Maybe Literal · description: Maybe Literal · children_view: Maybe Literal (xsd:boolean) · primary_topic: Maybe Literal` |
-| `ldh-CreateItem` | `container: URI · title: Literal · slug: Maybe Literal · description: Maybe Literal · primary_topic: Maybe Literal` |
+| `ldh-CreateContainer` | `parent: URI · title: Literal · slug: Maybe Literal · description: Maybe Literal · children_view: Maybe Literal (xsd:boolean) · primary_topic: Maybe Literal · if_absent: Maybe Literal (xsd:boolean)` |
+| `ldh-CreateItem` | `container: URI · title: Literal · slug: Maybe Literal · description: Maybe Literal · primary_topic: Maybe Literal · if_absent: Maybe Literal (xsd:boolean)` |
 | `ldh-List` *(query)* | `url: URI · endpoint: URI` (or `base: Literal`, from which `endpoint` = `base` + `sparql`) |
 | `ldh-AddFile` | `url: URI · file: Literal (path) · title: Literal · description: Maybe Literal · content_type: Maybe Literal` |
 | `ldh-AddGenericService` | `url: URI · endpoint: URI · title: Literal · description/fragment: Maybe Literal · graph_store: Maybe URI · auth_user/auth_pwd: Maybe Literal` |
@@ -1215,8 +1215,15 @@ operations' MCP tools, and an MCP tool name allows only ASCII letters, digits,
 
 `ldh-CreateContainer` and `ldh-CreateItem` write the document at the parent's
 URI extended by `slug` and `/`; without a `slug` the segment is a fresh
-lowercase UUID, as in the LinkedDataHub CLI. The write is a `PUT`, so a
-document already at that URI is replaced.
+lowercase UUID, as in the LinkedDataHub CLI. They only create: the write is
+a `PUT` with `If-None-Match: *` and no `If-Match` (§4.4), as LinkedDataHub's
+CLI create commands and its client's create forms send it, so a server
+refuses it `412` where a document already exists and leaves that document as
+it is. The refusal is the operation's error (§3.7), unless `if_absent` is
+true: then the existing document is the result, as an existing directory is
+for `mkdir -p` — the single row of §4.4 with `status` 412 and the document's
+`url`. Nothing was written, so that `url` is not reported to an enclosing
+`ForEach` as a write (§3.6). Replacing a document is `PUT`'s.
 
 What the operations write is what LinkedDataHub's CLI writes for the same
 inputs (its `rdf` module), so a document made either way is the same:

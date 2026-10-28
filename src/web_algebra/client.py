@@ -210,6 +210,7 @@ class LinkedDataClient:
         body: Optional[bytes] = None,
         content_type: Optional[str] = None,
         accept: str = "application/n-triples",
+        preconditions: Optional[dict] = None,
     ) -> HTTPResponse:
         """Send a write, conditional on the resource's current entity tag.
 
@@ -217,11 +218,14 @@ class LinkedDataClient:
         them can leave out the `If-Match` a server like LinkedDataHub requires of
         a write to an existing document (formal-semantics.md §4.4) - as the
         LinkedDataHub CLI's `LDHClient` adds it in each of its write methods.
+        A write that brings its own `preconditions` is sent with those instead:
+        `If-None-Match: *` creates only, and quoting an existing tag as well
+        would turn it back into a replace.
         """
         headers = {"Accept": accept}
         if content_type is not None:
             headers["Content-Type"] = content_type
-        headers.update(self.conditional(url, accept))
+        headers.update(preconditions if preconditions is not None else self.conditional(url, accept))
         request = urllib.request.Request(url, data=body, headers=headers, method=method)
 
         return self._send(request)
@@ -310,6 +314,20 @@ class LinkedDataClient:
         """
         data = graph.serialize(format="nt")
         return self._write("PUT", url, data.encode("utf-8"), "application/n-triples")
+
+    def create(self, url: str, graph: Graph) -> HTTPResponse:
+        """
+        Sends RDF data to the given URL using HTTP PUT with `If-None-Match: *`,
+        so that it only ever creates: a server answers `412` where a resource
+        already exists, and leaves it as it is (formal-semantics.md Appendix A).
+
+        :param url: The URL to create the resource at.
+        :param graph: An RDFLib Graph containing the data to send.
+        :return: The HTTPResponse object.
+        """
+        data = graph.serialize(format="nt")
+        return self._write("PUT", url, data.encode("utf-8"), "application/n-triples",
+                           preconditions={"If-None-Match": "*"})
 
     def delete(self, url: str) -> HTTPResponse:
         """

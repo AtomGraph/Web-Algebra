@@ -37,14 +37,14 @@ def test_the_worst_of_several_kinds_is_the_most_destructive():
     assert sorted([DESTRUCTIVE, READ, WRITE]) == [READ, WRITE, DESTRUCTIVE]
 
 
-def test_an_upsert_is_destructive_and_what_extends_it_is_too():
+def test_an_upsert_is_destructive_but_a_create_is_not():
     # PUT replaces the whole document at a URL that already holds one;
-    # ldh-CreateContainer and ldh-CreateItem PUT to parent + slug (or title),
-    # so on an existing URL they replace it as well
+    # ldh-CreateContainer and ldh-CreateItem PUT with If-None-Match: *, so on
+    # an existing URL they are refused and remove nothing
     from web_algebra.operations.linked_data.put import PUT
     from web_algebra.operations.linkeddatahub.create_container import CreateContainer
     from web_algebra.operations.linkeddatahub.create_item import CreateItem
 
     assert PUT.kind is DESTRUCTIVE
-    assert CreateContainer.kind is DESTRUCTIVE
-    assert CreateItem.kind is DESTRUCTIVE
+    assert CreateContainer.kind is WRITE
+    assert CreateItem.kind is WRITE

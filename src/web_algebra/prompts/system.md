@@ -560,9 +560,9 @@ The classes, datatype properties and object properties of the data at a SPARQL e
 
 These write to a LinkedDataHub instance. Every write returns the one-row `status`/`url` result. A document's **content** (what its page shows) is its sequence of blocks: only `ldh-AddXHTMLBlock` and `ldh-AddObjectBlock` add to it. The other `ldh-Add*` operations write a resource *into* the document (a query, a view, a chart, a service, a file) without showing it; to show it, place it with `ldh-AddObjectBlock`, its URI as `value` — so give it a `fragment`.
 
-## ldh-CreateContainer(parent: URI, title: Literal, slug?: Literal, description?: Literal, children_view?: Literal, primary_topic?: Literal) → Result
+## ldh-CreateContainer(parent: URI, title: Literal, slug?: Literal, description?: Literal, children_view?: Literal, primary_topic?: Literal, if_absent?: Literal) → Result
 
-Creates a container document at `parent` + `slug` + `/` (without `slug`, a random UUID), showing its children. A document that already exists at that URL is replaced. Its first content block lists its children through the shared `ldh:ChildrenView`, unless `children_view` is `false` — a JSON boolean, never the string `"false"`. To list them in another layout, pass `false`, add a view of `https://w3id.org/atomgraph/linkeddatahub#SelectChildren` in that mode to the container with `ldh-AddView` (with a `fragment`), and place it with `ldh-AddObjectBlock`. `primary_topic` is what the container is about, a URI reference resolved against its URL (`#this` for a resource described in it).
+Creates a container document at `parent` + `slug` + `/` (without `slug`, a random UUID), showing its children. It only creates: a document that already exists at that URL is left as it is and the operation fails, unless `if_absent` is `true` (a JSON boolean), which takes the existing document as the result and writes nothing, like `mkdir -p`. Pass it when the program means "make sure it exists"; to replace a document, `PUT` it. Its first content block lists its children through the shared `ldh:ChildrenView`, unless `children_view` is `false` — a JSON boolean, never the string `"false"`. To list them in another layout, pass `false`, add a view of `https://w3id.org/atomgraph/linkeddatahub#SelectChildren` in that mode to the container with `ldh-AddView` (with a `fragment`), and place it with `ldh-AddObjectBlock`. `primary_topic` is what the container is about, a URI reference resolved against its URL (`#this` for a resource described in it).
 
 ### Example JSON
 ```json
@@ -578,9 +578,9 @@ A container whose children are listed in another layout, here on a map:
 ]
 ```
 
-## ldh-CreateItem(container: URI, title: Literal, slug?: Literal, description?: Literal, primary_topic?: Literal) → Result
+## ldh-CreateItem(container: URI, title: Literal, slug?: Literal, description?: Literal, primary_topic?: Literal, if_absent?: Literal) → Result
 
-Creates an item document at `container` + `slug` + `/` (without `slug`, a random UUID). A document that already exists at that URL is replaced. `primary_topic` is what the item is about, a URI reference resolved against its URL (`#this` for a resource described in it).
+Creates an item document at `container` + `slug` + `/` (without `slug`, a random UUID). It only creates: a document that already exists at that URL is left as it is and the operation fails, unless `if_absent` is `true`, which takes the existing document as the result and writes nothing. To replace a document, `PUT` it. `primary_topic` is what the item is about, a URI reference resolved against its URL (`#this` for a resource described in it).
 
 ### Example JSON
 ```json
