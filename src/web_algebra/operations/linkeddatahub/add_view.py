@@ -18,27 +18,32 @@ class AddView(POST):
         The view is a resource the document holds, not one of its content blocks: to show it in the content mode,
         place it with ldh-AddObjectBlock, the view's URI as its value - so give the view a fragment identifier.
         
-        This tool creates a View that displays data from SPARQL SELECT query resources.
-        The view references an existing sp:Select resource (not a query string) and can display 
-        results using different display modes (list, grid, etc.).
-        
+        A view shows resources - things, people, places, documents - each as itself: its label, its image,
+        its links. LinkedDataHub DESCRIBEs the resources the query's first projected variable binds and renders
+        those descriptions in the view's mode, so that variable must bind resources (SELECT ?thing WHERE { ... }).
+        One that binds values - a name, a price, a computed total - describes nothing. To show values or
+        aggregates (totals, counts, sums by month), use ldh-AddResultSetChart instead.
+
         This tool:
         - Creates an ldh:View resource linked to an existing sp:Select query resource
         - Configures optional display mode for the view
         - Posts the new view resource to the target document
         - Supports optional title, description, fragment identifier, and display mode
-        
-        Possible display modes include:
-        - https://w3id.org/atomgraph/client#ReadMode: Default read mode for displaying resources
-        - https://w3id.org/atomgraph/client#ListMode: List display of results
-        - https://w3id.org/atomgraph/client#GridMode: Grid display of results
-        - https://w3id.org/atomgraph/client#GraphMode: Graph visualization of resources
-        - https://w3id.org/atomgraph/client#MapMode: Map display for geographic data
 
-        IMPORTANT: All variables projected by the SELECT query will be DESCRIBE'd by LinkedDataHub,
-        meaning that the view will fetch complete RDF descriptions for each result resource. This can
-        result in very large graph results and may not be suitable for all SELECT queries, especially
-        those returning many resources or aggregate/computed values.
+        Pick the mode by what the resources carry:
+        - https://w3id.org/atomgraph/client#GridMode: a card per resource, led by its image. The fit for resources
+          that have one (foaf:img, foaf:depiction, foaf:logo, schema:image, schema:logo, schema:thumbnailUrl):
+          products, possessions, people, organizations
+        - https://w3id.org/atomgraph/client#MapMode: a pin per resource that has geo:lat and geo:long. The fit for
+          places, addresses, venues, shops
+        - https://w3id.org/atomgraph/client#GraphMode: the resources and the links between them, as a network. The
+          fit for showing how things connect (who owns what, what came from where)
+        - https://w3id.org/atomgraph/client#ListMode: a labelled list; the default, for resources with no image or
+          coordinates
+        - https://w3id.org/atomgraph/client#TableMode: a row per resource, a column per property, for comparing
+          many resources property by property
+        - https://w3id.org/atomgraph/client#ReadMode: each resource's full description, for a few resources
+        - https://w3id.org/atomgraph/client#ChartMode: the resources' properties charted
 
         Note: The query parameter must be a URI of an existing sp:Select resource, not a SPARQL query string."""
 
@@ -66,7 +71,7 @@ class AddView(POST):
                 },
                 "mode": {
                     "type": "string",
-                    "description": "Optional URI of the layout the view shows its results in (a view mode, not an object block's mode). Defaults to ListMode.",
+                    "description": "Optional URI of the layout the view shows its results in (a view mode, not an object block's mode). Defaults to ListMode. Pick it by what the resources carry: GridMode for resources with an image, MapMode for ones with coordinates, GraphMode for how they link (see the tool description).",
                     "enum": [
                         "https://w3id.org/atomgraph/client#ListMode",
                         "https://w3id.org/atomgraph/client#TableMode",
