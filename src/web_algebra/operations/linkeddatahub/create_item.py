@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 import logging
 import urllib.parse
 import uuid
@@ -7,11 +7,17 @@ from rdflib.namespace import XSD
 from mcp import types
 from web_algebra.operation import Operation
 from web_algebra.rfc3986 import resolve
+from web_algebra.operation import OperationKind
 from web_algebra.operations.linked_data.put import PUT
+from web_algebra.operations.linkeddatahub.create import create, if_absent_flag
 from rdflib.query import Result
 
 
 class CreateItem(PUT):
+    # creates only, with If-None-Match: *: a document already at the URI is left as it is, so
+    # nothing is ever removed
+    kind: ClassVar[OperationKind] = OperationKind.WRITE
+
     @classmethod
     def name(cls):
         return "ldh-CreateItem"
@@ -26,7 +32,9 @@ class CreateItem(PUT):
         - Example: if https://localhost/blog/ exists, you cannot create https://localhost/blog/posts/something/
           before creating https://localhost/blog/posts/
         - LinkedDataHub automatically manages timestamps (dct:created, dct:modified)
-        - LinkedDataHub automatically manages parent-child relationships (sioc:has_parent) based on URI hierarchy"""
+        - LinkedDataHub automatically manages parent-child relationships (sioc:has_parent) based on URI hierarchy
+        - It only creates: a document already at the URI is left as it is and the operation fails, unless
+          if_absent is true, which accepts it as the result (like mkdir -p). To replace a document, PUT it."""
 
     @classmethod
     def inputSchema(cls) -> dict:
@@ -40,12 +48,16 @@ class CreateItem(PUT):
                 "title": {"type": "string", "description": "The title of the item"},
                 "slug": {
                     "type": "string",
-                    "description": "URL path segment (optional). Defaults to a random UUID. A document that already exists at this path is replaced.",
+                    "description": "URL path segment (optional). Defaults to a random UUID.",
                 },
                 "description": {"type": "string", "description": "Description (optional)"},
                 "primary_topic": {
                     "type": "string",
                     "description": "URI reference of what the item is about, resolved against its URI (optional), e.g. #this.",
+                },
+                "if_absent": {
+                    "type": "boolean",
+                    "description": "Optional: whether a document already at the URI counts as success, left as it is (like mkdir -p). Without it the operation fails there.",
                 },
             },
             "required": ["container", "title"],
@@ -58,6 +70,7 @@ class CreateItem(PUT):
         slug: Optional[Literal] = None,
         description: Optional[Literal] = None,
         primary_topic: Optional[Literal] = None,
+        if_absent: Optional[Literal] = None,
     ) -> Result:
         """Pure function: create item with RDFLib terms"""
         if not isinstance(container_uri, URIRef):
@@ -81,6 +94,8 @@ class CreateItem(PUT):
             raise TypeError(
                 f"CreateItem.execute expects primary_topic to be Literal or None, got {type(primary_topic)}"
             )
+
+        if_absent = if_absent_flag(if_absent, "CreateItem.execute")
 
         # URL-encode slug, or mint a fresh one - a lowercase UUID, as the LinkedDataHub CLI does - so that
         # leaving it out never lands on an existing document; deriving it from the title did, on a repeated title
@@ -118,8 +133,7 @@ class CreateItem(PUT):
         # Convert the document to a Graph and call parent PUT operation
         graph = self.to_graph(data, base=url)
 
-        # Call parent PUT execute method
-        return super().execute(URIRef(url), graph)
+        return create(self, URIRef(url), graph, if_absent)
 
     def execute_json(self, arguments: dict, variable_stack: list = None) -> Result:
         """JSON execution: process arguments with strict type checking"""
@@ -180,7 +194,14 @@ class CreateItem(PUT):
                     f"ldh-CreateItem operation expects 'primary_topic' to be Literal, got {type(primary_topic)}"
                 )
 
-        return self.execute(container_uri, title, slug, description, primary_topic)
+        # Process optional if_absent
+        if_absent = None
+        if "if_absent" in arguments:
+            if_absent = Operation.json_to_rdflib(Operation.process_json(
+                self.settings, arguments["if_absent"], self.context, variable_stack
+            ))
+
+        return self.execute(container_uri, title, slug, description, primary_topic, if_absent)
 
     def mcp_run(self, arguments: dict, context: Any = None) -> Any:
         """MCP execution: plain args → plain results"""
@@ -202,12 +223,16 @@ class CreateItem(PUT):
             if "primary_topic" in arguments
             else None
         )
-        result = self.execute(container_uri, title, slug, description, primary_topic)
+        if_absent = Literal(bool(arguments["if_absent"])) if "if_absent" in arguments else None
+        result = self.execute(container_uri, title, slug, description, primary_topic, if_absent)
 
-        # Extract URL from PUT result
+        # Extract URL from PUT result; a 412 is the existing document if_absent accepted
         url_binding = result.bindings[0]["url"]
+        created = int(result.bindings[0]["status"]) != 412
         return [
             types.TextContent(
-                type="text", text=f"Item created successfully at: {url_binding}"
+                type="text",
+                text=f"Item created successfully at: {url_binding}" if created
+                else f"A document already exists at {url_binding}; left as it is",
             )
         ]

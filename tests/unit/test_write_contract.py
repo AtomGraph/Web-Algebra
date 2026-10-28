@@ -300,8 +300,9 @@ class TestWriteIfMatch:
 LDH_WRITES = {
     "ldh-AddFile": ("POST", lambda path: {"url": {"@id": DOC}, "file": str(path), "title": "t"}, DOC),
     "ldh-AddSelect": ("POST", lambda path: {"url": {"@id": DOC}, "query": "SELECT * { ?s ?p ?o }", "title": "t"}, DOC),
-    "ldh-CreateItem": ("PUT", lambda path: {"container": {"@id": EX}, "title": "t", "slug": "doc"}, EX + "doc/"),
 }
+# ldh-CreateContainer and ldh-CreateItem quote no entity tag: they PUT with
+# If-None-Match: * and only create (test_ldh_create_if_absent.py)
 
 
 @pytest.mark.parametrize("op", sorted(LDH_WRITES))
