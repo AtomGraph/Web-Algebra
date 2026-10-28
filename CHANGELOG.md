@@ -5,7 +5,7 @@ All notable changes to Web Algebra are recorded here. The format follows
 [Semantic Versioning](https://semver.org/). The normative definition of every
 operation is [formal-semantics.md](formal-semantics.md).
 
-## [2.0.2] - Unreleased
+## [2.0.2] - 2026-10-28
 
 ### Added
 
@@ -13,6 +13,21 @@ operation is [formal-semantics.md](formal-semantics.md).
   publishes `server.json` after the PyPI upload, logged in with GitHub OIDC.
   Run by hand with a released tag, it publishes that tag's `server.json` and
   nothing else.
+
+### Changed
+
+- **`ldh-AddView` says what each mode is for**: a view shows resources, and
+  its mode is picked by what they carry — `GridMode` a card per resource led
+  by its image, `MapMode` a pin per resource with `geo:lat`/`geo:long`,
+  `GraphMode` the links between them. **`ldh-AddResultSetChart`** says a chart
+  shows values (aggregates, measurements), so things, people and places belong
+  in a view.
+
+### Fixed
+
+- **`ldh-AddView` no longer claims every projected variable is DESCRIBE'd**:
+  LinkedDataHub describes the resources the first projected variable binds,
+  so that variable must bind resources.
 
 ## [2.0.1] - 2026-10-21
 
