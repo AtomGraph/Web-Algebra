@@ -44,6 +44,7 @@ The system is built around the `Operation` abstract base class that provides:
 The operations cover read-write Linked Data, SPARQL queries, URI manipulation, and LinkedDataHub-specific resource creation. Non-exhaustive list:
 
 - Linked Data
+  - `DELETE`
   - `GET`
   - `PATCH`
   - `POST`

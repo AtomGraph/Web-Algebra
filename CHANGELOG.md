@@ -5,6 +5,17 @@ All notable changes to Web Algebra are recorded here. The format follows
 [Semantic Versioning](https://semver.org/). The normative definition of every
 operation is [formal-semantics.md](formal-semantics.md).
 
+## [2.0.4] - Unreleased
+
+### Added
+
+- **`DELETE`** removes the document at `url`, as the Graph Store Protocol's
+  `DELETE`, and returns the one-row `status`/`url` result like the other
+  writes. It reads the entity tag with `HEAD` and sends it as `If-Match`, is
+  an error answered outside 2xx (`404` for a document that does not exist),
+  and counts as a write to its URI for an enclosing `ForEach`. Its kind is
+  `destructive`.
+
 ## [2.0.3] - 2026-10-29
 
 ### Changed

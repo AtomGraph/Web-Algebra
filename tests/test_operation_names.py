@@ -17,7 +17,7 @@ from web_algebra.operation import Operation
 # parametrized over the registry, so it is filled before collection
 register(list_operation_subclasses(web_algebra.operations, Operation))
 
-PROTOCOL = {"GET", "POST", "PUT", "PATCH", "SELECT", "CONSTRUCT", "DESCRIBE"}
+PROTOCOL = {"GET", "POST", "PUT", "PATCH", "DELETE", "SELECT", "CONSTRUCT", "DESCRIBE"}
 PASCAL = r"(?:[A-Z][a-z0-9]+|URI|UUID|SPARQL|XHTML)+"
 NAME = re.compile(rf"(?:ldh-)?{PASCAL}")
 
