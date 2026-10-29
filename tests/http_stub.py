@@ -147,10 +147,16 @@ def empty_sparql_answer(request: urllib.request.Request) -> StubResponse:
 
 def default_handler(request: urllib.request.Request) -> StubResponse:
     """HEAD: 200, no ETag. SPARQL query: an empty answer of its form.
-    GET: an empty Turtle graph. Writes: 200, no Location."""
+    Reconciliation (formal-semantics.md §4.7): a manifest for a GET asking for
+    JSON, no candidates for a POST of `queries`. GET: an empty Turtle graph.
+    Writes: 200, no Location."""
     method = request.get_method()
     if sparql_query_text(request) is not None:
         return empty_sparql_answer(request)
+    if method == "POST" and "queries" in urllib.parse.parse_qs(request_body_text(request)):
+        return StubResponse(200, {"Content-Type": "application/json"}, json.dumps({"q0": {"result": []}}).encode())
+    if method == "GET" and (request_header(request, "Accept") or "") == "application/json":
+        return StubResponse(200, {"Content-Type": "application/json"}, json.dumps({"name": "Stub", "identifierSpace": "http://example.org/entity/"}).encode())
     if method == "HEAD":
         return StubResponse(200)
     if method == "GET":

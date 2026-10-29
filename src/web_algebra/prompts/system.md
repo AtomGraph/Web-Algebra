@@ -556,6 +556,15 @@ The classes, datatype properties and object properties of the data at a SPARQL e
 {"@op": "ExtractOntology", "args": {"endpoint": {"@id": "https://dbpedia.org/sparql"}}}
 ```
 
+## Reconcile(endpoint: URI, query: string, type?: string, limit?: integer) → Result
+
+The entities a reconciliation service (the W3C Reconciliation Service API) offers for a name: one row per candidate, best first, binding `entity` (a URI), `name`, `description` (when there is one), `score` and `match` (whether the service takes it as the match). `type` is one of the service's type ids. Wikidata's service is `https://wikidata-reconciliation.wmcloud.org/en/api`, whose type ids are Wikidata items (`Q515` city, `Q6256` country, `Q43229` organization). The chosen entity's description is a `GET` of its `entity`.
+
+### Example JSON
+```json
+{"@op": "Reconcile", "args": {"endpoint": {"@id": "https://wikidata-reconciliation.wmcloud.org/en/api"}, "query": "Aarhus", "type": "Q515", "limit": 5}}
+```
+
 # LinkedDataHub operations
 
 These write to a LinkedDataHub instance. Every write returns the one-row `status`/`url` result. A document's **content** (what its page shows) is its sequence of blocks: only `ldh-AddXHTMLBlock` and `ldh-AddObjectBlock` add to it. The other `ldh-Add*` operations write a resource *into* the document (a query, a view, a chart, a service, a file) without showing it; to show it, place it with `ldh-AddObjectBlock`, its URI as `value` — so give it a `fragment`.

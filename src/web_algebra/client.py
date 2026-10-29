@@ -560,3 +560,60 @@ class SPARQLClient:
 
 # Endpoints by whether they take GRAPH in a query (`SPARQLClient.takes_graph`).
 _TAKES_GRAPH: dict = {}
+
+
+class ReconciliationClient:
+    """A client of a W3C Entity Reconciliation Service
+    (https://www.w3.org/community/reports/reconciliation/CG-FINAL-specs-0.2-20230410/):
+    its manifest, and the candidates it offers for a query. JSON in, JSON out.
+    The constructor is the other clients', so `ClientOperation` builds it the same way."""
+
+    def __init__(
+        self,
+        cert_pem_path: Optional[str] = None,
+        cert_password: Optional[str] = None,
+        verify_ssl: bool = True,
+        ca_bundle: Optional[str] = None,
+        recorder: Optional[WriteRecorder] = None,
+    ):
+        self.recorder = recorder
+        self.ssl_context = ssl.create_default_context(cafile=ca_bundle)
+        if cert_pem_path and cert_password:
+            self.ssl_context.load_cert_chain(certfile=cert_pem_path, password=cert_password)
+        if not verify_ssl:
+            self.ssl_context.check_hostname = False
+            self.ssl_context.verify_mode = ssl.CERT_NONE
+        self.opener = urllib.request.build_opener(
+            urllib.request.HTTPSHandler(context=self.ssl_context),
+            RetryAfterHandler(),
+        )
+        self.opener.addheaders = [
+            (
+                "User-Agent",
+                "Web-Algebra/1.0 (LinkedData Processing System; https://github.com/atomgraph/Web-Algebra)",
+            )
+        ]
+
+    def _json(self, request: urllib.request.Request) -> dict:
+        response = send(self.opener, request)
+        try:
+            return json.loads(response.read().decode("utf-8"))
+        except ValueError as e:
+            raise ValueError(f"The reconciliation service at {request.full_url} answered with no JSON: {e}") from None
+
+    def manifest(self, endpoint_url: str) -> dict:
+        """The service's manifest: a GET of the endpoint."""
+        return self._json(urllib.request.Request(endpoint_url, headers={"Accept": "application/json"}))
+
+    def reconcile(self, endpoint_url: str, queries: dict) -> dict:
+        """The candidates for `queries` (keyed as the protocol keys them, q0, q1, ...),
+        sent as the `queries` form field."""
+        body = urllib.parse.urlencode({"queries": json.dumps(queries)}).encode("utf-8")
+        request = urllib.request.Request(
+            endpoint_url,
+            data=body,
+            method="POST",
+            headers={"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded"},
+        )
+        return self._json(request)
+
