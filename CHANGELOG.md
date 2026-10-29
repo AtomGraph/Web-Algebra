@@ -17,6 +17,16 @@ operation is [formal-semantics.md](formal-semantics.md).
   candidate ids to URIs. The XML serialization's executor has it too, so the
   two serializations keep the same catalog.
 
+### Changed
+
+- **`ldh-AddView` and `ldh-AddResultSetChart` descriptions** say that a query
+  returning a row per resource is a list of resources, and belongs in a view
+  however many values from related resources it joins in; a chart of it shows
+  each resource as its address. A cold agent over MCP, given 2.0.2's
+  descriptions, still put a household's possessions in a Table chart, because
+  it wanted each thing's shop and price beside it, and nothing said where
+  those values go instead.
+
 ### Fixed
 
 - **`GET` asks for N-Triples, then Turtle**: the RDF media types it accepts

@@ -22,6 +22,11 @@ class AddResultSetChart(POST):
         It is the fit for aggregates and measurements - totals, counts, sums per shop or per month. A resource in
         a chart is a bare cell, with no image, label or links of its own: to show resources themselves (things,
         people, places), use ldh-AddView, whose modes render each one as itself.
+
+        A query that returns a row per resource, with the resource's URI among its variables, is a list of
+        resources and belongs in a view, however many values from related resources it joins in (a thing with
+        its shop, price and date of purchase; a message with its sender). A chart of it shows each resource as
+        its address. Chart only what is not one row per resource: totals, counts, sums by shop or by month.
         
         This tool:
         - Creates an ldh:ResultSetChart resource linked to an existing sp:Select query resource

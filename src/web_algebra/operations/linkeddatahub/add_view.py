@@ -24,6 +24,11 @@ class AddView(POST):
         One that binds values - a name, a price, a computed total - describes nothing. To show values or
         aggregates (totals, counts, sums by month), use ldh-AddResultSetChart instead.
 
+        A list of resources is a view even when what matters about them lives on related resources - a thing's
+        shop and price on the order it came from, a message's sender on a person. Do not join those values into
+        one table to show them beside each resource: select the resources, and let each one's own page show
+        what it links to. Put values that summarise the related resources (spend per shop) in a chart beside it.
+
         This tool:
         - Creates an ldh:View resource linked to an existing sp:Select query resource
         - Configures optional display mode for the view
