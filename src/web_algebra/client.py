@@ -24,6 +24,18 @@ MEDIA_TYPES = {
     "application/rdf+xml": "xml",
 }
 
+# What a GET asks for: the RDF media types in MEDIA_TYPES' order, ranked by
+# quality value, so a server choosing among them takes N-Triples, then Turtle.
+# Unranked, they are equally acceptable and the server picks: Wikidata picks
+# RDF/XML, whose rdf:nodeIDs it writes as hashes that start with a digit - not
+# XML NCNames, so not RDF/XML rdflib will parse (Wikimedia T252731, declined
+# 2020 in favour of T244341, still open). The same nodes are fine in N-Triples
+# and Turtle, whose blank node labels may start with a digit.
+RDF_ACCEPT = ", ".join(
+    media_type if rank == 0 else f"{media_type};q={1 - rank / 10:.1f}"
+    for rank, media_type in enumerate(MEDIA_TYPES)
+)
+
 # HTTP methods that change the resource they address. A client reports each one
 # it completes to its recorder, and that report is the only source of an
 # execution's `affected_documents` — derived from what was actually sent, not
@@ -260,9 +272,7 @@ class LinkedDataClient:
         :param url: The URL to fetch RDF data from.
         :return: An RDFLib Graph object containing the parsed RDF data.
         """
-        # Set the Accept header
-        accept_header = ", ".join(MEDIA_TYPES.keys())
-        headers = {"Accept": accept_header}
+        headers = {"Accept": RDF_ACCEPT}
         request = urllib.request.Request(url, headers=headers)
 
         # Perform the HTTP request

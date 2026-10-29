@@ -17,6 +17,17 @@ operation is [formal-semantics.md](formal-semantics.md).
   candidate ids to URIs. The XML serialization's executor has it too, so the
   two serializations keep the same catalog.
 
+### Fixed
+
+- **`GET` asks for N-Triples, then Turtle**: the RDF media types it accepts
+  are ranked (`application/n-triples, text/turtle;q=0.9,
+  application/ld+json;q=0.8, application/rdf+xml;q=0.7`). Unranked, a server
+  choosing among equals picked freely, and Wikidata picked RDF/XML, whose
+  hashed `rdf:nodeID`s start with a digit and so are not the NCNames RDF/XML
+  requires: rdflib refused every Wikidata entity (Wikimedia T252731). A `GET`
+  of `http://www.wikidata.org/entity/Q…` now reads it, as `Reconcile`'s
+  candidates need.
+
 ## [2.0.3] - 2026-10-29
 
 ### Changed
