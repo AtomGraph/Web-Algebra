@@ -285,8 +285,8 @@ The focus accessors, named after their XSLT/XPath counterparts:
 
 Operations are marked in the catalog as **pure** (no observable effect),
 **query** (reads external state: HTTP GET, SPARQL query), or **update**
-(writes external state: HTTP POST/PUT/PATCH). `SPARQLString` calls an external
-LLM service and is additionally **non-deterministic**, as is `StrUUID`.
+(writes external state: HTTP POST/PUT/PATCH/DELETE). `SPARQLString` calls an
+external LLM service and is additionally **non-deterministic**, as is `StrUUID`.
 `Now` is fixed within one evaluation of a document and differs between
 evaluations (§4.2).
 
@@ -340,7 +340,7 @@ Failures raise Python exceptions per this table (normative):
 | unknown variable in `$name` lookup | `ValueError` |
 | focus-item lookup miss, or no focus established | `ValueError` |
 | two iterations of one `ForEach` updating the same URI (§3.6) | `ValueError` |
-| a write (`POST`, `PUT`, `PATCH`, and the `ldh-*` updates) answered outside 2xx (§4.4) | `ValueError` |
+| a write (`POST`, `PUT`, `PATCH`, `DELETE`, and the `ldh-*` updates) answered outside 2xx (§4.4) | `ValueError` |
 | `SPARQLString` produced no query of the declared shape, or one of its `context` values is empty (§4.3) | `ValueError` |
 | `bindings` of a schema operation without a `subject` variable, or with no rows (§4.6) | `ValueError` |
 | `Filter` position < 1 or > length | `ValueError` |
@@ -534,8 +534,8 @@ acronym (URI, UUID, SPARQL, XHTML) kept whole — `ForEach`, `ResolveURI`,
 function's name in PascalCase: `STR` → `Str`, `ENCODE_FOR_URI` →
 `EncodeForURI`, `STRUUID` → `StrUUID`, `NOW` → `Now`. Upper case is kept only
 for the names of protocol operations, as the protocols spell them: the HTTP
-methods (`GET`, `POST`, `PUT`, `PATCH`) and the SPARQL query forms (`SELECT`,
-`CONSTRUCT`, `DESCRIBE`). An extension family's operations carry the family's
+methods (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) and the SPARQL query forms
+(`SELECT`, `CONSTRUCT`, `DESCRIBE`). An extension family's operations carry the family's
 prefix (Appendix A) before a PascalCase name. A deprecated alias, where the
 catalog lists one, names the same operation and is accepted wherever the name
 is.
@@ -982,10 +982,10 @@ the algebra. A response that is not an RDF representation — an unsupported
 media type, a missing `Content-Type`, or a body that does not parse as its
 declared RDF type — raises `ValueError` (§3.7).
 
-`POST`, `PUT` and `PATCH` return a single-row `Result` with variables
-`status` (`xsd:integer` HTTP status) and `url`. `url` is the URI of the
-resource that the write produced: the response's `Location` when it has one,
-otherwise the request URI. A relative `Location` is resolved against the
+`POST`, `PUT`, `PATCH` and `DELETE` return a single-row `Result` with
+variables `status` (`xsd:integer` HTTP status) and `url`. `url` is the URI of
+the resource that the write produced (for `DELETE`, the one it removed): the
+response's `Location` when it has one, otherwise the request URI. A relative `Location` is resolved against the
 request URI (RFC 3986 §5).
 A response outside the 2xx range is an error (`ValueError`, §3.7), as an
 `xsl:result-document` that cannot be written is: the status and the server's
@@ -1045,6 +1045,20 @@ Abstract: URI × Literal → Result
 Python:   def execute(self, url: URIRef, update: Literal) -> Result
 JSON:     url: URI · update: Literal (SPARQL Update string)
 ```
+
+**DELETE** — remove a resource. *Update* effect.
+```
+Abstract: URI → Result
+Python:   def execute(self, url: URIRef) -> Result
+JSON:     url: URI
+```
+As the Graph Store Protocol's `DELETE`: the resource and its RDF
+representation are removed. A resource that does not exist is answered
+`404`, which is an error like any other non-2xx answer (§3.7): the method's
+effect is idempotent (RFC 9110 §9.2.2) but its answer is not, so a program
+that removes what may already be gone tests for it first. A `DELETE` is a
+write to its URI for the rule of §3.6, so two iterations of one `ForEach`
+that delete, or delete and write, the same URI are an error.
 
 ### 4.5 Graph operations
 
@@ -1126,6 +1140,7 @@ datatype and object properties) as one graph, each scoped by the same
     operation with an argument of the same name, or an omitted argument, is
     read from the nested operation: a `PUT` whose `url` holds a `POST` sends
     the `POST`'s graph.
+  - `DELETE` (§4.4) is not implemented.
   - Text arguments are whitespace-trimmed, so `" "` is `""` (a `Concat`
     separator, a `Replace` replacement).
   - The variable environment is threaded only inside sequence constructors

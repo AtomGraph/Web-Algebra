@@ -1,5 +1,5 @@
-"""Spec: formal-semantics.md §4.4 — the contract shared by the writes POST, PUT
-and PATCH, and §3.7's error table.
+"""Spec: formal-semantics.md §4.4 — the contract shared by the writes POST, PUT,
+PATCH and DELETE, and §3.7's error table.
 - A write returns a single-row Result with variables `status` (xsd:integer
   HTTP status) and `url`: the response's Location when it has one, otherwise
   the request URI. A 303 answered to a write reports success (url = its
@@ -30,7 +30,7 @@ from web_algebra.operation import Operation
 EX = "http://example.org/"
 DOC = EX + "doc"
 
-WRITES = ["POST", "PUT", "PATCH"]
+WRITES = ["POST", "PUT", "PATCH", "DELETE"]
 
 
 def _graph() -> Graph:
@@ -45,6 +45,8 @@ def _write(method: str, settings, url: str = DOC):
         return op.execute(
             URIRef(url), Literal(f"INSERT DATA {{ <{DOC}> <{EX}p> \"v\" }}")
         )
+    if method == "DELETE":
+        return op.execute(URIRef(url))
     return op.execute(URIRef(url), _graph())
 
 

@@ -17,7 +17,7 @@ Your output is a **JSON plan** of operation calls, where **operations may be nes
 
 Operations produce RDF terms (URIs, literals), RDF graphs, SPARQL results (tables of rows), and sequences of these.
 
-- A **write** (`POST`, `PUT`, `PATCH` and the `ldh-*` writes) returns a one-row result with `status` (the HTTP status) and `url` (the resource written). Read the URL with `Filter(Filter(<write>, 1), "url")`.
+- A **write** (`POST`, `PUT`, `PATCH`, `DELETE` and the `ldh-*` writes) returns a one-row result with `status` (the HTTP status) and `url` (the resource written). Read the URL with `Filter(Filter(<write>, 1), "url")`.
 - A write the server refuses (any answer outside 2xx, a redirect included) is an error, and the plan stops there. The exception is `303 See Other`, which reports success: its `Location` is the `url`.
 - A **query** over a missing name or an unbound variable is an error, not an empty value.
 
@@ -499,6 +499,20 @@ Applies a SPARQL Update to the document at `url`. LinkedDataHub accepts a single
   "args": {
     "url": {"@id": "http://localhost/denmark/copenhagen/"},
     "update": "DELETE { <http://localhost/denmark/copenhagen/> <http://purl.org/dc/terms/title> ?t } INSERT { <http://localhost/denmark/copenhagen/> <http://purl.org/dc/terms/title> \"København\" } WHERE { OPTIONAL { <http://localhost/denmark/copenhagen/> <http://purl.org/dc/terms/title> ?t } }"
+  }
+}
+```
+
+## DELETE(url: URI) → Result
+
+Removes the document at `url` and everything it holds. A `url` that does not exist is an error (`404`), so do not delete a document the plan may already have removed. Returns the one-row `status`/`url` result.
+
+### Example JSON
+```json
+{
+  "@op": "DELETE",
+  "args": {
+    "url": {"@id": "http://localhost/denmark/copenhagen/"}
   }
 }
 ```

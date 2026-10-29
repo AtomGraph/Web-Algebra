@@ -48,3 +48,10 @@ def test_an_upsert_is_destructive_but_a_create_is_not():
     assert PUT.kind is DESTRUCTIVE
     assert CreateContainer.kind is WRITE
     assert CreateItem.kind is WRITE
+
+
+def test_a_delete_is_destructive():
+    # DELETE removes the whole document at a URL
+    from web_algebra.operations.linked_data.delete import DELETE
+
+    assert DELETE.kind is DESTRUCTIVE
