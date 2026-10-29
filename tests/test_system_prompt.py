@@ -24,13 +24,14 @@ from __future__ import annotations
 
 import json
 import re
+import urllib.parse
 from pathlib import Path
 
 import pytest
 from rdflib import BNode, Literal, URIRef
 from rdflib.namespace import XSD
 
-from tests.http_stub import StubResponse, default_handler
+from tests.http_stub import StubResponse, default_handler, request_body_text
 from tests.plan_check import SPEC_ENTRIES, check_static
 from web_algebra.operation import Operation
 
@@ -176,7 +177,9 @@ def _render(value):
 
 
 def _offline(request):
-    if request.get_method() in ("POST", "PUT", "PATCH", "DELETE"):
+    # a reconciliation query is a POST that reads (§4.7): the default answers it
+    reconciles = "queries" in urllib.parse.parse_qs(request_body_text(request))
+    if request.get_method() in ("POST", "PUT", "PATCH", "DELETE") and not reconciles:
         return StubResponse(200)
     return default_handler(request)
 

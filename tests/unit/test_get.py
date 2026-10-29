@@ -11,7 +11,7 @@ import urllib.error
 import pytest
 from rdflib import Graph, Literal, URIRef
 
-from tests.http_stub import StubResponse
+from tests.http_stub import StubResponse, request_header
 from web_algebra.operation import Operation
 
 
@@ -65,3 +65,15 @@ class TestGETStubbed:
         op = Operation.get("GET")(settings=settings)
         with pytest.raises(urllib.error.HTTPError):
             op.execute(URIRef("http://example.org/doc"))
+
+
+class TestGETAccept:
+    def test_asks_for_n_triples_then_turtle(self, settings, http_stub):
+        # ranked, so a server choosing among equals does not pick RDF/XML: Wikidata's
+        # rdf:nodeIDs are not NCNames and rdflib refuses them (Wikimedia T252731)
+        http_stub.handler = lambda request: StubResponse(200, {"Content-Type": "application/n-triples"}, b"")
+        Operation.get("GET")(settings=settings).execute(URIRef("http://example.org/doc"))
+
+        accept = request_header(http_stub.requests[0], "Accept")
+        assert accept == "application/n-triples, text/turtle;q=0.9, application/ld+json;q=0.8, application/rdf+xml;q=0.7"
+

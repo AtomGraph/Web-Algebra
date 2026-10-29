@@ -60,6 +60,8 @@ The operations cover read-write Linked Data, SPARQL queries, URI manipulation, a
   - `ExtractDatatypeProperties`
   - `ExtractObjectProperties`
   - `ExtractOntology`
+- Reconciliation
+  - `Reconcile`
 - URI & String Operations
   - `ResolveURI`
   - `EncodeForURI`

@@ -5,6 +5,29 @@ All notable changes to Web Algebra are recorded here. The format follows
 [Semantic Versioning](https://semver.org/). The normative definition of every
 operation is [formal-semantics.md](formal-semantics.md).
 
+## [Unreleased]
+
+### Added
+
+- **`Reconcile`** (formal-semantics.md §4.7): the candidates a reconciliation
+  service offers for a name, as a `Result` of `entity`, `name`,
+  `description`, `score` and `match`, best first. It speaks the W3C Entity
+  Reconciliation Service API to any `endpoint` — Wikidata's is one — with an
+  optional `type` id and `limit`; the manifest's `identifierSpace` resolves the
+  candidate ids to URIs. The XML serialization's executor has it too, so the
+  two serializations keep the same catalog.
+
+### Fixed
+
+- **`GET` asks for N-Triples, then Turtle**: the RDF media types it accepts
+  are ranked (`application/n-triples, text/turtle;q=0.9,
+  application/ld+json;q=0.8, application/rdf+xml;q=0.7`). Unranked, a server
+  choosing among equals picked freely, and Wikidata picked RDF/XML, whose
+  hashed `rdf:nodeID`s start with a digit and so are not the NCNames RDF/XML
+  requires: rdflib refused every Wikidata entity (Wikimedia T252731). A `GET`
+  of `http://www.wikidata.org/entity/Q…` now reads it, as `Reconcile`'s
+  candidates need.
+
 ## [2.0.3] - 2026-10-29
 
 ### Changed

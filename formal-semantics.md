@@ -1103,6 +1103,39 @@ property.
 datatype and object properties) as one graph, each scoped by the same
 `bindings`.
 
+### 4.7 Reconciliation
+
+**Reconcile** — the entities a reconciliation service offers for a name, as
+a `Result`. *Query* effect.
+```
+Abstract: URI × Literal × Maybe Literal × Maybe Literal → Result
+Python:   def execute(self, endpoint: URIRef, query: Literal,
+                      type: Literal | None = None, limit: Literal | None = None) -> Result
+JSON:     endpoint: URI · query: string Literal · type: Maybe string Literal
+          · limit: Maybe xsd:integer Literal
+```
+
+The service at `endpoint` speaks the W3C Entity Reconciliation Service API
+(https://www.w3.org/community/reports/reconciliation/CG-FINAL-specs-0.2-20230410/),
+a JSON protocol, as SPARQL is spoken to an endpoint by `SELECT`: Wikidata's
+service (`https://wikidata-reconciliation.wmcloud.org/en/api`) is one
+`endpoint` of many. The service's manifest — a `GET` of `endpoint` — gives the
+`identifierSpace` its candidate ids are local to; a manifest without one
+raises `ValueError`. The query is sent as the protocol's `queries` form field,
+with `type` (one of the service's type ids, Wikidata's `Q515` for a city)
+restricting the candidates and `limit` capping how many come back.
+
+The `Result` has the variables `entity`, `name`, `description`, `score` and
+`match`, and one row per candidate in the service's order, best first:
+`entity` is the candidate's id resolved against the identifier space (RFC
+3986), `name` its name, `description` its description when the service gives
+one (unbound otherwise), `score` an `xsd:decimal` and `match` an
+`xsd:boolean`, whether the service takes the candidate as the match. A name
+nothing reconciles to is the empty `Result`. A response that is not JSON
+raises `ValueError`; an answer outside 2xx propagates as the transport failure
+it is (§3.7), as a `GET`'s does. What the chosen entity says is a `GET` of its
+`entity` away, as a row of `SELECT` is dereferenced (§4.4).
+
 ## 5. Conformance notes
 
 - The JSON serialization here and the XML serialization used by REST-VKG are
