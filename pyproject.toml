@@ -1,6 +1,6 @@
 [project]
 name = "web-algebra"
-version = "2.0.2"
+version = "2.0.3"
 description = "Composable RDF operations in JSON"
 readme = "README.md"
 license = "Apache-2.0"
