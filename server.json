@@ -7,12 +7,12 @@
     "url": "https://github.com/AtomGraph/Web-Algebra",
     "source": "github"
   },
-  "version": "2.0.3",
+  "version": "2.0.4",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "web-algebra",
-      "version": "2.0.3",
+      "version": "2.0.4",
       "runtimeHint": "uvx",
       "packageArguments": [
         {
